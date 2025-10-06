@@ -1,0 +1,523 @@
+{
+	"info": {
+		"_postman_id": "12345678-1234-1234-1234-123456789abc",
+		"name": "Margav Energy CRM API",
+		"description": "Complete API testing collection for Margav Energy CRM system",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login - Admin",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login",
+								""
+							]
+						},
+						"description": "Login as admin user to get authentication token"
+					},
+					"response": []
+				},
+				{
+					"name": "Login - Agent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"CalebG\",\n    \"password\": \"123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login",
+								""
+							]
+						},
+						"description": "Login as agent user to get authentication token"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/me/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"me",
+								""
+							]
+						},
+						"description": "Get current authenticated user information"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints for login and user management"
+		},
+		{
+			"name": "User Management",
+			"item": [
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								""
+							]
+						},
+						"description": "Get all users (admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create New User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"first_name\": \"Test\",\n    \"last_name\": \"User\",\n    \"password\": \"password123\",\n    \"role\": \"agent\",\n    \"phone\": \"+1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								""
+							]
+						},
+						"description": "Create a new user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/1/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"1",
+								""
+							]
+						},
+						"description": "Get specific user by ID"
+					},
+					"response": []
+				}
+			],
+			"description": "User management endpoints"
+		},
+		{
+			"name": "Lead Management",
+			"item": [
+				{
+					"name": "Get All Leads",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/leads/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"leads",
+								""
+							]
+						},
+						"description": "Get all leads"
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Leads",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{agent_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/leads/my/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"leads",
+								"my",
+								""
+							]
+						},
+						"description": "Get leads assigned to current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Create New Lead",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{agent_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"full_name\": \"John Doe\",\n    \"phone\": \"+1234567890\",\n    \"email\": \"john@example.com\",\n    \"notes\": \"Interested in solar panels\",\n    \"status\": \"new\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/leads/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"leads",
+								""
+							]
+						},
+						"description": "Create a new lead"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Lead",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{agent_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"full_name\": \"John Doe Updated\",\n    \"phone\": \"+1234567890\",\n    \"email\": \"john.updated@example.com\",\n    \"notes\": \"Very interested in solar panels\",\n    \"status\": \"qualified\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/leads/1/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"leads",
+								"1",
+								""
+							]
+						},
+						"description": "Update an existing lead"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Lead",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{agent_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/leads/1/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"leads",
+								"1",
+								""
+							]
+						},
+						"description": "Delete a lead"
+					},
+					"response": []
+				}
+			],
+			"description": "Lead management endpoints"
+		},
+		{
+			"name": "Dialer Integration",
+			"item": [
+				{
+					"name": "Create Lead from Dialer (with API Key)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Dialer-Api-Key",
+								"value": "{{dialer_api_key}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"dialer_user_id\": \"CalebG\",\n    \"full_name\": \"Jane Smith\",\n    \"phone\": \"+1987654321\",\n    \"email\": \"jane@example.com\",\n    \"notes\": \"Called from dialer system\",\n    \"dialer_lead_id\": \"DL123456\",\n    \"vendor_id\": \"V001\",\n    \"list_id\": \"L001\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/leads/from-dialer/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"leads",
+								"from-dialer",
+								""
+							]
+						},
+						"description": "Create lead from dialer system with API key authentication"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Lead from Dialer (with Username)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user\": \"CalebG\",\n    \"full_name\": \"Bob Johnson\",\n    \"phone\": \"+1555123456\",\n    \"email\": \"bob@example.com\",\n    \"notes\": \"Interested in renewable energy\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/leads/from-dialer/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"leads",
+								"from-dialer",
+								""
+							]
+						},
+						"description": "Create lead from dialer system using username"
+					},
+					"response": []
+				}
+			],
+			"description": "Dialer integration endpoints"
+		},
+		{
+			"name": "Advanced Operations",
+			"item": [
+				{
+					"name": "Search Leads",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/leads/?search=John",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"leads",
+								""
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "John"
+								}
+							]
+						},
+						"description": "Search leads by name or other fields"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Leads by Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/leads/?status=new",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"leads",
+								""
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "new"
+								}
+							]
+						},
+						"description": "Filter leads by status"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Lead Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{agent_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"qualified\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/leads/1/status/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"leads",
+								"1",
+								"status",
+								""
+							]
+						},
+						"description": "Update lead status only"
+					},
+					"response": []
+				}
+			],
+			"description": "Advanced lead operations and filtering"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-set authorization header if token exists",
+					"if (pm.environment.get('admin_token')) {",
+					"    pm.request.headers.add({",
+					"        key: 'Authorization',",
+					"        value: 'Bearer ' + pm.environment.get('admin_token')",
+					"    });",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		}
+	]
+}

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dialer Integration Example</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-right: 10px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+      }
+      .info {
+        background: #d1ecf1;
+        color: #0c5460;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>📞 Dialer Integration Example</h1>
+
+      <div class="info">
+        <strong>How it works:</strong>
+        <ol>
+          <li>Agent clicks "Interested" during a call</li>
+          <li>Dialer collects lead information</li>
+          <li>Dialer calls the CRM API to create the lead</li>
+          <li>Agent is redirected to CRM dashboard with prepopulated form</li>
+        </ol>
+      </div>
+
+      <form id="leadForm">
+        <div class="form-group">
+          <label for="full_name">Full Name *</label>
+          <input type="text" id="full_name" name="full_name" required />
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone Number *</label>
+          <input type="tel" id="phone" name="phone" required />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" />
+        </div>
+
+        <div class="form-group">
+          <label for="agent_username">Agent Username *</label>
+          <select id="agent_username" name="agent_username" required>
+            <option value="">Select Agent</option>
+            <option value="agent1">Agent 1</option>
+            <option value="agent2">Agent 2</option>
+            <option value="agent3">Agent 3</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Notes</label>
+          <textarea
+            id="notes"
+            name="notes"
+            rows="3"
+            placeholder="Additional notes about the lead..."
+          ></textarea>
+        </div>
+
+        <button type="button" onclick="simulateInterestedClick()">
+          🎯 Simulate "Interested" Click
+        </button>
+        <button type="button" onclick="testAPI()">🧪 Test API Only</button>
+      </form>
+
+      <div id="result"></div>
+    </div>
+
+    <script>
+      // Configuration - Production URLs for crm.margav.energy
+      const API_BASE_URL = "https://crm.margav.energy/api";
+      const CRM_DASHBOARD_URL = "https://crm.margav.energy/agent-dashboard";
+
+      async function createLeadFromDialer(leadData) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/leads/from-dialer/`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Dialer-Api-Key":
+                localStorage.getItem("DIALER_API_KEY") || "YOUR_API_KEY",
+            },
+            body: JSON.stringify(leadData),
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+            return { success: true, data: result };
+          } else {
+            return { success: false, error: result.error || "Unknown error" };
+          }
+        } catch (error) {
+          return { success: false, error: `Network error: ${error.message}` };
+        }
+      }
+
+      function constructRedirectURL(lead) {
+        const params = new URLSearchParams({
+          from_dialer: "true",
+          lead_id: lead.id,
+          full_name: lead.full_name,
+          phone: lead.phone,
+          email: lead.email || "",
+          notes: lead.notes || "",
+        });
+
+        return `${CRM_DASHBOARD_URL}?${params.toString()}`;
+      }
+
+      async function simulateInterestedClick() {
+        const form = document.getElementById("leadForm");
+        const formData = new FormData(form);
+
+        const leadData = {
+          dialer_user_id: "vicidial_user_123", // Example stable dialer user ID
+          // user: formData.get("agent_username"), // Fallback if mapping not available
+          full_name: formData.get("full_name"),
+          phone: formData.get("phone"),
+          email: formData.get("email"),
+          notes: formData.get("notes"),
+        };
+
+        // Validate required fields
+        if (
+          !leadData.full_name ||
+          !leadData.phone ||
+          !leadData.agent_username
+        ) {
+          showResult("Please fill in all required fields.", "error");
+          return;
+        }
+
+        showResult("Creating lead...", "info");
+
+        const result = await createLeadFromDialer(leadData);
+
+        if (result.success) {
+          const lead = result.data.lead;
+          const redirectURL = constructRedirectURL(lead);
+
+          showResult(
+            `
+                    <strong>✅ Lead created successfully!</strong><br>
+                    <strong>Lead ID:</strong> ${lead.id}<br>
+                    <strong>Name:</strong> ${lead.full_name}<br>
+                    <strong>Phone:</strong> ${lead.phone}<br>
+                    <strong>Status:</strong> ${lead.status}<br>
+                    <strong>Assigned to:</strong> ${lead.assigned_agent_name}<br><br>
+                    <strong>Redirect URL:</strong><br>
+                    <a href="${redirectURL}" target="_blank">${redirectURL}</a><br><br>
+                    <button onclick="window.open('${redirectURL}', '_blank')">🚀 Open CRM Dashboard</button>
+                `,
+            "success"
+          );
+        } else {
+          showResult(`❌ Error: ${result.error}`, "error");
+        }
+      }
+
+      async function testAPI() {
+        const testData = {
+          full_name: "Test Lead " + Date.now(),
+          phone: "+44123456789",
+          email: "test@example.com",
+          notes: "Test lead from dialer integration",
+          agent_username: "agent1",
+        };
+
+        showResult("Testing API...", "info");
+
+        const result = await createLeadFromDialer(testData);
+
+        if (result.success) {
+          const lead = result.data.lead;
+          showResult(
+            `
+                    <strong>✅ API Test Successful!</strong><br>
+                    <strong>Lead ID:</strong> ${lead.id}<br>
+                    <strong>Name:</strong> ${lead.full_name}<br>
+                    <strong>Status:</strong> ${lead.status}<br>
+                    <strong>Created:</strong> ${new Date(
+                      lead.created_at
+                    ).toLocaleString()}
+                `,
+            "success"
+          );
+        } else {
+          showResult(`❌ API Test Failed: ${result.error}`, "error");
+        }
+      }
+
+      function showResult(message, type) {
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = `<div class="${type}">${message}</div>`;
+      }
+
+      // Auto-fill form with sample data for testing
+      function fillSampleData() {
+        document.getElementById("full_name").value = "John Smith";
+        document.getElementById("phone").value = "+44123456789";
+        document.getElementById("email").value = "john.smith@example.com";
+        document.getElementById("agent_username").value = "agent1";
+        document.getElementById("notes").value =
+          "Interested in solar panels, owns detached house, looking to install within 3 months";
+      }
+
+      // Add sample data button
+      document.addEventListener("DOMContentLoaded", function () {
+        const form = document.getElementById("leadForm");
+        const sampleButton = document.createElement("button");
+        sampleButton.type = "button";
+        sampleButton.textContent = "📝 Fill Sample Data";
+        sampleButton.onclick = fillSampleData;
+        form.appendChild(sampleButton);
+      });
+    </script>
+  </body>
+</html>

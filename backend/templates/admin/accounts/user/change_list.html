@@ -1,0 +1,197 @@
+{% extends "admin/change_list.html" %} {% load i18n admin_urls static
+admin_modify %} {% block extrahead %} {{ block.super }}
+<style>
+  .user-management-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .user-management-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 300;
+  }
+
+  .user-management-header p {
+    margin: 10px 0 0 0;
+    opacity: 0.9;
+  }
+
+  .quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+
+  .action-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid #667eea;
+    transition: transform 0.2s ease;
+  }
+
+  .action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+  }
+
+  .action-card h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 1.1rem;
+  }
+
+  .action-card p {
+    margin: 0 0 15px 0;
+    color: #666;
+    font-size: 0.9rem;
+  }
+
+  .action-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    color: white;
+    text-decoration: none;
+  }
+
+  .action-btn.success {
+    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  }
+  .action-btn.warning {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  }
+  .action-btn.danger {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  }
+
+  .user-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+
+  .stat-item {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    text-align: center;
+  }
+
+  .stat-number {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+    margin: 0;
+  }
+
+  .stat-label {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 5px 0 0 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  @media (max-width: 768px) {
+    .quick-actions-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .user-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
+{% endblock %} {% block object-tools-items %} {{ block.super }}
+<li>
+  <a href="{% url 'admin_accounts_user_bulk_creation' %}" class="addlink">
+    {% trans 'Bulk User Creation' %}
+  </a>
+</li>
+<li>
+  <a href="{% url 'admin:leads_dialeruserlink_changelist' %}" class="addlink">
+    {% trans 'Manage Dialer Links' %}
+  </a>
+</li>
+{% endblock %} {% block content %}
+<div class="user-management-header">
+  <h1>User Management</h1>
+  <p>Manage system users, roles, and dialer integrations</p>
+</div>
+
+<div class="user-stats">
+  <div class="stat-item">
+    <p class="stat-number">{{ user_stats.agents|default:0 }}</p>
+    <p class="stat-label">Agents</p>
+  </div>
+  <div class="stat-item">
+    <p class="stat-number">{{ user_stats.qualifiers|default:0 }}</p>
+    <p class="stat-label">Qualifiers</p>
+  </div>
+  <div class="stat-item">
+    <p class="stat-number">{{ user_stats.salesreps|default:0 }}</p>
+    <p class="stat-label">Sales Reps</p>
+  </div>
+  <div class="stat-item">
+    <p class="stat-number">{{ user_stats.total|default:0 }}</p>
+    <p class="stat-label">Total Users</p>
+  </div>
+</div>
+
+<div class="quick-actions-grid">
+  <div class="action-card">
+    <h3>Bulk Operations</h3>
+    <p>Create multiple users at once</p>
+    <a
+      href="{% url 'admin_accounts_user_bulk_creation' %}"
+      class="action-btn success"
+      >Bulk Create Users</a
+    >
+  </div>
+  <div class="action-card">
+    <h3>Dialer Integration</h3>
+    <p>Manage dialer user mappings</p>
+    <a
+      href="{% url 'admin:leads_dialeruserlink_changelist' %}"
+      class="action-btn warning"
+      >Manage Dialer Links</a
+    >
+  </div>
+  <div class="action-card">
+    <h3>Add New User</h3>
+    <p>Create a single user manually</p>
+    <a href="{% url 'admin:accounts_user_add' %}" class="action-btn"
+      >Add User</a
+    >
+  </div>
+  <div class="action-card">
+    <h3>User Actions</h3>
+    <p>Edit, delete, or view user details</p>
+    <button onclick="showUserActions()" class="action-btn danger">
+      User Actions
+    </button>
+  </div>
+</div>
+
+{{ block.super }} {% endblock %}

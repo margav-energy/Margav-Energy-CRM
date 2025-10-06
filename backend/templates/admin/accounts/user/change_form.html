@@ -1,0 +1,287 @@
+{% extends "admin/change_form.html" %} {% load i18n admin_urls static
+admin_modify %} {% block extrahead %} {{ block.super }}
+<style>
+  .user-edit-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .user-edit-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 300;
+  }
+
+  .user-edit-header p {
+    margin: 10px 0 0 0;
+    opacity: 0.9;
+  }
+
+  .user-info-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+  }
+
+  .info-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid #667eea;
+  }
+
+  .info-card h3 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 1.2rem;
+  }
+
+  .info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+  }
+
+  .info-item:last-child {
+    border-bottom: none;
+  }
+
+  .info-label {
+    font-weight: 500;
+    color: #666;
+  }
+
+  .info-value {
+    color: #333;
+  }
+
+  .dialer-links {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 10px;
+  }
+
+  .dialer-link-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #dee2e6;
+  }
+
+  .dialer-link-item:last-child {
+    border-bottom: none;
+  }
+
+  .dialer-link-id {
+    font-family: monospace;
+    background: #e9ecef;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .action-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s ease;
+  }
+
+  .action-btn.primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .action-btn.danger {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    color: white;
+  }
+
+  .action-btn.warning {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white;
+  }
+
+  .action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    color: white;
+    text-decoration: none;
+  }
+
+  @media (max-width: 768px) {
+    .user-info-cards {
+      grid-template-columns: 1fr;
+    }
+
+    .action-buttons {
+      flex-direction: column;
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="user-edit-header">
+  <h1>
+    {% if original %}Edit User: {{ original.username }}{% else %}Add New User{%
+    endif %}
+  </h1>
+  <p>
+    {% if original %}Modify user details, roles, and dialer integrations{% else
+    %}Create a new user account{% endif %}
+  </p>
+</div>
+
+{% if original %}
+<div class="user-info-cards">
+  <div class="info-card">
+    <h3>User Information</h3>
+    <div class="info-item">
+      <span class="info-label">Username:</span>
+      <span class="info-value">{{ original.username }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Full Name:</span>
+      <span class="info-value"
+        >{{ original.get_full_name|default:"Not set" }}</span
+      >
+    </div>
+    <div class="info-item">
+      <span class="info-label">Email:</span>
+      <span class="info-value">{{ original.email|default:"Not set" }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Role:</span>
+      <span class="info-value">{{ original.get_role_display }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Status:</span>
+      <span class="info-value">
+        {% if original.is_active %}✅ Active{% else %}❌ Inactive{% endif %}
+      </span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Last Login:</span>
+      <span class="info-value">{{ original.last_login|default:"Never" }}</span>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h3>Dialer Integration</h3>
+    {% if original.dialer_link %}
+    <div class="dialer-links">
+      <strong>Linked Dialer ID:</strong>
+      <div class="dialer-link-item">
+        <span class="dialer-link-id"
+          >{{ original.dialer_link.dialer_user_id }}</span
+        >
+        <span class="info-value"
+          >{{ original.dialer_link.created_at|date:"M d, Y" }}</span
+        >
+      </div>
+    </div>
+    {% else %}
+    <p style="color: #666; font-style: italic">No dialer link configured</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="action-buttons">
+  <a
+    href="{% url 'admin:leads_dialeruserlink_changelist' %}?crm_user__id__exact={{ original.id }}"
+    class="action-btn warning"
+  >
+    🔗 Manage Dialer Links
+  </a>
+  {% if not original.is_superuser %}
+  <button
+    onclick="deleteUser('{{ original.username }}')"
+    class="action-btn danger"
+  >
+    🗑️ Delete User
+  </button>
+  {% endif %}
+  <button
+    onclick="resetPassword('{{ original.username }}')"
+    class="action-btn primary"
+  >
+    🔑 Reset Password
+  </button>
+</div>
+{% endif %} {{ block.super }}
+
+<script>
+  function deleteUser(username) {
+    if (
+      confirm(
+        `Are you sure you want to delete user "${username}"? This action cannot be undone.`
+      )
+    ) {
+      fetch(`/admin/accounts/user/delete/${username}/`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRFToken": "{{ csrf_token }}",
+          "Content-Type": "application/json",
+        },
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            alert("User deleted successfully");
+            window.location.href = '{% url "admin:accounts_user_changelist" %}';
+          } else {
+            alert("Error: " + data.error);
+          }
+        })
+        .catch((error) => {
+          alert("Error: " + error.message);
+        });
+    }
+  }
+
+  function resetPassword(username) {
+    if (confirm(`Reset password for "${username}" to "123"?`)) {
+      fetch("/admin/accounts/user/reset-password/", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": "{{ csrf_token }}",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: username,
+          password: "123",
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            alert("Password reset successfully");
+          } else {
+            alert("Error: " + data.error);
+          }
+        })
+        .catch((error) => {
+          alert("Error: " + error.message);
+        });
+    }
+  }
+</script>
+{% endif %} {% endblock %}
