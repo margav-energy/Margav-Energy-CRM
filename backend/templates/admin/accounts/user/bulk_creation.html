@@ -1,0 +1,160 @@
+{% extends "admin/base_site.html" %} {% load i18n admin_urls static admin_modify
+%} {% block title %}{{ title }} | {{ site_title|default:_('Django site admin')
+}}{% endblock %} {% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo;
+  <a href="{% url 'admin:accounts_user_changelist' %}">{% trans 'Users' %}</a>
+  &rsaquo; {% trans 'Bulk User Creation' %}
+</div>
+{% endblock %} {% block content %}
+<div class="module aligned">
+  <h2>Bulk User Creation</h2>
+
+  <div class="form-row">
+    <h3>Quick Actions</h3>
+    <form method="post" style="margin: 20px 0">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_dialer_users" />
+      <p>
+        <strong>Create All Dialer Users:</strong> This will create all 18 dialer
+        users with password "123" and their corresponding dialer links.
+      </p>
+      <p>
+        <input
+          type="submit"
+          value="Create All Dialer Users"
+          class="default"
+          onclick="return confirm('This will create/update all dialer users. Continue?')"
+        />
+      </p>
+    </form>
+  </div>
+
+  <div class="form-row">
+    <h3>Create Single User</h3>
+    <div id="single-user-form">
+      <table>
+        <tr>
+          <td><label for="dialer_user_id">Dialer User ID:</label></td>
+          <td>
+            <input
+              type="text"
+              id="dialer_user_id"
+              name="dialer_user_id"
+              required
+            />
+          </td>
+        </tr>
+        <tr>
+          <td><label for="full_name">Full Name:</label></td>
+          <td><input type="text" id="full_name" name="full_name" /></td>
+        </tr>
+        <tr>
+          <td><label for="username">Username:</label></td>
+          <td><input type="text" id="username" name="username" required /></td>
+        </tr>
+        <tr>
+          <td><label for="password">Password:</label></td>
+          <td>
+            <input type="password" id="password" name="password" value="123" />
+          </td>
+        </tr>
+        <tr>
+          <td><label for="role">Role:</label></td>
+          <td>
+            <select id="role" name="role">
+              <option value="agent">Agent</option>
+              <option value="qualifier">Qualifier</option>
+              <option value="salesrep">Sales Rep</option>
+              <option value="admin">Admin</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <button type="button" onclick="createUser()">Create User</button>
+            <span id="result"></span>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <h3>Current Dialer Users</h3>
+    <p>
+      The following dialer users are configured with usernames matching their
+      dialer IDs:
+    </p>
+    <ul>
+      <li><strong>Numeric IDs:</strong> 8050, 8051, 8052, 8053, 8054</li>
+      <li><strong>Admin/Staff:</strong> admin, Andy, ashley</li>
+      <li>
+        <strong>Agents:</strong> CalebG, DaniC, JakeR, LeiaG, LibbyL, ImaniU,
+        Tyler
+      </li>
+      <li>
+        <strong>System:</strong> VDCL (Inbound No Agent), VDAD (Outbound Auto
+        Dial), training1
+      </li>
+    </ul>
+    <p>
+      <strong>Note:</strong> All usernames now match their dialer user IDs
+      exactly.
+    </p>
+  </div>
+</div>
+
+<script>
+  function createUser() {
+    const dialerUserId = document.getElementById("dialer_user_id").value;
+    const fullName = document.getElementById("full_name").value;
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    const role = document.getElementById("role").value;
+
+    if (!dialerUserId || !username) {
+      alert("Dialer User ID and Username are required");
+      return;
+    }
+
+    const resultSpan = document.getElementById("result");
+    resultSpan.innerHTML = "Creating...";
+
+    fetch('{% url "admin_create_single_user" %}', {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token }}",
+      },
+      body: JSON.stringify({
+        dialer_user_id: dialerUserId,
+        full_name: fullName,
+        username: username,
+        password: password,
+        role: role,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          resultSpan.innerHTML = `✓ User created: ${data.username} (ID: ${data.user_id})`;
+          resultSpan.style.color = "green";
+          // Clear form
+          document.getElementById("dialer_user_id").value = "";
+          document.getElementById("full_name").value = "";
+          document.getElementById("username").value = "";
+          document.getElementById("password").value = "123";
+        } else {
+          resultSpan.innerHTML = `✗ Error: ${data.error}`;
+          resultSpan.style.color = "red";
+        }
+      })
+      .catch((error) => {
+        resultSpan.innerHTML = `✗ Error: ${error.message}`;
+        resultSpan.style.color = "red";
+      });
+  }
+</script>
+{% endblock %}
