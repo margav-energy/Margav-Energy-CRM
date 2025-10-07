@@ -21,7 +21,8 @@ pip install -r requirements.txt
 echo "📋 Copying React build to Django templates..."
 mkdir -p templates
 cp ../frontend/build/index.html templates/
-cp -r ../frontend/build/static staticfiles/
+mkdir -p staticfiles
+cp -r ../frontend/build/static/* staticfiles/
 
 # Run Django migrations
 echo "🗄️ Running database migrations..."
