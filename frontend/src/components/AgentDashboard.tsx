@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 import LeadCard from './LeadCard';
 import LeadForm from './LeadForm';
 import NotificationPanel from './NotificationPanel';
-import MockCall from './MockCall';
 
 const AgentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -403,44 +402,6 @@ const AgentDashboard: React.FC = () => {
     setPrepopulatedData(null);
   };
 
-  const handleIncomingCall = (callData: {
-    full_name: string;
-    phone: string;
-    email?: string;
-    address?: string;
-    postcode?: string;
-    notes?: string;
-  }) => {
-    // Set the URL parameters to simulate dialer data
-    const url = new URL(window.location.href);
-    url.searchParams.set('full_name', callData.full_name);
-    url.searchParams.set('phone', callData.phone);
-    if (callData.email) url.searchParams.set('email', callData.email);
-    if (callData.address) url.searchParams.set('address', callData.address);
-    if (callData.postcode) url.searchParams.set('postcode', callData.postcode);
-    if (callData.notes) url.searchParams.set('notes', callData.notes);
-    
-    // Update the URL without reloading the page
-    window.history.replaceState({}, '', url.toString());
-    
-    // Set prepopulated data for the form
-    setPrepopulatedData({
-      full_name: callData.full_name,
-      phone: callData.phone,
-      email: callData.email || '',
-      address: callData.address || '',
-      postcode: callData.postcode || '',
-      notes: callData.notes || ''
-    });
-    
-    // Trigger the auto-open functionality
-    setShowLeadForm(true);
-    
-    toast.success(`Call completed! Lead form opened for ${callData.full_name}`, {
-      position: 'top-right',
-      autoClose: 4000,
-    });
-  };
 
   const handleLeadInterest = (lead: Lead) => {
     // Prepopulate form data when lead shows interest
@@ -596,8 +557,6 @@ const AgentDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Mock Call Simulator */}
-      <MockCall onIncomingCall={handleIncomingCall} />
 
 
       {/* Lead Form Modal */}
