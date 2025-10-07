@@ -8,7 +8,6 @@ from django.conf.urls.static import static
 from django.views.generic import TemplateView
 from django.views.static import serve
 from accounts import admin_views
-from . import static_views
 
 urlpatterns = [
     # Custom admin views (must come before admin.site.urls)
@@ -28,9 +27,9 @@ if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 else:
-    # In production, use custom static file serving for proper MIME types
+    # In production, use Django's serve view for static files
     urlpatterns += [
-        re_path(r'^static/(?P<path>.*)$', static_views.serve_static_file),
+        re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
     ]
 
 # Serve React frontend for all non-API routes (must be last)
