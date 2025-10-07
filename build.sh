@@ -21,15 +21,17 @@ pip install -r requirements.txt
 echo "📋 Copying React build to Django templates..."
 mkdir -p templates
 cp ../frontend/build/index.html templates/
-mkdir -p staticfiles
-cp -r ../frontend/build/static/* staticfiles/
 
 # Run Django migrations
 echo "🗄️ Running database migrations..."
 python manage.py migrate
 
-# Collect static files
+# Collect static files (this will include React build files)
 echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput
+
+# Copy React static files to the collected static files
+echo "📋 Copying React static files..."
+cp -r ../frontend/build/static/* staticfiles/
 
 echo "✅ Build completed successfully!"

@@ -105,11 +105,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # WhiteNoise configuration
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Additional static file settings for proper MIME types
-STATICFILES_DIRS = [
-    BASE_DIR / 'staticfiles',
-]
-
 # Ensure proper MIME types for static files
 WHITENOISE_USE_FINDERS = True
 
