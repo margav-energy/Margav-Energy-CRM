@@ -239,6 +239,38 @@ dmypy.json
 *.rar
 *.7z
 
+# SSH keys and sensitive files
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.p7b
+*.p7c
+*.p7m
+*.p7s
+*.spc
+*.pfx
+*.p12
+*.key
+*.pem
+*.crt
+*.cer
+*.der
+*.p7b
+*.p7c
+*.p7m
+*.p7s
+*.spc
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+margav*
+*.pub
+
 # Postman collections (keep the main ones, ignore backups)
 *_backup.json
 *_old.json
