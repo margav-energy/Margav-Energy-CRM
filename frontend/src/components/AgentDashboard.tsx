@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Lead, LeadForm as LeadFormType } from '../types';
 import { leadsAPI, notificationsAPI } from '../api';
 import { toast } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
 import LeadCard from './LeadCard';
 import LeadForm from './LeadForm';
 import CallSimulator from './CallSimulator';
@@ -9,6 +10,7 @@ import NotificationPanel from './NotificationPanel';
 import MockCall from './MockCall';
 
 const AgentDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLeadForm, setShowLeadForm] = useState(false);
@@ -502,7 +504,7 @@ const AgentDashboard: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              Agent Dashboard
+              {user?.first_name ? `${user.first_name}'s Dashboard` : 'Agent Dashboard'}
             </h2>
             <p className="text-gray-600 mt-1">Manage your assigned leads</p>
           </div>
@@ -540,7 +542,7 @@ const AgentDashboard: React.FC = () => {
             <div className="ml-4 flex-1">
               <dl>
                 <dt className="text-sm font-medium text-gray-500 truncate">Interested</dt>
-                <dd className="text-2xl font-bold text-gray-900">{statusCounts.interested}</dd>
+                <dd className="text-2xl font-bold text-gray-900">{statusCounts.interested + statusCounts.sent_to_kelly}</dd>
               </dl>
             </div>
           </div>

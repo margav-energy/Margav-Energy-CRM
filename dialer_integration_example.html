@@ -76,6 +76,16 @@
       <h1>📞 Dialer Integration Example</h1>
 
       <div class="info">
+        <strong>🔗 Dialer Integration Documentation</strong>
+        <br /><br />
+        <strong>API Endpoint:</strong>
+        <code>POST https://crm.margav.energy/api/leads/from-dialer/</code><br />
+        <strong>API Key:</strong>
+        <code>margav-dialer-2024-secure-key-12345</code><br />
+        <strong>Required Headers:</strong>
+        <code>Content-Type: application/json</code>,
+        <code>X-Dialer-Api-Key: margav-dialer-2024-secure-key-12345</code>
+        <br /><br />
         <strong>How it works:</strong>
         <ol>
           <li>Agent clicks "Interested" during a call</li>
@@ -83,6 +93,17 @@
           <li>Dialer calls the CRM API to create the lead</li>
           <li>Agent is redirected to CRM dashboard with prepopulated form</li>
         </ol>
+        <br />
+        <strong>Agent User ID Mapping:</strong>
+        <ul>
+          <li><strong>CalebG</strong> → Caleb Galloway</li>
+          <li><strong>DaniC</strong> → Danielle Crutchley</li>
+          <li><strong>JakeR</strong> → Jake Rose</li>
+          <li><strong>LeiaG</strong> → Leia Garbitt</li>
+          <li><strong>LibbyL</strong> → Liberty Liddle-Old</li>
+          <li><strong>ImaniU</strong> → Roheece Imani Hines</li>
+          <li><strong>Tyler</strong> → Tyler Gittoes-Lemm</li>
+        </ul>
       </div>
 
       <form id="leadForm">
@@ -105,10 +126,39 @@
           <label for="agent_username">Agent Username *</label>
           <select id="agent_username" name="agent_username" required>
             <option value="">Select Agent</option>
-            <option value="agent1">Agent 1</option>
-            <option value="agent2">Agent 2</option>
-            <option value="agent3">Agent 3</option>
+            <option value="CalebG">Caleb Galloway</option>
+            <option value="DaniC">Danielle Crutchley</option>
+            <option value="JakeR">Jake Rose</option>
+            <option value="LeiaG">Leia Garbitt</option>
+            <option value="LibbyL">Liberty Liddle-Old</option>
+            <option value="ImaniU">Roheece Imani Hines</option>
+            <option value="Tyler">Tyler Gittoes-Lemm</option>
           </select>
+        </div>
+
+        <div class="form-group">
+          <label for="address1">Address</label>
+          <input
+            type="text"
+            id="address1"
+            name="address1"
+            placeholder="123 Main Street"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" placeholder="London" />
+        </div>
+
+        <div class="form-group">
+          <label for="postal_code">Postal Code</label>
+          <input
+            type="text"
+            id="postal_code"
+            name="postal_code"
+            placeholder="SW1A 1AA"
+          />
         </div>
 
         <div class="form-group">
@@ -134,6 +184,7 @@
       // Configuration - Production URLs for crm.margav.energy
       const API_BASE_URL = "https://crm.margav.energy/api";
       const CRM_DASHBOARD_URL = "https://crm.margav.energy/agent-dashboard";
+      const DIALER_API_KEY = "margav-dialer-2024-secure-key-12345";
 
       async function createLeadFromDialer(leadData) {
         try {
@@ -141,8 +192,7 @@
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Dialer-Api-Key":
-                localStorage.getItem("DIALER_API_KEY") || "YOUR_API_KEY",
+              "X-Dialer-Api-Key": DIALER_API_KEY,
             },
             body: JSON.stringify(leadData),
           });
@@ -177,11 +227,13 @@
         const formData = new FormData(form);
 
         const leadData = {
-          dialer_user_id: "vicidial_user_123", // Example stable dialer user ID
-          // user: formData.get("agent_username"), // Fallback if mapping not available
+          dialer_user_id: formData.get("agent_username"), // Use the selected agent username
           full_name: formData.get("full_name"),
           phone: formData.get("phone"),
           email: formData.get("email"),
+          address1: formData.get("address1"),
+          city: formData.get("city"),
+          postal_code: formData.get("postal_code"),
           notes: formData.get("notes"),
         };
 
@@ -189,7 +241,7 @@
         if (
           !leadData.full_name ||
           !leadData.phone ||
-          !leadData.agent_username
+          !leadData.dialer_user_id
         ) {
           showResult("Please fill in all required fields.", "error");
           return;
@@ -224,11 +276,14 @@
 
       async function testAPI() {
         const testData = {
+          dialer_user_id: "CalebG",
           full_name: "Test Lead " + Date.now(),
           phone: "+44123456789",
           email: "test@example.com",
+          address1: "123 Test Street",
+          city: "London",
+          postal_code: "SW1A 1AA",
           notes: "Test lead from dialer integration",
-          agent_username: "agent1",
         };
 
         showResult("Testing API...", "info");
@@ -264,7 +319,10 @@
         document.getElementById("full_name").value = "John Smith";
         document.getElementById("phone").value = "+44123456789";
         document.getElementById("email").value = "john.smith@example.com";
-        document.getElementById("agent_username").value = "agent1";
+        document.getElementById("agent_username").value = "CalebG";
+        document.getElementById("address1").value = "123 Main Street";
+        document.getElementById("city").value = "London";
+        document.getElementById("postal_code").value = "SW1A 1AA";
         document.getElementById("notes").value =
           "Interested in solar panels, owns detached house, looking to install within 3 months";
       }
@@ -278,6 +336,58 @@
         sampleButton.onclick = fillSampleData;
         form.appendChild(sampleButton);
       });
+
+      // Complete implementation example for Wes
+      /*
+      // This is the exact code Wes needs to implement in his dialer system:
+      
+      async function sendToCRM(leadData) {
+        try {
+          const response = await fetch('https://crm.margav.energy/api/leads/from-dialer/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Dialer-Api-Key': 'margav-dialer-2024-secure-key-12345'
+            },
+            body: JSON.stringify({
+              dialer_user_id: getCurrentAgentId(), // e.g., "CalebG", "DaniC", etc.
+              full_name: leadData.name,
+              phone: leadData.phone,
+              email: leadData.email || '',
+              address1: leadData.address,
+              city: leadData.city,
+              postal_code: leadData.postcode,
+              notes: leadData.notes || ''
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok && result.success) {
+            // Redirect to CRM with the lead ID
+            window.open(`https://crm.margav.energy/agent-dashboard?lead_id=${result.lead.id}`, '_blank');
+          } else {
+            console.error('Error sending to CRM:', result);
+            alert('Failed to send lead to CRM. Please try again.');
+          }
+        } catch (error) {
+          console.error('Network error:', error);
+          alert('Network error. Please check your connection.');
+        }
+      }
+      
+      // Usage in dialer:
+      // When agent clicks "Interested" button:
+      // sendToCRM({
+      //   name: "John Smith",
+      //   phone: "07123456789",
+      //   email: "john@example.com",
+      //   address: "123 Main Street",
+      //   city: "London",
+      //   postcode: "SW1A 1AA",
+      //   notes: "Interested in solar panels"
+      // });
+      */
     </script>
   </body>
 </html>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import Logo from './Logo';
+import ChangePasswordModal from './ChangePasswordModal';
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +11,7 @@ const Login: React.FC = () => {
     password: '',
   });
   const [loading, setLoading] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -101,36 +103,23 @@ const Login: React.FC = () => {
               )}
             </button>
           </form>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setShowPasswordModal(true)}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              Change Password
+            </button>
+          </div>
         </div>
 
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500 font-medium">Demo Accounts</span>
-            </div>
-          </div>
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div className="bg-white rounded-lg p-3 border border-gray-200">
-              <p className="font-semibold text-gray-900">Admin</p>
-              <p className="text-gray-600">admin / 123</p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-gray-200">
-              <p className="font-semibold text-gray-900">Agent</p>
-              <p className="text-gray-600">CalebG / 123</p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-gray-200">
-              <p className="font-semibold text-gray-900">Agent</p>
-              <p className="text-gray-600">DaniC / 123</p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-gray-200">
-              <p className="font-semibold text-gray-900">Agent</p>
-              <p className="text-gray-600">JakeR / 123</p>
-            </div>
-          </div>
-        </div>
+        {/* Password Change Modal */}
+        <ChangePasswordModal
+          isOpen={showPasswordModal}
+          onClose={() => setShowPasswordModal(false)}
+        />
       </div>
     </div>
   );

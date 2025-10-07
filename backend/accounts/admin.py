@@ -8,8 +8,11 @@ from django.shortcuts import redirect
 from django.http import HttpResponseRedirect
 from .models import User
 
-# Set custom admin site template
+# Set custom admin site template and title
 admin.site.index_template = 'admin/index.html'
+admin.site.site_header = 'Margav Energy CRM Administration'
+admin.site.site_title = 'Margav Energy CRM'
+admin.site.index_title = 'Margav Energy CRM Administration'
 
 
 @admin.register(User)

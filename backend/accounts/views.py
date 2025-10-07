@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
+from django.contrib.auth.hashers import check_password
 from .models import User
 from .serializers import UserSerializer, UserCreateSerializer, LoginSerializer
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
@@ -56,3 +57,81 @@ def get_current_user(request):
     """
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    """
+    Change user password.
+    """
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+
+    if not old_password or not new_password:
+        return Response({
+            'error': 'Both old_password and new_password are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Verify old password
+    if not check_password(old_password, request.user.password):
+        return Response({
+            'error': 'Current password is incorrect'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validate new password length
+    if len(new_password) < 3:
+        return Response({
+            'error': 'New password must be at least 3 characters long'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Set new password
+    request.user.set_password(new_password)
+    request.user.save()
+
+    return Response({
+        'message': 'Password changed successfully'
+    })
+
+
+@api_view(['POST'])
+@permission_classes([])
+def change_password_for_user(request):
+    """
+    Change password for a specific user by username (no authentication required).
+    """
+    username = request.data.get('username')
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+
+    if not username or not old_password or not new_password:
+        return Response({
+            'error': 'Username, old_password and new_password are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return Response({
+            'error': 'User not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    # Verify old password
+    if not check_password(old_password, user.password):
+        return Response({
+            'error': 'Current password is incorrect'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validate new password length
+    if len(new_password) < 3:
+        return Response({
+            'error': 'New password must be at least 3 characters long'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Set new password
+    user.set_password(new_password)
+    user.save()
+
+    return Response({
+        'message': 'Password changed successfully'
+    })

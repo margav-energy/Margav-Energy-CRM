@@ -165,6 +165,41 @@ class Lead(models.Model):
     script_height = models.CharField(max_length=10, blank=True, null=True)
     recording_file = models.CharField(max_length=255, blank=True, null=True)
     
+    # Energy section fields
+    energy_bill_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text='Specific energy bill amount if known'
+    )
+    has_ev_charger = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Whether the lead has an EV charger'
+    )
+    day_night_rate = models.CharField(
+        max_length=10,
+        blank=True,
+        null=True,
+        choices=[
+            ('yes', 'Yes'),
+            ('no', 'No'),
+            ('unsure', 'Unsure')
+        ],
+        help_text='Whether the lead has a day/night rate'
+    )
+    has_previous_quotes = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Whether the lead has had previous quotes'
+    )
+    previous_quotes_details = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Details about previous quotes if any'
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

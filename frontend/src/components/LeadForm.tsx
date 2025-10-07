@@ -83,6 +83,9 @@ interface ExtendedLeadFormData {
   
   // Energy Usage
   average_monthly_electricity_bill: string;
+  energy_bill_amount: string;
+  has_ev_charger: string;
+  day_night_rate: string;
   current_energy_supplier: string;
   electric_heating_appliances: string;
   energy_details: string;
@@ -91,6 +94,8 @@ interface ExtendedLeadFormData {
   timeframe: string;
   moving_properties_next_five_years: string;
   timeframe_details: string;
+  has_previous_quotes: string;
+  previous_quotes_details: string;
   
   // Notes
   notes: string;
@@ -225,6 +230,9 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
     
     // Energy Usage
     average_monthly_electricity_bill: parsedData.average_monthly_electricity_bill || '',
+    energy_bill_amount: parsedData.energy_bill_amount || '',
+    has_ev_charger: parsedData.has_ev_charger || '',
+    day_night_rate: parsedData.day_night_rate || '',
     current_energy_supplier: parsedData.current_energy_supplier || '',
     electric_heating_appliances: parsedData.electric_heating_appliances || '',
     energy_details: parsedData.energy_details || '',
@@ -233,6 +241,8 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
     timeframe: parsedData.timeframe || '',
     moving_properties_next_five_years: parsedData.moving_properties_next_five_years || '',
     timeframe_details: parsedData.timeframe_details || '',
+    has_previous_quotes: parsedData.has_previous_quotes || '',
+    previous_quotes_details: parsedData.previous_quotes_details || '',
     
     // Notes - combine dialer comments with existing notes
     notes: (() => {
@@ -310,12 +320,17 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                `Roof Type: ${formData.roof_type}\n` +
                `Roof Material: ${formData.roof_material}\n` +
                `Average Monthly Electricity Bill: ${formData.average_monthly_electricity_bill}\n` +
+               (formData.energy_bill_amount ? `Specific Energy Bill Amount: £${formData.energy_bill_amount}\n` : '') +
+               `Has EV Charger: ${formData.has_ev_charger === 'true' ? 'Yes' : formData.has_ev_charger === 'false' ? 'No' : 'Not specified'}\n` +
+               `Day/Night Rate: ${formData.day_night_rate || 'Not specified'}\n` +
                `Current Energy Supplier: ${formData.current_energy_supplier}\n` +
                `Electric Heating/Appliances: ${formData.electric_heating_appliances}\n` +
                `Energy Details: ${formData.energy_details}\n` +
                `Timeframe: ${formData.timeframe}\n` +
                `Moving Properties Next 5 Years: ${formData.moving_properties_next_five_years}\n` +
-               `Timeframe Details: ${formData.timeframe_details}`
+               `Timeframe Details: ${formData.timeframe_details}\n` +
+               `Has Previous Quotes: ${formData.has_previous_quotes === 'true' ? 'Yes' : formData.has_previous_quotes === 'false' ? 'No' : 'Not specified'}\n` +
+               (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '')
       };
       
       await onSubmit(basicFormData);
@@ -349,12 +364,17 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                `Roof Type: ${formData.roof_type}\n` +
                `Roof Material: ${formData.roof_material}\n` +
                `Average Monthly Electricity Bill: ${formData.average_monthly_electricity_bill}\n` +
+               (formData.energy_bill_amount ? `Specific Energy Bill Amount: £${formData.energy_bill_amount}\n` : '') +
+               `Has EV Charger: ${formData.has_ev_charger === 'true' ? 'Yes' : formData.has_ev_charger === 'false' ? 'No' : 'Not specified'}\n` +
+               `Day/Night Rate: ${formData.day_night_rate || 'Not specified'}\n` +
                `Current Energy Supplier: ${formData.current_energy_supplier}\n` +
                `Electric Heating/Appliances: ${formData.electric_heating_appliances}\n` +
                `Energy Details: ${formData.energy_details}\n` +
                `Timeframe: ${formData.timeframe}\n` +
                `Moving Properties Next 5 Years: ${formData.moving_properties_next_five_years}\n` +
-               `Timeframe Details: ${formData.timeframe_details}`
+               `Timeframe Details: ${formData.timeframe_details}\n` +
+               `Has Previous Quotes: ${formData.has_previous_quotes === 'true' ? 'Yes' : formData.has_previous_quotes === 'false' ? 'No' : 'Not specified'}\n` +
+               (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '')
       };
       
       await onSendToQualifier(basicFormData);
@@ -630,6 +650,64 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
               </select>
             </div>
 
+            {/* Energy Bill Amount - only show if a range is selected */}
+            {formData.average_monthly_electricity_bill && formData.average_monthly_electricity_bill !== 'unknown' && (
+              <div>
+                <label htmlFor="energy_bill_amount" className="block text-sm font-medium text-gray-700">
+                  Specific Energy Bill Amount (if known)
+                </label>
+                <input
+                  type="number"
+                  id="energy_bill_amount"
+                  name="energy_bill_amount"
+                  value={formData.energy_bill_amount}
+                  onChange={handleChange}
+                  className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                  placeholder="Enter specific amount in £"
+                  disabled={loading}
+                />
+              </div>
+            )}
+
+            {/* EV Charger */}
+            <div>
+              <label htmlFor="has_ev_charger" className="block text-sm font-medium text-gray-700">
+                Do you have an EV charger?
+              </label>
+              <select
+                id="has_ev_charger"
+                name="has_ev_charger"
+                value={formData.has_ev_charger}
+                onChange={handleChange}
+                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select option</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            {/* Day/Night Rate */}
+            <div>
+              <label htmlFor="day_night_rate" className="block text-sm font-medium text-gray-700">
+                Do you have a day/night rate?
+              </label>
+              <select
+                id="day_night_rate"
+                name="day_night_rate"
+                value={formData.day_night_rate}
+                onChange={handleChange}
+                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select option</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="unsure">Unsure</option>
+              </select>
+            </div>
+
             <div>
               <label htmlFor="current_energy_supplier" className="block text-sm font-medium text-gray-700">
                 Current Energy Supplier
@@ -765,6 +843,44 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 disabled={loading}
               />
             </div>
+
+            {/* Previous Quotes */}
+            <div>
+              <label htmlFor="has_previous_quotes" className="block text-sm font-medium text-gray-700">
+                Have you had any previous quotes?
+              </label>
+              <select
+                id="has_previous_quotes"
+                name="has_previous_quotes"
+                value={formData.has_previous_quotes}
+                onChange={handleChange}
+                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select option</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            {/* Previous Quotes Details - only show if they have previous quotes */}
+            {formData.has_previous_quotes === 'true' && (
+              <div>
+                <label htmlFor="previous_quotes_details" className="block text-sm font-medium text-gray-700">
+                  Details about previous quotes
+                </label>
+                <textarea
+                  id="previous_quotes_details"
+                  name="previous_quotes_details"
+                  rows={3}
+                  value={formData.previous_quotes_details}
+                  onChange={handleChange}
+                  className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                  placeholder="Please provide details about your previous quotes..."
+                  disabled={loading}
+                />
+              </div>
+            )}
           </div>
         </div>
 

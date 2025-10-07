@@ -86,6 +86,23 @@ export const usersAPI = {
     const response: AxiosResponse<User> = await api.get(`/users/${id}/`);
     return response.data;
   },
+
+  changePassword: async (oldPassword: string, newPassword: string): Promise<{ message: string }> => {
+    const response: AxiosResponse<{ message: string }> = await api.post('/users/change-password/', {
+      old_password: oldPassword,
+      new_password: newPassword,
+    });
+    return response.data;
+  },
+
+  changePasswordForUser: async (username: string, oldPassword: string, newPassword: string): Promise<{ message: string }> => {
+    const response: AxiosResponse<{ message: string }> = await api.post('/users/change-password-for-user/', {
+      username: username,
+      old_password: oldPassword,
+      new_password: newPassword,
+    });
+    return response.data;
+  },
 };
 
 // Leads API

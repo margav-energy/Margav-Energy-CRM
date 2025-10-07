@@ -55,6 +55,9 @@ class LeadSerializer(serializers.ModelSerializer):
             'uniqueid', 'customer_zap_channel', 'server_ip', 'SIPexten', 'session_id',
             'dialed_number', 'dialed_label', 'rank', 'owner', 'camp_script',
             'in_script', 'script_width', 'script_height', 'recording_file',
+            # Energy section fields
+            'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 
+            'has_previous_quotes', 'previous_quotes_details',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -95,7 +98,10 @@ class LeadUpdateSerializer(serializers.ModelSerializer):
         model = Lead
         fields = [
             'full_name', 'phone', 'email', 'status', 'disposition', 
-            'notes', 'appointment_date', 'field_sales_rep', 'sale_amount'
+            'notes', 'appointment_date', 'field_sales_rep', 'sale_amount',
+            # Energy section fields
+            'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 
+            'has_previous_quotes', 'previous_quotes_details'
         ]
 
 
