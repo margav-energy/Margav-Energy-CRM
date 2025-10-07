@@ -32,7 +32,9 @@ python manage.py collectstatic --noinput
 
 # Copy React static files to the collected static files
 echo "📋 Copying React static files..."
-mkdir -p staticfiles/static
-cp -r ../frontend/build/static/* staticfiles/static/
+# Ensure the static directory exists
+mkdir -p staticfiles
+# Copy React static files directly to staticfiles root
+cp -r ../frontend/build/static/* staticfiles/
 
 echo "✅ Build completed successfully!"
