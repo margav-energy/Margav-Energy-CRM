@@ -7,6 +7,10 @@ from django.http import HttpResponse
 import os
 from accounts import admin_views
 
+def debug_view(request):
+    """Debug view to test URL routing"""
+    return HttpResponse(f"Debug: URL={request.path}, Method={request.method}")
+
 def serve_favicon(request):
     """Serve favicon.ico from static files"""
     favicon_path = os.path.join(settings.STATIC_ROOT, 'favicon.ico')
@@ -34,7 +38,9 @@ urlpatterns = [
 # Static files in DEBUG
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Only add media static serving if MEDIA_URL is not root
+    if settings.MEDIA_URL and settings.MEDIA_URL != '/':
+        urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 else:
     # In production, add static file serving for WhiteNoise
     from django.views.static import serve
@@ -42,7 +48,10 @@ else:
         re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
     ]
 
-# Catch-all for React frontend
+# React frontend routes
 urlpatterns += [
-    re_path(r'^(?!api/|admin/|static/|favicon\.ico).*$', TemplateView.as_view(template_name='index.html')),
+    path('', TemplateView.as_view(template_name='index.html'), name='home'),
+    path('dashboard/', TemplateView.as_view(template_name='index.html'), name='dashboard'),
+    path('login/', TemplateView.as_view(template_name='index.html'), name='login'),
+    re_path(r'^(?!api|admin|static|favicon\.ico).*$', TemplateView.as_view(template_name='index.html')),
 ]
