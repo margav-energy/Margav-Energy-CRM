@@ -24,8 +24,14 @@ cp ../frontend/build/index.html templates/
 
 # Copy favicon if it exists
 if [ -f "../frontend/public/favicon.ico" ]; then
-    echo "📋 Copying favicon..."
+    echo "📋 Copying favicon to templates..."
     cp ../frontend/public/favicon.ico templates/
+fi
+
+# Copy favicon to staticfiles for serving
+if [ -f "../frontend/build/favicon.ico" ]; then
+    echo "📋 Copying favicon to staticfiles..."
+    cp ../frontend/build/favicon.ico staticfiles/
 fi
 
 # Verify template file exists
