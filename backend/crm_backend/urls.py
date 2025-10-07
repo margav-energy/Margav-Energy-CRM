@@ -41,12 +41,7 @@ if settings.DEBUG:
     # Only add media static serving if MEDIA_URL is not root
     if settings.MEDIA_URL and settings.MEDIA_URL != '/':
         urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-else:
-    # In production, add static file serving for WhiteNoise
-    from django.views.static import serve
-    urlpatterns += [
-        re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
-    ]
+# In production, WhiteNoise handles static files automatically
 
 # React frontend routes
 urlpatterns += [
