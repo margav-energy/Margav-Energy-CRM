@@ -65,7 +65,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'crm_backend.wsgi.application'
 
 # Database
-# Default to SQLite for development
+# Default to SQLite for development and production
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -73,8 +73,8 @@ DATABASES = {
     }
 }
 
-# Use PostgreSQL if DATABASE_URL is provided (Render provides this)
-if config('DATABASE_URL', default=None):
+# Use PostgreSQL if DATABASE_URL is provided and USE_POSTGRESQL is True
+if config('USE_POSTGRESQL', default=False) and config('DATABASE_URL', default=None):
     import dj_database_url
     DATABASES['default'] = dj_database_url.parse(config('DATABASE_URL'))
 
