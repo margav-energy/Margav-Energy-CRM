@@ -75,12 +75,44 @@ frontend/dist/
 ehthumbs.db
 Thumbs.db
 
-# Logs
+# Logs - Comprehensive exclusion
 logs/
+**/logs/
 *.log
+*.log.*
+*.log-*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+django.log
+access.log
+error.log
+debug.log
+info.log
+warn.log
+trace.log
+audit.log
+security.log
+application.log
+server.log
+app.log
+system.log
+*.out
+*.err
+*.trace
+*.audit
+*.access
+*.error
+*.debug
+*.info
+*.warn
+*.security
+*.application
+*.server
+*.app
+*.system
 
 # Runtime data
 pids
