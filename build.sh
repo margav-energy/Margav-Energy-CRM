@@ -28,11 +28,8 @@ if [ -f "../frontend/public/favicon.ico" ]; then
     cp ../frontend/public/favicon.ico templates/
 fi
 
-# Copy favicon to staticfiles for serving
-if [ -f "../frontend/build/favicon.ico" ]; then
-    echo "📋 Copying favicon to staticfiles..."
-    cp ../frontend/build/favicon.ico staticfiles/
-fi
+# Ensure staticfiles directory exists
+mkdir -p staticfiles
 
 # Verify template file exists
 echo "📋 Verifying template file..."
@@ -46,8 +43,14 @@ python manage.py migrate
 echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput --clear
 
+# Copy favicon to staticfiles for serving
+if [ -f "../frontend/build/favicon.ico" ]; then
+    echo "📋 Copying favicon to staticfiles..."
+    cp ../frontend/build/favicon.ico staticfiles/
+fi
+
 # Verify static files were collected
 echo "📋 Verifying static files..."
-ls -la staticfiles/static/ || echo "No static files found"
+ls -la staticfiles/ || echo "No static files found"
 
 echo "✅ Build completed successfully!"
