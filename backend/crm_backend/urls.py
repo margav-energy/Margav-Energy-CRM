@@ -27,10 +27,9 @@ if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 else:
-    # In production, use Django's serve view for static files
-    urlpatterns += [
-        re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
-    ]
+    # In production, WhiteNoise handles static files automatically
+    # No need to add static file URLs - WhiteNoise middleware handles it
+    pass
 
 # Serve React frontend for all non-API routes (must be last)
 urlpatterns += [

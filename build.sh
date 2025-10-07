@@ -34,6 +34,10 @@ python manage.py migrate
 
 # Collect static files (this will include React build files)
 echo "📁 Collecting static files..."
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput --clear
+
+# Verify static files were collected
+echo "📋 Verifying static files..."
+ls -la staticfiles/static/ || echo "No static files found"
 
 echo "✅ Build completed successfully!"
