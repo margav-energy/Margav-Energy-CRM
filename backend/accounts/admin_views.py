@@ -109,12 +109,14 @@ def create_single_user(request):
 
 
 @staff_member_required
-@require_POST
 @csrf_exempt
 def delete_user(request, username):
     """
     Delete a user by username.
     """
+    if request.method != 'DELETE':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
     try:
         from accounts.models import User
         from leads.models import DialerUserLink
