@@ -105,12 +105,13 @@ if frontend_static_dir.exists():
 else:
     STATICFILES_DIRS = []
 
+# WhiteNoise settings for proper MIME types and static file serving
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# WhiteNoise settings for proper MIME types
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = True
 WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_SKIP_COMPRESS_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br']
+WHITENOISE_ADD_HEADERS_FUNCTION = 'whitenoise.storage.add_headers'
 
 # --------------------
 # REST Framework
