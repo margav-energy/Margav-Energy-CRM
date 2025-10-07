@@ -6,6 +6,7 @@ from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
+from django.views.static import serve
 from accounts import admin_views
 
 urlpatterns = [
@@ -19,18 +20,19 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('accounts.urls')),
     path('api/', include('leads.urls')),
-    # Serve React frontend
-    re_path(r'^.*$', TemplateView.as_view(template_name='index.html')),
 ]
 
-# Serve static files in development
+# Serve static files
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 else:
-    # In production, WhiteNoise handles static files
-    # Add explicit static file serving for production
-    from django.views.static import serve
+    # In production, serve static files with proper MIME types
     urlpatterns += [
         re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
     ]
+
+# Serve React frontend for all non-API routes (must be last)
+urlpatterns += [
+    re_path(r'^(?!api/|admin/|static/).*$', TemplateView.as_view(template_name='index.html')),
+]
