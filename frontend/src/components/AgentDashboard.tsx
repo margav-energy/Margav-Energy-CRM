@@ -5,7 +5,6 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import LeadCard from './LeadCard';
 import LeadForm from './LeadForm';
-import CallSimulator from './CallSimulator';
 import NotificationPanel from './NotificationPanel';
 import MockCall from './MockCall';
 
@@ -600,8 +599,6 @@ const AgentDashboard: React.FC = () => {
       {/* Mock Call Simulator */}
       <MockCall onIncomingCall={handleIncomingCall} />
 
-      {/* Call Simulator */}
-      <CallSimulator onLeadInterest={handleLeadInterest} onCallEnd={handleCallEnd} />
 
       {/* Lead Form Modal */}
       {showLeadForm && (
