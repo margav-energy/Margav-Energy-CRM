@@ -106,7 +106,7 @@ else:
     STATICFILES_DIRS = []
 
 # WhiteNoise settings for proper MIME types and static file serving
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = True
 WHITENOISE_MANIFEST_STRICT = False
