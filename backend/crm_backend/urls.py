@@ -2,9 +2,10 @@
 URL configuration for crm_backend project.
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import TemplateView
 from accounts import admin_views
 
 urlpatterns = [
@@ -18,6 +19,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('accounts.urls')),
     path('api/', include('leads.urls')),
+    # Serve React frontend
+    re_path(r'^.*$', TemplateView.as_view(template_name='index.html')),
 ]
 
 # Serve static files in development
