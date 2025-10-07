@@ -102,22 +102,24 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# WhiteNoise configuration
+# WhiteNoise configuration for production
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Ensure proper MIME types for static files
+# WhiteNoise settings for proper MIME types
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = True
+WHITENOISE_MANIFEST_STRICT = False
 
-# Additional static file finders
+# Static file finders
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
 
-# Force proper MIME types
-WHITENOISE_MANIFEST_STRICT = False
-WHITENOISE_USE_FINDERS = True
+# Additional static file directories (React build)
+STATICFILES_DIRS = [
+    BASE_DIR.parent / 'frontend' / 'build' / 'static',
+]
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -155,7 +157,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://margav-crm-frontend.onrender.com",
 ]
 
-# Add Render URLs dynamically
+# Add dynamic CORS origins from environment
 CORS_ALLOWED_ORIGINS.extend(config('CORS_ALLOWED_ORIGINS', default='').split(',') if config('CORS_ALLOWED_ORIGINS', default='') else [])
 
 CORS_ALLOW_CREDENTIALS = True

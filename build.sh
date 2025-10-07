@@ -30,11 +30,4 @@ python manage.py migrate
 echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput
 
-# Copy React static files to the collected static files
-echo "📋 Copying React static files..."
-# Ensure the static directory exists
-mkdir -p staticfiles
-# Copy React static files directly to staticfiles root
-cp -r ../frontend/build/static/* staticfiles/
-
 echo "✅ Build completed successfully!"
