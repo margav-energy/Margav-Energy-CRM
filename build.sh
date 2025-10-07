@@ -28,6 +28,10 @@ if [ -f "../frontend/public/favicon.ico" ]; then
     cp ../frontend/public/favicon.ico templates/
 fi
 
+# Verify template file exists
+echo "📋 Verifying template file..."
+ls -la templates/index.html || echo "Template file not found!"
+
 # Run Django migrations
 echo "🗄️ Running database migrations..."
 python manage.py migrate
