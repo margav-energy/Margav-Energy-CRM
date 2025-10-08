@@ -98,12 +98,10 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # collected static files
 
-# Only add STATICFILES_DIRS if the directory exists (for development)
-frontend_static_dir = BASE_DIR.parent / 'frontend' / 'build' / 'static'
-if frontend_static_dir.exists():
-    STATICFILES_DIRS = [frontend_static_dir]
-else:
-    STATICFILES_DIRS = []
+# Static files directories
+STATICFILES_DIRS = [
+    BASE_DIR.parent / 'frontend' / 'build' / 'static',  # React build static files
+]
 
 # WhiteNoise settings for proper MIME types and static file serving
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'

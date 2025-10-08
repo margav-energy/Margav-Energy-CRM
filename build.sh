@@ -28,12 +28,12 @@ if [ -f "../frontend/public/favicon.ico" ]; then
     cp ../frontend/public/favicon.ico templates/
 fi
 
-# Ensure staticfiles directory exists
-mkdir -p staticfiles
-
-# Verify template file exists
-echo "📋 Verifying template file..."
-ls -la templates/index.html || echo "Template file not found!"
+# Verify React build files exist
+echo "📋 Verifying React build files..."
+if [ ! -d "../frontend/build/static" ]; then
+    echo "❌ React static files not found! Make sure React build completed successfully."
+    exit 1
+fi
 
 # Run Django migrations
 echo "🗄️ Running database migrations..."
@@ -52,5 +52,8 @@ fi
 # Verify static files were collected
 echo "📋 Verifying static files..."
 ls -la staticfiles/ || echo "No static files found"
+echo "📋 Verifying React static files..."
+ls -la staticfiles/css/ || echo "No CSS files found"
+ls -la staticfiles/js/ || echo "No JS files found"
 
 echo "✅ Build completed successfully!"
