@@ -98,18 +98,18 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # collected static files
 
-# Static files directories
-STATICFILES_DIRS = [
-    BASE_DIR.parent / 'frontend' / 'build' / 'static',  # React build static files
-]
+# Static files directories - only add if the directory exists
+frontend_static_dir = BASE_DIR.parent / 'frontend' / 'build' / 'static'
+if frontend_static_dir.exists():
+    STATICFILES_DIRS = [frontend_static_dir]
+else:
+    STATICFILES_DIRS = []
 
 # WhiteNoise settings for proper MIME types and static file serving
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = True
 WHITENOISE_MANIFEST_STRICT = False
-WHITENOISE_SKIP_COMPRESS_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br']
-WHITENOISE_ADD_HEADERS_FUNCTION = 'whitenoise.storage.add_headers'
 
 # --------------------
 # REST Framework
