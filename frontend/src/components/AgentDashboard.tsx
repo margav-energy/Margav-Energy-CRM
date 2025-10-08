@@ -403,25 +403,6 @@ const AgentDashboard: React.FC = () => {
   };
 
 
-  const handleLeadInterest = (lead: Lead) => {
-    // Prepopulate form data when lead shows interest
-    setPrepopulatedData({
-      full_name: lead.full_name,
-      phone: lead.phone,
-      email: lead.email || '',
-      address: '', // These would come from the call data
-      postcode: '',
-      notes: `Lead showed interest during call. Original notes: ${lead.notes || ''}`
-    });
-    
-    setShowLeadForm(true);
-    toast.info(`${lead.full_name} is interested! Lead form opened with pre-filled information.`);
-  };
-
-  const handleCallEnd = () => {
-    // Refresh leads after call ends
-    fetchLeads();
-  };
 
   const getStatusCounts = () => {
     const counts = {
