@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Lead, LeadForm as LeadFormType } from '../types';
+import CallbackModal from './CallbackModal';
 
 interface LeadFormProps {
   lead?: Lead;
@@ -102,6 +103,7 @@ interface ExtendedLeadFormData {
 }
 
 const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading = false, prepopulatedData, onSendToQualifier }) => {
+  const [showCallbackModal, setShowCallbackModal] = useState(false);
   // Function to parse notes and extract form data
   const parseNotesData = (notes: string) => {
     const data: Partial<ExtendedLeadFormData> = {};
@@ -287,20 +289,90 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
 
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
+    } else if (!/^[+]?[0-9\s\-()]{10,}$/.test(formData.phone.trim())) {
+      newErrors.phone = 'Please enter a valid phone number';
     }
 
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+    if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    }
+
+    if (!formData.postcode.trim()) {
+      newErrors.postcode = 'Postcode is required';
+    }
+
+    if (!formData.property_ownership) {
+      newErrors.property_ownership = 'Property ownership is required';
+    }
+
+    if (!formData.property_type) {
+      newErrors.property_type = 'Property type is required';
+    }
+
+    if (!formData.number_of_bedrooms) {
+      newErrors.number_of_bedrooms = 'Number of bedrooms is required';
+    }
+
+    if (!formData.roof_type) {
+      newErrors.roof_type = 'Roof type is required';
+    }
+
+    if (!formData.roof_material) {
+      newErrors.roof_material = 'Roof material is required';
+    }
+
+    if (!formData.average_monthly_electricity_bill) {
+      newErrors.average_monthly_electricity_bill = 'Average monthly electricity bill is required';
+    }
+
+    if (!formData.current_energy_supplier) {
+      newErrors.current_energy_supplier = 'Current energy supplier is required';
+    }
+
+    if (!formData.electric_heating_appliances) {
+      newErrors.electric_heating_appliances = 'Electric heating/appliances is required';
+    }
+
+    if (!formData.timeframe) {
+      newErrors.timeframe = 'Timeframe is required';
+    }
+
+    if (!formData.moving_properties_next_five_years) {
+      newErrors.moving_properties_next_five_years = 'Moving properties next 5 years is required';
+    }
+
+    // Notes are optional - no validation needed
+
+    // Energy bill amount validation (if provided)
+    if (formData.energy_bill_amount && isNaN(Number(formData.energy_bill_amount))) {
+      newErrors.energy_bill_amount = 'Energy bill amount must be a valid number';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, callbackData?: { scheduled_time: string; notes: string }) => {
     e.preventDefault();
     
     if (!validateForm()) {
+      // Scroll to the first error field
+      const firstErrorField = Object.keys(errors)[0];
+      if (firstErrorField) {
+        const element = document.getElementById(firstErrorField);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.focus();
+        }
+      }
+      
+      // Show validation summary
+      const errorCount = Object.keys(errors).length;
+      alert(`Please fix ${errorCount} error${errorCount > 1 ? 's' : ''} before submitting the form.`);
       return;
     }
 
@@ -333,9 +405,61 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '')
       };
       
-      await onSubmit(basicFormData);
+      // Submit the lead first - include callback information in the data
+      const leadDataWithCallback = {
+        ...basicFormData,
+        hasPendingCallback: !!(callbackData || pendingCallback),
+        callbackScheduledTime: callbackData?.scheduled_time || pendingCallback?.scheduled_time,
+        callbackNotes: callbackData?.notes || pendingCallback?.notes
+      };
+      
+      await onSubmit(leadDataWithCallback);
+      
+      // If there's a pending callback for a new lead, we need to schedule it
+      if ((callbackData || pendingCallback) && !lead) {
+        // For new leads, we need to wait a moment for the lead to be created
+        // and then schedule the callback. Since we don't have the new lead ID,
+        // we'll show a success message and let the user know the callback is pending
+        const callbackInfo = callbackData || pendingCallback;
+        alert(`Lead created successfully! Callback scheduled for ${new Date(callbackInfo!.scheduled_time).toLocaleString()}. The callback will be available once the lead is fully processed.`);
+        setPendingCallback(null); // Clear the pending callback
+      }
     } catch (error) {
       console.error('Form submission error:', error);
+    }
+  };
+
+  const [pendingCallback, setPendingCallback] = useState<{ scheduled_time: string; notes: string } | null>(null);
+
+  const handleScheduleCallback = async (callbackData: { lead?: number; scheduled_time: string; notes: string; lead_name?: string; lead_phone?: string }) => {
+    try {
+      if (lead) {
+        // For existing leads, create the callback immediately
+        const { callbacksAPI } = await import('../api');
+        await callbacksAPI.scheduleCallback({
+          lead: lead.id,
+          scheduled_time: callbackData.scheduled_time,
+          notes: callbackData.notes
+        });
+        alert('Callback scheduled successfully!');
+      } else {
+        // For new leads, pass callback data directly to form submission
+        try {
+          // Trigger form submission with callback data passed directly
+          const formEvent = new Event('submit') as any;
+          await handleSubmit(formEvent, {
+            scheduled_time: callbackData.scheduled_time,
+            notes: callbackData.notes
+          });
+          alert('Lead saved and callback scheduled successfully!');
+        } catch (error) {
+          console.error('Error auto-saving form:', error);
+          alert('Callback scheduled, but please save the form manually to complete the process.');
+        }
+      }
+    } catch (error) {
+      console.error('Error scheduling callback:', error);
+      alert('Failed to schedule callback. Please try again.');
     }
   };
 
@@ -343,6 +467,12 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
     e.preventDefault();
     
     if (!onSendToQualifier) return;
+    
+    // Check if there's a pending callback - don't send to qualifier if callback is scheduled
+    if (pendingCallback) {
+      alert('Cannot send to qualifier: A callback is already scheduled for this lead. Please complete the callback first or cancel it.');
+      return;
+    }
     
     if (!validateForm()) {
       return;
@@ -384,10 +514,54 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
   };
 
   return (
-    <div className="card-margav p-6 max-w-4xl mx-auto">
+    <div className="card-margav p-4 max-w-8xl mx-auto">
       <h3 className="text-xl font-semibold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-6">
         {lead ? 'Update Lead Information' : 'Complete Lead Sheet'}
       </h3>
+      
+      {pendingCallback && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-blue-700">
+                <strong>📞 Callback Scheduled:</strong> {new Date(pendingCallback.scheduled_time).toLocaleString()} 
+                {pendingCallback.notes && ` - ${pendingCallback.notes}`}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {Object.keys(errors).length > 0 && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">
+                Please fix the following {Object.keys(errors).length} error{Object.keys(errors).length > 1 ? 's' : ''}:
+              </h3>
+              <div className="mt-2 text-sm text-red-700">
+                <ul className="list-disc list-inside space-y-1">
+                  {Object.entries(errors).map(([field, error]) => (
+                    <li key={field}>
+                      <strong>{field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> {error}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Contact Information Section */}
@@ -404,7 +578,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="full_name"
                 value={formData.full_name}
                 onChange={handleChange}
-                className={`mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200 ${
+                className={`mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200 ${
                   errors.full_name ? 'border-red-300' : ''
                 }`}
                 placeholder="Enter full name"
@@ -467,7 +641,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 placeholder="Enter full address"
                 disabled={loading}
               />
@@ -483,7 +657,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="postcode"
                 value={formData.postcode}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 placeholder="Enter postcode"
                 disabled={loading}
               />
@@ -498,7 +672,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="preferred_contact_time"
                 value={formData.preferred_contact_time}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select preferred time</option>
@@ -524,7 +698,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="property_ownership"
                 value={formData.property_ownership}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select ownership</option>
@@ -544,7 +718,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="property_type"
                 value={formData.property_type}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select property type</option>
@@ -567,7 +741,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="number_of_bedrooms"
                 value={formData.number_of_bedrooms}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select bedrooms</option>
@@ -588,7 +762,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="roof_type"
                 value={formData.roof_type}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select roof type</option>
@@ -608,7 +782,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="roof_material"
                 value={formData.roof_material}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select roof material</option>
@@ -636,7 +810,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="average_monthly_electricity_bill"
                 value={formData.average_monthly_electricity_bill}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select bill range</option>
@@ -662,7 +836,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                   name="energy_bill_amount"
                   value={formData.energy_bill_amount}
                   onChange={handleChange}
-                  className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                  className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                   placeholder="Enter specific amount in £"
                   disabled={loading}
                 />
@@ -679,7 +853,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="has_ev_charger"
                 value={formData.has_ev_charger}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select option</option>
@@ -698,7 +872,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="day_night_rate"
                 value={formData.day_night_rate}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select option</option>
@@ -717,7 +891,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="current_energy_supplier"
                 value={formData.current_energy_supplier}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select energy supplier</option>
@@ -750,7 +924,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="electric_heating_appliances"
                 value={formData.electric_heating_appliances}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select heating type</option>
@@ -773,7 +947,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 rows={3}
                 value={formData.energy_details}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 placeholder="Any additional energy usage information..."
                 disabled={loading}
               />
@@ -794,7 +968,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="timeframe"
                 value={formData.timeframe}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select timeframe</option>
@@ -817,7 +991,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="moving_properties_next_five_years"
                 value={formData.moving_properties_next_five_years}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select option</option>
@@ -838,7 +1012,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 rows={3}
                 value={formData.timeframe_details}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 placeholder="Any additional timeframe or interest details..."
                 disabled={loading}
               />
@@ -854,7 +1028,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 name="has_previous_quotes"
                 value={formData.has_previous_quotes}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
                 <option value="">Select option</option>
@@ -875,7 +1049,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                   rows={3}
                   value={formData.previous_quotes_details}
                   onChange={handleChange}
-                  className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                  className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                   placeholder="Please provide details about your previous quotes..."
                   disabled={loading}
                 />
@@ -897,35 +1071,68 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
               rows={4}
               value={formData.notes}
               onChange={handleChange}
-              className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
               placeholder="Enter any additional notes or comments..."
               disabled={loading}
             />
           </div>
         </div>
 
+        {/* Callback Schedule Section */}
+        <div>
+          <h4 className="text-lg font-medium text-gray-900 mb-4">📞 Callback Schedule</h4>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-900">Schedule a callback for this lead</p>
+                <p className="text-xs text-blue-700 mt-1">Set a specific date and time to follow up with the lead</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCallbackModal(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              >
+                📞 Schedule Callback
+              </button>
+            </div>
+            {pendingCallback && (
+              <div className="mt-3 p-3 bg-blue-100 border border-blue-300 rounded-md">
+                <div className="flex items-center">
+                  <svg className="h-4 w-4 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-sm text-blue-800">
+                    <strong>Callback Scheduled:</strong> {new Date(pendingCallback.scheduled_time).toLocaleString()} 
+                    {pendingCallback.notes && ` - ${pendingCallback.notes}`}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Submit Buttons */}
-        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-8">
           <button
             type="button"
             onClick={onCancel}
-            className="w-full sm:w-auto bg-white py-3 px-6 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+            className="w-full bg-white py-2 px-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
             disabled={loading}
           >
             Cancel
           </button>
-          
+
           {lead && onSendToQualifier && (
             <button
               type="button"
               onClick={handleSendToQualifier}
-              className="w-full sm:w-auto bg-green-600 py-3 px-6 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-green-600 py-2 px-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
             >
               {loading ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Sending to Qualifier...
+                  Sending...
                 </div>
               ) : (
                 'Send to Qualifier'
@@ -935,20 +1142,45 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           
           <button
             type="submit"
-            className="btn-margav-primary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="w-full bg-green-600 py-2 px-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
           >
             {loading ? (
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Saving Lead...
+                Saving...
               </div>
             ) : (
-              lead ? 'Update Lead' : 'Send to Qualifier'
+              lead ? 'Update Lead' : 'Create Lead'
             )}
           </button>
         </div>
       </form>
+
+      {/* Callback Modal */}
+      <CallbackModal
+        isOpen={showCallbackModal}
+        onClose={() => setShowCallbackModal(false)}
+        lead={lead ? {
+          id: lead.id,
+          full_name: lead.full_name,
+          phone: lead.phone
+        } : undefined}
+        formData={lead ? undefined : {
+          full_name: formData.full_name,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          postcode: formData.postcode
+        } as {
+          full_name: string;
+          phone: string;
+          email?: string;
+          address?: string;
+          postcode?: string;
+        }}
+        onSchedule={handleScheduleCallback}
+      />
     </div>
   );
 };

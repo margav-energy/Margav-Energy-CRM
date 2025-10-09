@@ -198,4 +198,36 @@ export const notificationsAPI = {
   },
 };
 
+// Callback API
+export const callbacksAPI = {
+  getCallbacks: async (): Promise<ApiResponse<any>> => {
+    const response: AxiosResponse<ApiResponse<any>> = await api.get('/callbacks/');
+    return response.data;
+  },
+
+  getDueCallbacks: async (): Promise<{ due_callbacks: any[]; overdue_callbacks: any[] }> => {
+    const response: AxiosResponse<{ due_callbacks: any[]; overdue_callbacks: any[] }> = await api.get('/callbacks/due/');
+    return response.data;
+  },
+
+  scheduleCallback: async (callbackData: { lead: number; scheduled_time: string; notes: string }): Promise<any> => {
+    const response: AxiosResponse<any> = await api.post('/callbacks/schedule/', callbackData);
+    return response.data;
+  },
+
+  updateCallbackStatus: async (callbackId: number, statusData: { status: string; notes?: string }): Promise<any> => {
+    const response: AxiosResponse<any> = await api.post(`/callbacks/${callbackId}/update-status/`, statusData);
+    return response.data;
+  },
+
+  deleteCallback: async (callbackId: number): Promise<void> => {
+    await api.delete(`/callbacks/${callbackId}/`);
+  },
+
+  getCallbacksForLead: async (leadId: number): Promise<ApiResponse<any>> => {
+    const response: AxiosResponse<ApiResponse<any>> = await api.get(`/callbacks/?lead=${leadId}`);
+    return response.data;
+  },
+};
+
 export default api;

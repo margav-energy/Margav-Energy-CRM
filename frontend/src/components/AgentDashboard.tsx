@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import LeadCard from './LeadCard';
 import LeadForm from './LeadForm';
 import NotificationPanel from './NotificationPanel';
+import CallbackAlert from './CallbackAlert';
 
 const AgentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ const AgentDashboard: React.FC = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const cardsPerPage = 4;
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [prepopulatedData, setPrepopulatedData] = useState<{
     full_name?: string;
     phone?: string;
@@ -92,14 +94,20 @@ const AgentDashboard: React.FC = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check for URL parameters indicating a lead from dialer
-  // Pagination logic
-  const totalPages = Math.ceil(leads.length / cardsPerPage);
+  // Filtering and pagination logic
+  const filteredLeads = statusFilter ? leads.filter(lead => lead.status === statusFilter) : leads;
+  const totalPages = Math.ceil(filteredLeads.length / cardsPerPage);
   const startIndex = (currentPage - 1) * cardsPerPage;
   const endIndex = startIndex + cardsPerPage;
-  const currentLeads = leads.slice(startIndex, endIndex);
+  const currentLeads = filteredLeads.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleStatusFilter = (status: string | null) => {
+    setStatusFilter(status);
+    setCurrentPage(1); // Reset to first page when filtering
   };
 
   const checkForDialerLead = () => {
@@ -256,14 +264,33 @@ const AgentDashboard: React.FC = () => {
         
         toast.success('Lead updated successfully and sent to qualifier!');
       } else {
-        // Create new lead
+        // Create new lead - check if there's a pending callback
+        const hasPendingCallback = (leadData as any).hasPendingCallback;
+        
         const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
           ...leadData,
-          status: 'sent_to_kelly' as Lead['status']
+          status: hasPendingCallback ? 'callback' as Lead['status'] : 'sent_to_kelly' as Lead['status']
         };
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
-        toast.success('Lead created successfully and sent to qualifier!');
+        
+        if (hasPendingCallback) {
+          // Create the callback record in the database
+          try {
+            const { callbacksAPI } = await import('../api');
+            await callbacksAPI.scheduleCallback({
+              lead: newLead.id,
+              scheduled_time: (leadData as any).callbackScheduledTime,
+              notes: (leadData as any).callbackNotes || 'Scheduled callback'
+            });
+            toast.success('Lead created successfully! Callback scheduled - lead will not be sent to qualifier until callback is completed.');
+          } catch (callbackError) {
+            console.error('Failed to create callback:', callbackError);
+            toast.success('Lead created successfully, but callback scheduling failed. Please schedule the callback manually.');
+          }
+        } else {
+          toast.success('Lead created successfully and sent to qualifier!');
+        }
       }
       
       setShowLeadForm(false);
@@ -417,6 +444,7 @@ const AgentDashboard: React.FC = () => {
       appointment_completed: 0,
       sale_made: 0,
       sale_lost: 0,
+      callbacks: 0,
     };
 
     leads.forEach(lead => {
@@ -426,6 +454,16 @@ const AgentDashboard: React.FC = () => {
     });
 
     return counts;
+  };
+
+  const getCallbackCount = () => {
+    const callbackCount = leads.filter(lead => lead.status === 'callback').length;
+    console.log('📊 AgentDashboard: Callback count calculation:', {
+      totalLeads: leads.length,
+      callbackLeads: leads.filter(lead => lead.status === 'callback').length,
+      callbackCount
+    });
+    return callbackCount;
   };
 
   const statusCounts = getStatusCounts();
@@ -440,6 +478,12 @@ const AgentDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Callback Alert */}
+      <CallbackAlert onCallbackClick={(callback) => {
+        // Handle callback click - could open a modal or navigate to the lead
+        console.log('Callback clicked:', callback);
+      }} />
+      
       {/* Header */}
       <div className="card-margav p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -472,8 +516,11 @@ const AgentDashboard: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card-margav p-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <button 
+          onClick={() => handleStatusFilter(statusFilter === 'interested' ? null : 'interested')}
+          className={`card-margav p-6 transition-all duration-200 hover:shadow-lg ${statusFilter === 'interested' ? 'ring-2 ring-green-500 bg-green-50' : ''}`}
+        >
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-green-500 rounded-full flex items-center justify-center">
@@ -487,9 +534,12 @@ const AgentDashboard: React.FC = () => {
               </dl>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className="card-margav p-6">
+        <button 
+          onClick={() => handleStatusFilter(statusFilter === 'qualified' ? null : 'qualified')}
+          className={`card-margav p-6 transition-all duration-200 hover:shadow-lg ${statusFilter === 'qualified' ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+        >
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full flex items-center justify-center">
@@ -503,9 +553,12 @@ const AgentDashboard: React.FC = () => {
               </dl>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className="card-margav p-6">
+        <button 
+          onClick={() => handleStatusFilter(statusFilter === 'appointment_set' ? null : 'appointment_set')}
+          className={`card-margav p-6 transition-all duration-200 hover:shadow-lg ${statusFilter === 'appointment_set' ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`}
+        >
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-purple-500 rounded-full flex items-center justify-center">
@@ -519,9 +572,12 @@ const AgentDashboard: React.FC = () => {
               </dl>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className="card-margav p-6">
+        <button 
+          onClick={() => handleStatusFilter(statusFilter === 'not_interested' ? null : 'not_interested')}
+          className={`card-margav p-6 transition-all duration-200 hover:shadow-lg ${statusFilter === 'not_interested' ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
+        >
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-12 h-12 bg-gradient-to-r from-red-400 to-red-500 rounded-full flex items-center justify-center">
@@ -535,8 +591,49 @@ const AgentDashboard: React.FC = () => {
               </dl>
             </div>
           </div>
-        </div>
+        </button>
+
+        <button 
+          onClick={() => handleStatusFilter(statusFilter === 'callback' ? null : 'callback')}
+          className={`card-margav p-6 transition-all duration-200 hover:shadow-lg ${statusFilter === 'callback' ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+        >
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-lg font-bold">📞</span>
+              </div>
+            </div>
+            <div className="ml-4 flex-1">
+              <dl>
+                <dt className="text-sm font-medium text-gray-500 truncate">Callbacks</dt>
+                <dd className="text-2xl font-bold text-gray-900">{getCallbackCount()}</dd>
+              </dl>
+            </div>
+          </div>
+        </button>
       </div>
+
+      {/* Filter Indicator */}
+      {statusFilter && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <span className="text-blue-800 font-medium">
+                Filtering by: <span className="capitalize">{statusFilter.replace('_', ' ')}</span>
+              </span>
+              <span className="ml-2 text-blue-600 text-sm">
+                ({filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''})
+              </span>
+            </div>
+            <button
+              onClick={() => handleStatusFilter(null)}
+              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+            >
+              Clear Filter
+            </button>
+          </div>
+        </div>
+      )}
 
 
 

@@ -369,3 +369,63 @@ class DialerUserLink(models.Model):
 
     def __str__(self) -> str:
         return f"{self.dialer_user_id} -> {self.crm_user.username}"
+
+
+class Callback(models.Model):
+    """
+    Callback scheduling for leads.
+    """
+    CALLBACK_STATUS_CHOICES = [
+        ('scheduled', 'Scheduled'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+        ('no_answer', 'No Answer'),
+        ('rescheduled', 'Rescheduled'),
+    ]
+    
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.CASCADE,
+        related_name='callbacks',
+        help_text='Lead associated with this callback'
+    )
+    agent = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='callbacks',
+        help_text='Agent responsible for the callback'
+    )
+    scheduled_time = models.DateTimeField(
+        help_text='When the callback is scheduled'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=CALLBACK_STATUS_CHOICES,
+        default='scheduled',
+        help_text='Current status of the callback'
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text='Additional notes about the callback'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['scheduled_time']
+        unique_together = ['lead', 'scheduled_time']
+    
+    def __str__(self):
+        return f"Callback for {self.lead.full_name} at {self.scheduled_time}"
+    
+    @property
+    def is_due(self):
+        """Check if callback is due (within 1 minute of scheduled time)"""
+        now = timezone.now()
+        time_diff = self.scheduled_time - now
+        return 0 <= time_diff.total_seconds() <= 60  # 1 minute
+    
+    @property
+    def is_overdue(self):
+        """Check if callback is overdue"""
+        return timezone.now() > self.scheduled_time and self.status == 'scheduled'

@@ -70,7 +70,8 @@ DATABASES = {
     }
 }
 
-if config('USE_POSTGRESQL', default=False) and config('DATABASE_URL', default=None):
+# Use PostgreSQL if DATABASE_URL is provided (Render production)
+if config('DATABASE_URL', default=None):
     import dj_database_url
     DATABASES['default'] = dj_database_url.parse(config('DATABASE_URL'))
 
@@ -88,7 +89,7 @@ AUTH_USER_MODEL = 'accounts.User'
 # Internationalization
 # --------------------
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/London'
 USE_I18N = True
 USE_TZ = True
 
