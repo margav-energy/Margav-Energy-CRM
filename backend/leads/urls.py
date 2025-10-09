@@ -19,6 +19,13 @@ urlpatterns = [
     path('notifications/<int:notification_id>/mark-read/', views.mark_notification_read, name='mark-notification-read'),
     path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark-all-notifications-read'),
     
+    # Callback routes
+    path('callbacks/', views.CallbackListCreateView.as_view(), name='callback-list-create'),
+    path('callbacks/<int:pk>/', views.CallbackDetailView.as_view(), name='callback-detail'),
+    path('callbacks/due/', views.callback_due_list, name='callback-due-list'),
+    path('callbacks/schedule/', views.schedule_callback, name='schedule-callback'),
+    path('callbacks/<int:callback_id>/update-status/', views.update_callback_status, name='update-callback-status'),
+    
     # Include ViewSet routes (must come after specific routes)
     path('', include(router.urls)),
 ]

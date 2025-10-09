@@ -5,12 +5,12 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 import logging
-from .models import Lead, Dialer, LeadNotification, DialerUserLink
+from .models import Lead, Dialer, LeadNotification, DialerUserLink, Callback
 from django.conf import settings
 from .serializers import (
     LeadSerializer, LeadCreateSerializer, LeadUpdateSerializer, 
     LeadDispositionSerializer, DialerSerializer, LeadNotificationSerializer,
-    DialerLeadSerializer
+    DialerLeadSerializer, CallbackSerializer, CallbackCreateSerializer
 )
 from .permissions import LeadPermission
 
@@ -67,8 +67,13 @@ class LeadViewSet(viewsets.ModelViewSet):
         """
         logger.info(f"Received dialer lead data: {request.data}")
         
-        # Optional API key check
-        api_key = request.headers.get('X-Dialer-Api-Key') or request.headers.get('x-dialer-api-key')
+        # Optional API key check - check both headers and request body
+        api_key = (
+            request.headers.get('X-Dialer-Api-Key') or 
+            request.headers.get('x-dialer-api-key') or
+            request.data.get('api_key') or
+            request.data.get('dialer_api_key')
+        )
         expected_key = getattr(settings, 'DIALER_API_KEY', None)
         if expected_key:
             if not api_key or api_key != expected_key:
@@ -447,3 +452,103 @@ def mark_all_notifications_read(request):
     """
     LeadNotification.objects.filter(agent=request.user, is_read=False).update(is_read=True)
     return Response({'message': 'All notifications marked as read'})
+
+
+# Callback Views
+class CallbackListCreateView(generics.ListCreateAPIView):
+    """
+    List and create callbacks for the authenticated agent.
+    """
+    serializer_class = CallbackSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'lead']
+    search_fields = ['lead__full_name', 'lead__phone', 'notes']
+    ordering_fields = ['scheduled_time', 'created_at']
+    ordering = ['scheduled_time']
+    
+    def get_queryset(self):
+        """Return callbacks for the authenticated agent"""
+        return Callback.objects.filter(agent=self.request.user)
+    
+    def perform_create(self, serializer):
+        """Set the agent to the current user"""
+        serializer.save(agent=self.request.user)
+
+
+class CallbackDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update, or delete a callback.
+    """
+    serializer_class = CallbackSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Return callbacks for the authenticated agent"""
+        return Callback.objects.filter(agent=self.request.user)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def callback_due_list(request):
+    """
+    Get callbacks that are due or overdue for the authenticated agent.
+    """
+    callbacks = Callback.objects.filter(
+        agent=request.user,
+        status='scheduled'
+    ).order_by('scheduled_time')
+    
+    due_callbacks = []
+    overdue_callbacks = []
+    
+    for callback in callbacks:
+        if callback.is_overdue:
+            overdue_callbacks.append(callback)
+        elif callback.is_due:
+            due_callbacks.append(callback)
+    
+    serializer = CallbackSerializer(due_callbacks + overdue_callbacks, many=True)
+    return Response({
+        'due_callbacks': [cb for cb in serializer.data if cb['is_due']],
+        'overdue_callbacks': [cb for cb in serializer.data if cb['is_overdue']]
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def schedule_callback(request):
+    """
+    Schedule a callback for a lead.
+    """
+    serializer = CallbackCreateSerializer(data=request.data)
+    if serializer.is_valid():
+        # Set the agent to the current user
+        callback = serializer.save(agent=request.user)
+        response_serializer = CallbackSerializer(callback)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_callback_status(request, callback_id):
+    """
+    Update the status of a callback.
+    """
+    try:
+        callback = Callback.objects.get(id=callback_id, agent=request.user)
+    except Callback.DoesNotExist:
+        return Response({'error': 'Callback not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    new_status = request.data.get('status')
+    if new_status not in [choice[0] for choice in Callback.CALLBACK_STATUS_CHOICES]:
+        return Response({'error': 'Invalid status'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    callback.status = new_status
+    if 'notes' in request.data:
+        callback.notes = request.data['notes']
+    callback.save()
+    
+    serializer = CallbackSerializer(callback)
+    return Response(serializer.data)
