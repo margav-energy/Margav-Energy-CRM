@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
+from . import calendar_views
 
 # Create a router for the ViewSet
 router = DefaultRouter()
@@ -17,14 +18,18 @@ urlpatterns = [
     path('dialer/', views.DialerControlView.as_view(), name='dialer-control'),
     path('notifications/', views.NotificationListView.as_view(), name='notification-list'),
     path('notifications/<int:notification_id>/mark-read/', views.mark_notification_read, name='mark-notification-read'),
+    path('notifications/<int:notification_id>/delete/', views.delete_notification, name='delete-notification'),
     path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark-all-notifications-read'),
     
-    # Callback routes
-    path('callbacks/', views.CallbackListCreateView.as_view(), name='callback-list-create'),
-    path('callbacks/<int:pk>/', views.CallbackDetailView.as_view(), name='callback-detail'),
-    path('callbacks/due/', views.callback_due_list, name='callback-due-list'),
-    path('callbacks/schedule/', views.schedule_callback, name='schedule-callback'),
-    path('callbacks/<int:callback_id>/update-status/', views.update_callback_status, name='update-callback-status'),
+    path('leads/bulk-delete-forever/', views.bulk_delete_leads_forever, name='bulk-delete-leads-forever'),
+    
+    # Google Calendar OAuth routes
+    path('auth/google/', calendar_views.google_calendar_auth, name='google-calendar-auth'),
+    path('auth/google/callback/', calendar_views.google_calendar_callback, name='google-calendar-callback'),
+    path('calendar/status/', calendar_views.google_calendar_status, name='google-calendar-status'),
+    path('calendar/test/', calendar_views.google_calendar_test, name='google-calendar-test'),
+    path('calendar/events/', calendar_views.create_calendar_event, name='create-calendar-event'),
+    path('calendar/setup/', calendar_views.google_calendar_setup_page, name='google-calendar-setup'),
     
     # Include ViewSet routes (must come after specific routes)
     path('', include(router.urls)),

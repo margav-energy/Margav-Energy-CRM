@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Lead, Dialer, LeadNotification, DialerUserLink, Callback
+from .models import Lead, Dialer, LeadNotification, DialerUserLink
 
 
 class DialerSerializer(serializers.ModelSerializer):
@@ -73,7 +73,8 @@ class LeadCreateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Lead
-        fields = ['full_name', 'phone', 'email', 'status', 'notes', 'appointment_date']
+        fields = ['full_name', 'phone', 'email', 'status', 'notes', 'appointment_date', 'assigned_agent']
+        read_only_fields = ['is_deleted', 'deleted_at', 'deleted_by', 'deletion_reason']
     
     def validate_phone(self, value):
         """
@@ -224,45 +225,3 @@ class DialerLeadSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-
-class CallbackSerializer(serializers.ModelSerializer):
-    """
-    Serializer for Callback model.
-    """
-    lead_name = serializers.CharField(source='lead.full_name', read_only=True)
-    lead_phone = serializers.CharField(source='lead.phone', read_only=True)
-    agent_name = serializers.CharField(source='agent.get_full_name', read_only=True)
-    is_due = serializers.ReadOnlyField()
-    is_overdue = serializers.ReadOnlyField()
-    
-    class Meta:
-        model = Callback
-        fields = [
-            'id', 'lead', 'lead_name', 'lead_phone', 'agent', 'agent_name',
-            'scheduled_time', 'status', 'notes', 'is_due', 'is_overdue',
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
-    
-    def validate_scheduled_time(self, value):
-        """Ensure scheduled time is in the future"""
-        from django.utils import timezone
-        if value <= timezone.now():
-            raise serializers.ValidationError("Callback must be scheduled for a future time.")
-        return value
-
-
-class CallbackCreateSerializer(serializers.ModelSerializer):
-    """
-    Serializer for creating callbacks.
-    """
-    class Meta:
-        model = Callback
-        fields = ['lead', 'scheduled_time', 'notes']
-    
-    def validate_scheduled_time(self, value):
-        """Ensure scheduled time is in the future"""
-        from django.utils import timezone
-        if value <= timezone.now():
-            raise serializers.ValidationError("Callback must be scheduled for a future time.")
-        return value

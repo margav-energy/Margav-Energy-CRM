@@ -1,0 +1,140 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+  .soft-delete-actions {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 20px 0;
+  }
+  
+  .soft-delete-actions h3 {
+    margin: 0 0 10px 0;
+    color: #495057;
+    font-size: 1.1rem;
+  }
+  
+  .soft-delete-actions p {
+    margin: 0 0 15px 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    margin-right: 10px;
+  }
+  
+  .btn-restore {
+    background: #28a745;
+    color: white;
+  }
+  
+  .btn-restore:hover {
+    background: #218838;
+    color: white;
+    text-decoration: none;
+  }
+  
+  .btn-soft-delete {
+    background: #dc3545;
+    color: white;
+  }
+  
+  .btn-soft-delete:hover {
+    background: #c82333;
+    color: white;
+    text-decoration: none;
+  }
+  
+  .btn-delete-forever {
+    background: #6c757d;
+    color: white;
+  }
+  
+  .btn-delete-forever:hover {
+    background: #5a6268;
+    color: white;
+    text-decoration: none;
+  }
+  
+  .status-indicator {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-left: 10px;
+  }
+  
+  .status-active {
+    background: #d4edda;
+    color: #155724;
+  }
+  
+  .status-deleted {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  
+  .status-expired {
+    background: #f5c6cb;
+    color: #721c24;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{{ block.super }}
+
+{% if original and original.pk %}
+<div class="soft-delete-actions">
+  {% if original.is_deleted %}
+    <h3>🔄 Soft Delete Actions</h3>
+    <p>This lead has been soft deleted. You can restore it or it will be permanently deleted after 30 days.</p>
+    
+    <div>
+      <a href="{% url 'admin:leads_lead_restore' original.pk %}" class="btn btn-restore" onclick="return confirm('Are you sure you want to restore this lead?')">
+        🔄 Restore Lead
+      </a>
+      
+      <a href="{% url 'admin:leads_lead_delete_forever' original.pk %}" class="btn btn-delete-forever" onclick="return confirm('⚠️ WARNING: This will permanently delete this lead and cannot be undone! Are you absolutely sure?')">
+        🗑️ Delete Forever
+      </a>
+      
+      <span class="status-indicator status-deleted">
+        Deleted {{ original.deleted_at|timesince }} ago
+      </span>
+      
+      {% if original.deletion_reason %}
+      <p><strong>Deletion Reason:</strong> {{ original.deletion_reason }}</p>
+      {% endif %}
+    </div>
+  {% else %}
+    <h3>🗑️ Soft Delete Actions</h3>
+    <p>This lead is currently active. You can soft delete it to move it to the 30-day retention period.</p>
+    
+    <div>
+      <a href="{% url 'admin:leads_lead_soft_delete' original.pk %}" class="btn btn-soft-delete" onclick="return confirm('Are you sure you want to soft delete this lead? It will be moved to the 30-day retention period.')">
+        🗑️ Soft Delete Lead
+      </a>
+      
+      <span class="status-indicator status-active">
+        Active
+      </span>
+    </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

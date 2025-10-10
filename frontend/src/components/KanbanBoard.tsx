@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Lead } from '../types';
 import { leadsAPI } from '../api';
 import { toast } from 'react-toastify';
+import LeadDetailsModal from './LeadDetailsModal';
 import {
   DndContext,
   closestCenter,
@@ -12,6 +13,7 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -40,6 +42,19 @@ interface SortableLeadCardProps {
   getStatusBadgeColor: (status: string) => string;
   getStatusDisplayName: (status: string) => string;
   formatDate: (dateString: string) => string;
+  onCardClick?: (lead: Lead) => void;
+  userRole: string;
+  isDragging?: boolean;
+}
+
+interface DroppableColumnProps {
+  column: KanbanColumn;
+  onCardClick?: (lead: Lead) => void;
+  userRole: string;
+  getStatusBadgeColor: (status: string) => string;
+  getStatusDisplayName: (status: string) => string;
+  formatDate: (dateString: string) => string;
+  activeId?: string | null;
 }
 
 const SortableLeadCard: React.FC<SortableLeadCardProps> = ({
@@ -47,6 +62,9 @@ const SortableLeadCard: React.FC<SortableLeadCardProps> = ({
   getStatusBadgeColor,
   getStatusDisplayName,
   formatDate,
+  onCardClick,
+  userRole,
+  isDragging = false,
 }) => {
   const {
     attributes,
@@ -54,7 +72,6 @@ const SortableLeadCard: React.FC<SortableLeadCardProps> = ({
     setNodeRef,
     transform,
     transition,
-    isDragging,
   } = useSortable({ id: lead?.id?.toString() || 'invalid' });
 
   // Safety check for lead data
@@ -69,17 +86,52 @@ const SortableLeadCard: React.FC<SortableLeadCardProps> = ({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onCardClick && userRole === 'qualifier' && !isDragging) {
+      onCardClick(lead);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
+      className={`bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow relative ${
+        userRole === 'qualifier' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
+      }`}
     >
-      <div className="flex items-start justify-between mb-2">
+      {/* Drag handle - only for non-qualifier users */}
+      {userRole !== 'qualifier' && (
+        <div 
+          {...attributes} 
+          {...listeners} 
+          className="absolute inset-0 cursor-grab active:cursor-grabbing"
+        />
+      )}
+      
+      {/* Drag handle for qualifiers - on the right side */}
+      {userRole === 'qualifier' && (
+        <div 
+          {...attributes} 
+          {...listeners} 
+          className="absolute top-2 right-2 w-6 h-6 cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100 transition-opacity bg-gray-100 hover:bg-gray-200 rounded"
+          title="Drag to move"
+        >
+          <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+          </svg>
+        </div>
+      )}
+      
+      {/* Content area */}
+      <div 
+        className="relative z-10"
+        onClick={handleCardClick}
+      >
+      <div className="mb-2">
         <h4 className="font-medium text-gray-900 text-sm">{lead.full_name}</h4>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(lead.status)}`}>
+        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${getStatusBadgeColor(lead.status)}`}>
           {getStatusDisplayName(lead.status)}
         </span>
       </div>
@@ -102,6 +154,74 @@ const SortableLeadCard: React.FC<SortableLeadCardProps> = ({
       <div className="mt-2 text-xs text-gray-400">
         Assigned to: {lead.assigned_agent_name || lead.assigned_agent_username}
       </div>
+      </div>
+    </div>
+  );
+};
+
+const DroppableColumn: React.FC<DroppableColumnProps> = ({
+  column,
+  onCardClick,
+  userRole,
+  getStatusBadgeColor,
+  getStatusDisplayName,
+  formatDate,
+  activeId,
+}) => {
+  const { isOver, setNodeRef } = useDroppable({
+    id: column.id,
+    data: {
+      type: 'column',
+      column: column,
+    },
+  });
+
+  return (
+    <div key={column.id} className="flex-shrink-0 w-56 lg:w-60">
+      <div 
+        ref={setNodeRef}
+        className={`${column.color} rounded-lg p-4 h-full min-h-[400px] transition-all duration-200 ${
+          isOver ? 'ring-2 ring-blue-400 ring-opacity-50' : ''
+        }`}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900 text-sm lg:text-base">{column.title}</h3>
+          <span className="bg-white bg-opacity-50 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
+            {column.leads.length}
+          </span>
+        </div>
+        
+        <SortableContext
+          items={column.leads
+            .filter(lead => lead && typeof lead.id !== 'undefined')
+            .map(lead => lead.id.toString())}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto">
+            {column.leads.length === 0 ? (
+              <div className="text-center py-6 text-gray-500">
+                <div className="text-3xl mb-2">📋</div>
+                <p className="text-xs">No leads</p>
+              </div>
+            ) : (
+              column.leads
+                .filter(lead => lead && typeof lead.id !== 'undefined')
+                .map((lead) => (
+                  <SortableLeadCard
+                    key={lead.id.toString()}
+                    lead={lead}
+                    getStatusBadgeColor={getStatusBadgeColor}
+                    getStatusDisplayName={getStatusDisplayName}
+                    formatDate={formatDate}
+                    onCardClick={onCardClick}
+                    userRole={userRole}
+                    isDragging={activeId === lead.id.toString()}
+                  />
+                ))
+            )}
+          </div>
+        </SortableContext>
+      </div>
     </div>
   );
 };
@@ -110,6 +230,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
   const [columns, setColumns] = useState<KanbanColumn[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -152,7 +274,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
           { id: 'sent_to_kelly', title: 'To Qualify', statuses: ['sent_to_kelly'], color: 'bg-blue-100' },
           { id: 'qualified', title: 'Qualified', statuses: ['qualified'], color: 'bg-green-100' },
           { id: 'appointments', title: 'Appointments Set', statuses: ['appointment_set'], color: 'bg-purple-100' },
-          { id: 'not_qualified', title: 'Not Qualified', statuses: ['not_interested', 'no_contact', 'blow_out', 'callback', 'pass_back_to_agent'], color: 'bg-red-100' },
+          { id: 'no_contact', title: 'No Contact', statuses: ['no_contact'], color: 'bg-yellow-100' },
+          { id: 'not_qualified', title: 'Not Qualified', statuses: ['not_interested', 'blow_out', 'pass_back_to_agent'], color: 'bg-red-100' },
         ];
       } else if (userRole === 'salesrep') {
         columnDefinitions = [
@@ -228,6 +351,30 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
     });
   };
 
+  const handleCardClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedLead(null);
+  };
+
+  const handleLeadUpdated = (updatedLead: Lead) => {
+    // Update the lead in the columns
+    setColumns(prevColumns => {
+      return prevColumns.map(column => ({
+        ...column,
+        leads: column.leads.map(lead => 
+          lead.id === updatedLead.id ? updatedLead : lead
+        )
+      }));
+    });
+    // Refresh the data to ensure consistency
+    fetchLeads();
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
@@ -258,10 +405,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
 
     // Find the target column
     let targetColumn: KanbanColumn | null = null;
-    for (const column of columns) {
-      if (column.id === overId || column.leads.some(lead => lead.id.toString() === overId)) {
-        targetColumn = column;
-        break;
+    
+    // Check if dropping on a column (empty or with leads)
+    const targetColumnDirect = columns.find(col => col.id === overId);
+    if (targetColumnDirect) {
+      targetColumn = targetColumnDirect;
+    } else {
+      // Check if dropping on a lead (find which column contains the target lead)
+      for (const column of columns) {
+        if (column.leads.some(lead => lead.id.toString() === overId)) {
+          targetColumn = column;
+          break;
+        }
       }
     }
 
@@ -277,10 +432,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
     try {
       let updatedLead: Lead | undefined;
       
-      // Use different API endpoints based on user role
+      // For qualifiers, allow unrestricted movement between any columns
       if (userRole === 'qualifier') {
-        // For qualifiers, use the qualify endpoint for any status change
-        updatedLead = await leadsAPI.qualifyLead(sourceLead.id, { status: newStatus });
+        // Qualifiers can move leads to any status without restrictions
+        const response = await leadsAPI.qualifyLead(sourceLead.id, { status: newStatus });
+        updatedLead = response.lead;
       } else {
         // For other roles, use the regular update endpoint
         updatedLead = await leadsAPI.updateLead(sourceLead.id, { status: newStatus });
@@ -292,23 +448,43 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
         
         // Remove from source column
         const sourceColIndex = newColumns.findIndex(col => col.id === sourceColumn!.id);
-        newColumns[sourceColIndex] = {
-          ...newColumns[sourceColIndex],
-          leads: newColumns[sourceColIndex].leads.filter(lead => lead.id?.toString() !== activeId)
-        };
+        if (sourceColIndex !== -1) {
+          newColumns[sourceColIndex] = {
+            ...newColumns[sourceColIndex],
+            leads: newColumns[sourceColIndex].leads.filter(lead => lead.id?.toString() !== activeId)
+          };
+        }
         
         // Add to target column
         const targetColIndex = newColumns.findIndex(col => col.id === targetColumn!.id);
-        const leadToAdd: Lead = updatedLead || { ...sourceLead!, status: newStatus };
-        newColumns[targetColIndex] = {
-          ...newColumns[targetColIndex],
-          leads: [...newColumns[targetColIndex].leads, leadToAdd]
-        };
+        if (targetColIndex !== -1) {
+          const leadToAdd: Lead = updatedLead || { ...sourceLead!, status: newStatus };
+          newColumns[targetColIndex] = {
+            ...newColumns[targetColIndex],
+            leads: [...newColumns[targetColIndex].leads, leadToAdd]
+          };
+        }
         
         return newColumns;
       });
 
-      toast.success(`Lead moved to ${targetColumn.title}`);
+      // If the new status is 'appointment_set', sync to Google Calendar
+      if (newStatus === 'appointment_set' && updatedLead) {
+        try {
+          // Check if the lead has an appointment date
+          if (updatedLead.appointment_date) {
+            // The backend should automatically sync to Google Calendar via the Lead model's sync_to_google_calendar method
+            toast.success(`Lead moved to ${targetColumn.title} and synced to Google Calendar`);
+          } else {
+            toast.success(`Lead moved to ${targetColumn.title}. Please set an appointment date to sync to Google Calendar.`);
+          }
+        } catch (calendarError) {
+          console.error('Google Calendar sync failed:', calendarError);
+          toast.warning(`Lead moved to ${targetColumn.title}, but Google Calendar sync failed. Please check calendar integration.`);
+        }
+      } else {
+        toast.success(`Lead moved to ${targetColumn.title}`);
+      }
     } catch (error) {
       console.error('Failed to update lead status:', error);
       toast.error('Failed to update lead status');
@@ -344,46 +520,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
         onDragEnd={handleDragEnd}
       >
         <div className="overflow-x-auto">
-          <div className="flex space-x-3 min-w-max pb-4">
+          <div className="flex space-x-2 min-w-max pb-4">
             {columns.map((column) => (
-              <div key={column.id} className="flex-shrink-0 w-64 lg:w-72">
-                <div className={`${column.color} rounded-lg p-4 h-full min-h-[500px]`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-gray-900 text-sm lg:text-base">{column.title}</h3>
-                    <span className="bg-white bg-opacity-50 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
-                      {column.leads.length}
-                    </span>
-                  </div>
-                  
-                  <SortableContext
-                    items={column.leads
-                      .filter(lead => lead && typeof lead.id !== 'undefined')
-                      .map(lead => lead.id.toString())}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto">
-                      {column.leads.length === 0 ? (
-                        <div className="text-center py-6 text-gray-500">
-                          <div className="text-3xl mb-2">📋</div>
-                          <p className="text-xs">No leads</p>
-                        </div>
-                      ) : (
-                        column.leads
-                          .filter(lead => lead && typeof lead.id !== 'undefined')
-                          .map((lead) => (
-                            <SortableLeadCard
-                              key={lead.id.toString()}
-                              lead={lead}
-                              getStatusBadgeColor={getStatusBadgeColor}
-                              getStatusDisplayName={getStatusDisplayName}
-                              formatDate={formatDate}
-                            />
-                          ))
-                      )}
-                    </div>
-                  </SortableContext>
-                </div>
-              </div>
+              <DroppableColumn
+                key={column.id}
+                column={column}
+                onCardClick={handleCardClick}
+                userRole={userRole}
+                getStatusBadgeColor={getStatusBadgeColor}
+                getStatusDisplayName={getStatusDisplayName}
+                formatDate={formatDate}
+                activeId={activeId}
+              />
             ))}
           </div>
         </div>
@@ -398,6 +546,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Lead Details Modal */}
+      <LeadDetailsModal
+        lead={selectedLead}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        userRole={userRole}
+        onLeadUpdated={handleLeadUpdated}
+      />
     </div>
   );
 };

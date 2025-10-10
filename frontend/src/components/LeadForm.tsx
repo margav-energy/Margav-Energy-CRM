@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Lead, LeadForm as LeadFormType } from '../types';
-import CallbackModal from './CallbackModal';
 
 interface LeadFormProps {
   lead?: Lead;
@@ -103,7 +102,6 @@ interface ExtendedLeadFormData {
 }
 
 const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading = false, prepopulatedData, onSendToQualifier }) => {
-  const [showCallbackModal, setShowCallbackModal] = useState(false);
   // Function to parse notes and extract form data
   const parseNotesData = (notes: string) => {
     const data: Partial<ExtendedLeadFormData> = {};
@@ -356,7 +354,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent, callbackData?: { scheduled_time: string; notes: string }) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -405,74 +403,18 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '')
       };
       
-      // Submit the lead first - include callback information in the data
-      const leadDataWithCallback = {
-        ...basicFormData,
-        hasPendingCallback: !!(callbackData || pendingCallback),
-        callbackScheduledTime: callbackData?.scheduled_time || pendingCallback?.scheduled_time,
-        callbackNotes: callbackData?.notes || pendingCallback?.notes
-      };
-      
-      await onSubmit(leadDataWithCallback);
-      
-      // If there's a pending callback for a new lead, we need to schedule it
-      if ((callbackData || pendingCallback) && !lead) {
-        // For new leads, we need to wait a moment for the lead to be created
-        // and then schedule the callback. Since we don't have the new lead ID,
-        // we'll show a success message and let the user know the callback is pending
-        const callbackInfo = callbackData || pendingCallback;
-        alert(`Lead created successfully! Callback scheduled for ${new Date(callbackInfo!.scheduled_time).toLocaleString()}. The callback will be available once the lead is fully processed.`);
-        setPendingCallback(null); // Clear the pending callback
-      }
+      await onSubmit(basicFormData);
     } catch (error) {
       console.error('Form submission error:', error);
     }
   };
 
-  const [pendingCallback, setPendingCallback] = useState<{ scheduled_time: string; notes: string } | null>(null);
-
-  const handleScheduleCallback = async (callbackData: { lead?: number; scheduled_time: string; notes: string; lead_name?: string; lead_phone?: string }) => {
-    try {
-      if (lead) {
-        // For existing leads, create the callback immediately
-        const { callbacksAPI } = await import('../api');
-        await callbacksAPI.scheduleCallback({
-          lead: lead.id,
-          scheduled_time: callbackData.scheduled_time,
-          notes: callbackData.notes
-        });
-        alert('Callback scheduled successfully!');
-      } else {
-        // For new leads, pass callback data directly to form submission
-        try {
-          // Trigger form submission with callback data passed directly
-          const formEvent = new Event('submit') as any;
-          await handleSubmit(formEvent, {
-            scheduled_time: callbackData.scheduled_time,
-            notes: callbackData.notes
-          });
-          alert('Lead saved and callback scheduled successfully!');
-        } catch (error) {
-          console.error('Error auto-saving form:', error);
-          alert('Callback scheduled, but please save the form manually to complete the process.');
-        }
-      }
-    } catch (error) {
-      console.error('Error scheduling callback:', error);
-      alert('Failed to schedule callback. Please try again.');
-    }
-  };
 
   const handleSendToQualifier = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!onSendToQualifier) return;
     
-    // Check if there's a pending callback - don't send to qualifier if callback is scheduled
-    if (pendingCallback) {
-      alert('Cannot send to qualifier: A callback is already scheduled for this lead. Please complete the callback first or cancel it.');
-      return;
-    }
     
     if (!validateForm()) {
       return;
@@ -519,23 +461,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         {lead ? 'Update Lead Information' : 'Complete Lead Sheet'}
       </h3>
       
-      {pendingCallback && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-blue-700">
-                <strong>📞 Callback Scheduled:</strong> {new Date(pendingCallback.scheduled_time).toLocaleString()} 
-                {pendingCallback.notes && ` - ${pendingCallback.notes}`}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {Object.keys(errors).length > 0 && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -1078,38 +1003,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           </div>
         </div>
 
-        {/* Callback Schedule Section */}
-        <div>
-          <h4 className="text-lg font-medium text-gray-900 mb-4">📞 Callback Schedule</h4>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-900">Schedule a callback for this lead</p>
-                <p className="text-xs text-blue-700 mt-1">Set a specific date and time to follow up with the lead</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCallbackModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-              >
-                📞 Schedule Callback
-              </button>
-            </div>
-            {pendingCallback && (
-              <div className="mt-3 p-3 bg-blue-100 border border-blue-300 rounded-md">
-                <div className="flex items-center">
-                  <svg className="h-4 w-4 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-sm text-blue-800">
-                    <strong>Callback Scheduled:</strong> {new Date(pendingCallback.scheduled_time).toLocaleString()} 
-                    {pendingCallback.notes && ` - ${pendingCallback.notes}`}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
 
         {/* Submit Buttons */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-8">
@@ -1157,32 +1050,9 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         </div>
       </form>
 
-      {/* Callback Modal */}
-      <CallbackModal
-        isOpen={showCallbackModal}
-        onClose={() => setShowCallbackModal(false)}
-        lead={lead ? {
-          id: lead.id,
-          full_name: lead.full_name,
-          phone: lead.phone
-        } : undefined}
-        formData={lead ? undefined : {
-          full_name: formData.full_name,
-          phone: formData.phone,
-          email: formData.email,
-          address: formData.address,
-          postcode: formData.postcode
-        } as {
-          full_name: string;
-          phone: string;
-          email?: string;
-          address?: string;
-          postcode?: string;
-        }}
-        onSchedule={handleScheduleCallback}
-      />
     </div>
   );
 };
 
 export default LeadForm;
+

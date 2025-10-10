@@ -414,3 +414,54 @@ $RECYCLE.BIN/
 !media/**/
 !**/media/**/
 
+# Project specific sensitive files
+CRM.json
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tailwind.config.js
+!postcss.config.js
+
+# Google OAuth credentials
+google_oauth.json
+google_credentials.json
+service_account.json
+
+# Database files
+*.sqlite3
+*.db
+db.sqlite3
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+
+# Log files
+*.log
+logs/
+**/logs/
+
+# Test files
+test_*.py
+*_test.py
+test_*.js
+*_test.js
+
+# Backup files
+*.bak
+*.backup
+*.old
+*_backup.*
+
+# Recovery files
+recovered_*.json
+*_recovery.*
+
+# Migration backup files
+*_backup_*.py
+*_old_*.py
+

@@ -103,7 +103,7 @@
     align-items: center;
     padding: 15px 20px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    color: white !important;
     text-decoration: none;
     border-radius: 8px;
     font-weight: 500;
@@ -115,21 +115,29 @@
   .action-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    color: white;
+    color: white !important;
     text-decoration: none;
+  }
+
+  .action-btn * {
+    color: white !important;
   }
 
   .action-btn.primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white !important;
   }
   .action-btn.success {
     background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+    color: white !important;
   }
   .action-btn.warning {
     background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white !important;
   }
   .action-btn.danger {
     background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    color: white !important;
   }
 
   .recent-activity {
