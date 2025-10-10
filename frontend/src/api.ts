@@ -156,13 +156,18 @@ export const leadsAPI = {
     return response.data;
   },
 
-  qualifyLead: async (id: number, data: LeadUpdateForm): Promise<Lead> => {
-    const response: AxiosResponse<Lead> = await api.post(`/leads/${id}/qualify/`, data);
+  qualifyLead: async (id: number, data: LeadUpdateForm): Promise<{ lead: Lead; notification: any; calendar_synced: boolean }> => {
+    const response: AxiosResponse<{ lead: Lead; notification: any; calendar_synced: boolean }> = await api.post(`/leads/${id}/qualify/`, data);
     return response.data;
   },
 
   completeAppointment: async (id: number, data: LeadUpdateForm): Promise<Lead> => {
     const response: AxiosResponse<Lead> = await api.post(`/leads/${id}/complete-appointment/`, data);
+    return response.data;
+  },
+
+  bulkDeleteLeadsForever: async (leadIds: number[]): Promise<{ message: string; deleted_count: number }> => {
+    const response: AxiosResponse<{ message: string; deleted_count: number }> = await api.post('/leads/bulk-delete-forever/', { lead_ids: leadIds });
     return response.data;
   },
 };
@@ -196,38 +201,12 @@ export const notificationsAPI = {
     const response: AxiosResponse<{ message: string }> = await api.post('/notifications/mark-all-read/');
     return response.data;
   },
-};
 
-// Callback API
-export const callbacksAPI = {
-  getCallbacks: async (): Promise<ApiResponse<any>> => {
-    const response: AxiosResponse<ApiResponse<any>> = await api.get('/callbacks/');
-    return response.data;
-  },
-
-  getDueCallbacks: async (): Promise<{ due_callbacks: any[]; overdue_callbacks: any[] }> => {
-    const response: AxiosResponse<{ due_callbacks: any[]; overdue_callbacks: any[] }> = await api.get('/callbacks/due/');
-    return response.data;
-  },
-
-  scheduleCallback: async (callbackData: { lead: number; scheduled_time: string; notes: string }): Promise<any> => {
-    const response: AxiosResponse<any> = await api.post('/callbacks/schedule/', callbackData);
-    return response.data;
-  },
-
-  updateCallbackStatus: async (callbackId: number, statusData: { status: string; notes?: string }): Promise<any> => {
-    const response: AxiosResponse<any> = await api.post(`/callbacks/${callbackId}/update-status/`, statusData);
-    return response.data;
-  },
-
-  deleteCallback: async (callbackId: number): Promise<void> => {
-    await api.delete(`/callbacks/${callbackId}/`);
-  },
-
-  getCallbacksForLead: async (leadId: number): Promise<ApiResponse<any>> => {
-    const response: AxiosResponse<ApiResponse<any>> = await api.get(`/callbacks/?lead=${leadId}`);
+  deleteNotification: async (notificationId: number): Promise<{ message: string }> => {
+    const response: AxiosResponse<{ message: string }> = await api.delete(`/notifications/${notificationId}/delete/`);
     return response.data;
   },
 };
+
 
 export default api;

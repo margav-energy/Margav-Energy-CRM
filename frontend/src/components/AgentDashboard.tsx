@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 import LeadCard from './LeadCard';
 import LeadForm from './LeadForm';
 import NotificationPanel from './NotificationPanel';
-import CallbackAlert from './CallbackAlert';
 
 const AgentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -251,9 +250,10 @@ const AgentDashboard: React.FC = () => {
       // Check if we're updating an existing lead from dialer
       if (prepopulatedData?.lead_id) {
         // Update existing lead from dialer
-        const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
+        const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
           ...leadData,
-          status: 'sent_to_kelly' as Lead['status']
+          status: 'sent_to_kelly' as Lead['status'],
+          assigned_agent: user?.id || 0
         };
         const updatedLead = await leadsAPI.updateLead(parseInt(prepopulatedData.lead_id), leadDataWithStatus);
         
@@ -267,27 +267,17 @@ const AgentDashboard: React.FC = () => {
         // Create new lead - check if there's a pending callback
         const hasPendingCallback = (leadData as any).hasPendingCallback;
         
-        const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
+        const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
           ...leadData,
-          status: hasPendingCallback ? 'callback' as Lead['status'] : 'sent_to_kelly' as Lead['status']
+          status: hasPendingCallback ? 'callback' as Lead['status'] : 'sent_to_kelly' as Lead['status'],
+          assigned_agent: user?.id || 0
         };
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
         
         if (hasPendingCallback) {
-          // Create the callback record in the database
-          try {
-            const { callbacksAPI } = await import('../api');
-            await callbacksAPI.scheduleCallback({
-              lead: newLead.id,
-              scheduled_time: (leadData as any).callbackScheduledTime,
-              notes: (leadData as any).callbackNotes || 'Scheduled callback'
-            });
-            toast.success('Lead created successfully! Callback scheduled - lead will not be sent to qualifier until callback is completed.');
-          } catch (callbackError) {
-            console.error('Failed to create callback:', callbackError);
-            toast.success('Lead created successfully, but callback scheduling failed. Please schedule the callback manually.');
-          }
+          // Callback will be automatically created by Django signals
+          toast.success('Lead created successfully! Callback will be automatically scheduled.');
         } else {
           toast.success('Lead created successfully and sent to qualifier!');
         }
@@ -352,27 +342,30 @@ const AgentDashboard: React.FC = () => {
       
       if (editingLead) {
         // Update existing lead and send to qualifier
-        const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
+        const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
           ...leadData,
-          status: 'sent_to_kelly' as Lead['status']
+          status: 'sent_to_kelly' as Lead['status'],
+          assigned_agent: user?.id || 0
         };
         const updatedLead = await leadsAPI.updateLead(editingLead.id, leadDataWithStatus);
         setLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
         toast.success('Lead updated and sent to qualifier!');
       } else if (prepopulatedData?.lead_id) {
         // Update existing lead from dialer and send to qualifier
-        const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
+        const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
           ...leadData,
-          status: 'sent_to_kelly' as Lead['status']
+          status: 'sent_to_kelly' as Lead['status'],
+          assigned_agent: user?.id || 0
         };
         const updatedLead = await leadsAPI.updateLead(parseInt(prepopulatedData.lead_id), leadDataWithStatus);
         setLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
         toast.success('Lead updated and sent to qualifier!');
       } else {
         // Create new lead and send to qualifier
-        const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
+        const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
           ...leadData,
-          status: 'sent_to_kelly' as Lead['status']
+          status: 'sent_to_kelly' as Lead['status'],
+          assigned_agent: user?.id || 0
         };
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
@@ -458,11 +451,11 @@ const AgentDashboard: React.FC = () => {
 
   const getCallbackCount = () => {
     const callbackCount = leads.filter(lead => lead.status === 'callback').length;
-    console.log('📊 AgentDashboard: Callback count calculation:', {
-      totalLeads: leads.length,
-      callbackLeads: leads.filter(lead => lead.status === 'callback').length,
-      callbackCount
-    });
+    // console.log('📊 AgentDashboard: Callback count calculation:', {
+    //   totalLeads: leads.length,
+    //   callbackLeads: leads.filter(lead => lead.status === 'callback').length,
+    //   callbackCount
+    // });
     return callbackCount;
   };
 
@@ -478,12 +471,6 @@ const AgentDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Callback Alert */}
-      <CallbackAlert onCallbackClick={(callback) => {
-        // Handle callback click - could open a modal or navigate to the lead
-        console.log('Callback clicked:', callback);
-      }} />
-      
       {/* Header */}
       <div className="card-margav p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Lead } from '../types';
 import { leadsAPI } from '../api';
 import { toast } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
 import LeadCard from './LeadCard';
 import QualifierLeadModal from './QualifierLeadModal';
 
 const QualifierDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingLead, setUpdatingLead] = useState<Lead | null>(null);
@@ -92,7 +94,7 @@ const QualifierDashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              Kelly's Qualification Dashboard
+              {user?.first_name || 'Qualifier'}'s Dashboard
             </h2>
             <p className="text-gray-600">Review and qualify leads sent from agents</p>
           </div>

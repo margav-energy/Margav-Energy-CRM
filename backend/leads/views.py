@@ -5,12 +5,12 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 import logging
-from .models import Lead, Dialer, LeadNotification, DialerUserLink, Callback
+from .models import Lead, Dialer, LeadNotification, DialerUserLink
 from django.conf import settings
 from .serializers import (
     LeadSerializer, LeadCreateSerializer, LeadUpdateSerializer, 
     LeadDispositionSerializer, DialerSerializer, LeadNotificationSerializer,
-    DialerLeadSerializer, CallbackSerializer, CallbackCreateSerializer
+    DialerLeadSerializer
 )
 from .permissions import LeadPermission
 
@@ -50,7 +50,7 @@ class LeadViewSet(viewsets.ModelViewSet):
         # Qualifiers can see leads they've processed (sent_to_kelly and beyond)
         if user.is_qualifier:
             return Lead.objects.filter(
-                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'callback', 'pass_back_to_agent']
+                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent']
             )
         
         # SalesReps can see leads with appointments
@@ -208,7 +208,7 @@ class LeadListCreateView(generics.ListCreateAPIView):
         # Qualifiers can see leads they've processed (sent_to_kelly and beyond)
         if user.is_qualifier:
             return Lead.objects.filter(
-                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'callback', 'pass_back_to_agent']
+                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent']
             )
         
         # SalesReps can see leads with appointments
@@ -243,7 +243,7 @@ class LeadDetailView(generics.RetrieveUpdateDestroyAPIView):
         # Qualifiers can see leads they've processed (sent_to_kelly and beyond)
         if user.is_qualifier:
             return Lead.objects.filter(
-                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'callback', 'pass_back_to_agent']
+                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent']
             )
         
         # SalesReps can see leads with appointments
@@ -351,12 +351,19 @@ def qualify_lead(request, lead_id):
     """
     Kelly qualifies a lead and notifies the agent.
     """
+    print(f"Qualify lead request: lead_id={lead_id}, data={request.data}, user={request.user}")
     try:
-        lead = Lead.objects.get(id=lead_id, status='sent_to_kelly')
+        lead = Lead.objects.get(id=lead_id)
+        print(f"Found lead: {lead.full_name}, status: {lead.status}")
     except Lead.DoesNotExist:
+        print(f"Lead {lead_id} not found")
         return Response({'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
     
     serializer = LeadUpdateSerializer(lead, data=request.data, partial=True)
+    print(f"Serializer data: {serializer.initial_data}")
+    print(f"Serializer valid: {serializer.is_valid()}")
+    if not serializer.is_valid():
+        print(f"Serializer errors: {serializer.errors}")
     if serializer.is_valid():
         old_status = lead.status
         old_appointment_date = lead.appointment_date
@@ -386,7 +393,7 @@ def qualify_lead(request, lead_id):
         )
         
         return Response({
-            'lead': serializer.data,
+            'lead': LeadSerializer(updated_lead).data,
             'notification': {
                 'message': notification_message,
                 'agent': updated_lead.assigned_agent.get_full_name(),
@@ -454,101 +461,53 @@ def mark_all_notifications_read(request):
     return Response({'message': 'All notifications marked as read'})
 
 
-# Callback Views
-class CallbackListCreateView(generics.ListCreateAPIView):
-    """
-    List and create callbacks for the authenticated agent.
-    """
-    serializer_class = CallbackSerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'lead']
-    search_fields = ['lead__full_name', 'lead__phone', 'notes']
-    ordering_fields = ['scheduled_time', 'created_at']
-    ordering = ['scheduled_time']
-    
-    def get_queryset(self):
-        """Return callbacks for the authenticated agent"""
-        return Callback.objects.filter(agent=self.request.user)
-    
-    def perform_create(self, serializer):
-        """Set the agent to the current user"""
-        serializer.save(agent=self.request.user)
-
-
-class CallbackDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    Retrieve, update, or delete a callback.
-    """
-    serializer_class = CallbackSerializer
-    permission_classes = [IsAuthenticated]
-    
-    def get_queryset(self):
-        """Return callbacks for the authenticated agent"""
-        return Callback.objects.filter(agent=self.request.user)
-
-
-@api_view(['GET'])
+@api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
-def callback_due_list(request):
+def delete_notification(request, notification_id):
     """
-    Get callbacks that are due or overdue for the authenticated agent.
-    """
-    callbacks = Callback.objects.filter(
-        agent=request.user,
-        status='scheduled'
-    ).order_by('scheduled_time')
-    
-    due_callbacks = []
-    overdue_callbacks = []
-    
-    for callback in callbacks:
-        if callback.is_overdue:
-            overdue_callbacks.append(callback)
-        elif callback.is_due:
-            due_callbacks.append(callback)
-    
-    serializer = CallbackSerializer(due_callbacks + overdue_callbacks, many=True)
-    return Response({
-        'due_callbacks': [cb for cb in serializer.data if cb['is_due']],
-        'overdue_callbacks': [cb for cb in serializer.data if cb['is_overdue']]
-    })
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def schedule_callback(request):
-    """
-    Schedule a callback for a lead.
-    """
-    serializer = CallbackCreateSerializer(data=request.data)
-    if serializer.is_valid():
-        # Set the agent to the current user
-        callback = serializer.save(agent=request.user)
-        response_serializer = CallbackSerializer(callback)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def update_callback_status(request, callback_id):
-    """
-    Update the status of a callback.
+    Delete a notification.
     """
     try:
-        callback = Callback.objects.get(id=callback_id, agent=request.user)
-    except Callback.DoesNotExist:
-        return Response({'error': 'Callback not found'}, status=status.HTTP_404_NOT_FOUND)
+        notification = LeadNotification.objects.get(
+            id=notification_id, 
+            agent=request.user
+        )
+        notification.delete()
+        return Response({'message': 'Notification deleted'})
+    except LeadNotification.DoesNotExist:
+        return Response({'error': 'Notification not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bulk_delete_leads_forever(request):
+    """
+    Permanently delete multiple leads (hard delete).
+    """
+    lead_ids = request.data.get('lead_ids', [])
+    if not lead_ids:
+        return Response({'error': 'No lead IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
     
-    new_status = request.data.get('status')
-    if new_status not in [choice[0] for choice in Callback.CALLBACK_STATUS_CHOICES]:
-        return Response({'error': 'Invalid status'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    callback.status = new_status
-    if 'notes' in request.data:
-        callback.notes = request.data['notes']
-    callback.save()
-    
-    serializer = CallbackSerializer(callback)
-    return Response(serializer.data)
+    try:
+        # Get leads that belong to the current agent
+        leads = Lead.objects.filter(
+            id__in=lead_ids,
+            assigned_agent=request.user
+        )
+        
+        count = leads.count()
+        if count == 0:
+            return Response({'error': 'No leads found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Hard delete the leads
+        leads.delete()
+        
+        return Response({
+            'message': f'{count} leads permanently deleted',
+            'deleted_count': count
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

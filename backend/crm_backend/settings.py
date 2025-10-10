@@ -65,16 +65,49 @@ WSGI_APPLICATION = 'crm_backend.wsgi.application'
 # --------------------
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'margav_crm',
+        'USER': 'margav_user',
+        'PASSWORD': 'margav-energy',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
-# Use PostgreSQL if DATABASE_URL is provided (Render production)
+# Use SQLite as fallback if DATABASE_URL is not provided
 if config('DATABASE_URL', default=None):
     import dj_database_url
     DATABASES['default'] = dj_database_url.parse(config('DATABASE_URL'))
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'margav_crm',
+        'USER': 'margav_user',
+        'PASSWORD': 'margav-energy',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
 
+# Use SQLite as fallback if DATABASE_URL is not provided
+if config('DATABASE_URL', default=None):
+    import dj_database_url
+    DATABASES['default'] = dj_database_url.parse(config('DATABASE_URL'))
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'margav_crm',
+        'USER': 'margav_user',
+        'PASSWORD': 'margav-energy',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+
+# Use SQLite as fallback if DATABASE_URL is provided (Render production)
+if config('DATABASE_URL', default=None):
+    import dj_database_url
+    DATABASES['default'] = dj_database_url.parse(config('DATABASE_URL'))
 # --------------------
 # Auth & Passwords
 # --------------------
@@ -84,6 +117,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
+
+# --------------------
+# Timezone Settings
+# --------------------
+TIME_ZONE = 'Europe/London'
+USE_TZ = True
 
 # --------------------
 # Internationalization
@@ -166,3 +205,9 @@ LOGGING = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Google Calendar OAuth Configuration
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
+GOOGLE_REDIRECT_URI = config('GOOGLE_REDIRECT_URI', default='http://localhost:8000/api/auth/google/callback')
+GOOGLE_REFRESH_TOKEN = config('GOOGLE_REFRESH_TOKEN', default='')

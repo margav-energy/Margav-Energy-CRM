@@ -1,5 +1,8 @@
-{% extends "admin/change_list.html" %} {% load i18n admin_urls static
-admin_modify %} {% block extrahead %} {{ block.super }}
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block extrahead %}
+{{ block.super }}
 <style>
   .user-management-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -58,7 +61,7 @@ admin_modify %} {% block extrahead %} {{ block.super }}
     display: inline-block;
     padding: 8px 16px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    color: white !important;
     text-decoration: none;
     border-radius: 6px;
     font-size: 0.9rem;
@@ -69,18 +72,25 @@ admin_modify %} {% block extrahead %} {{ block.super }}
   .action-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    color: white;
+    color: white !important;
     text-decoration: none;
+  }
+
+  .action-btn * {
+    color: white !important;
   }
 
   .action-btn.success {
     background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+    color: white !important;
   }
   .action-btn.warning {
     background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white !important;
   }
   .action-btn.danger {
     background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    color: white !important;
   }
 
   .user-stats {
@@ -122,19 +132,43 @@ admin_modify %} {% block extrahead %} {{ block.super }}
       grid-template-columns: repeat(2, 1fr);
     }
   }
+
+  /* Quick action links styling */
+  .addlink {
+    color: white !important;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .addlink:hover {
+    color: #f0f0f0 !important;
+    text-decoration: none;
+  }
+
+  /* Object tools container styling */
+  .object-tools {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+
+  .object-tools li {
+    display: inline-block;
+    margin-right: 15px;
+  }
+
+  .object-tools li:last-child {
+    margin-right: 0;
+  }
 </style>
-{% endblock %} {% block object-tools-items %} {{ block.super }}
-<li>
-  <a href="{% url 'admin_accounts_user_bulk_creation' %}" class="addlink">
-    {% trans 'Bulk User Creation' %}
-  </a>
-</li>
-<li>
-  <a href="{% url 'admin:leads_dialeruserlink_changelist' %}" class="addlink">
-    {% trans 'Manage Dialer Links' %}
-  </a>
-</li>
-{% endblock %} {% block content %}
+{% endblock %}
+
+{% block object-tools-items %}
+{% endblock %}
+
+{% block content %}
 <div class="user-management-header">
   <h1>User Management</h1>
   <p>Manage system users, roles, and dialer integrations</p>
