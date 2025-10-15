@@ -356,7 +356,6 @@ def send_to_kelly(request, lead_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-@csrf_exempt
 def qualify_lead(request, lead_id):
     """
     Kelly qualifies a lead and notifies the agent.

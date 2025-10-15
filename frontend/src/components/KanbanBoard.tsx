@@ -293,10 +293,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
         ];
       }
 
-      // Populate columns with leads
+      // Populate columns with leads - filter out any undefined leads
+      const validLeads = leads.filter(lead => lead && lead.id);
       const populatedColumns = columnDefinitions.map(column => ({
         ...column,
-        leads: leads.filter(lead => column.statuses.includes(lead.status))
+        leads: validLeads.filter(lead => column.statuses.includes(lead.status))
       }));
 
       setColumns(populatedColumns);
@@ -374,7 +375,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
     setColumns(prevColumns => {
       return prevColumns.map(column => ({
         ...column,
-        leads: column.leads.map(lead => 
+        leads: column.leads.filter(lead => lead && lead.id).map(lead => 
           lead.id === updatedLead.id ? updatedLead : lead
         )
       }));

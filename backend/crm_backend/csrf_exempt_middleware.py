@@ -9,7 +9,11 @@ class CSRFExemptAPIMiddleware(MiddlewareMixin):
     """
     def process_request(self, request):
         # Check if the request is to an API endpoint
-        if request.path.startswith('/api/') or request.path.startswith('/leads/') and request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
+        api_paths = ['/api/', '/leads/', '/callbacks/', '/notifications/']
+        is_api_request = any(request.path.startswith(path) for path in api_paths)
+        
+        if is_api_request and request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
             # Set a flag to skip CSRF verification
             request._dont_enforce_csrf_checks = True
+            print(f"CSRF exempted for {request.method} {request.path}")
         return None
