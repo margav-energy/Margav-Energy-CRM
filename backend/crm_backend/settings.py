@@ -11,7 +11,7 @@ if env_path.exists():
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,crm.margav.energy,www.crm.margav.energy,testserver,margav-crm-backend.onrender.com').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,crm.margav.energy,www.crm.margav.energy,testserver,margav-crm-backend.onrender.com,margav-energy-crm.onrender.com').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
