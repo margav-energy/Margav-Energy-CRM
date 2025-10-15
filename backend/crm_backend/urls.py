@@ -57,6 +57,17 @@ def serve_favicon(request):
             return HttpResponse(f.read(), content_type='image/x-icon')
     return HttpResponse(status=404)
 
+def serve_react_app(request):
+    """Serve the React app's index.html from static files"""
+    index_path = os.path.join(settings.STATIC_ROOT, 'index.html')
+    if os.path.exists(index_path):
+        with open(index_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return HttpResponse(content, content_type='text/html')
+    else:
+        # Fallback to template if static file not found
+        return TemplateView.as_view(template_name='index.html')(request)
+
 def serve_static_file(request, path):
     """Serve static files with proper MIME types"""
     file_path = os.path.join(settings.STATIC_ROOT, path)
@@ -107,8 +118,8 @@ else:
 
 # React frontend routes
 urlpatterns += [
-    path('', TemplateView.as_view(template_name='index.html'), name='home'),
-    path('dashboard/', TemplateView.as_view(template_name='index.html'), name='dashboard'),
-    path('login/', TemplateView.as_view(template_name='index.html'), name='login'),
-    re_path(r'^(?!api|admin|static|favicon\.ico).*$', TemplateView.as_view(template_name='index.html')),
+    path('', serve_react_app, name='home'),
+    path('dashboard/', serve_react_app, name='dashboard'),
+    path('login/', serve_react_app, name='login'),
+    re_path(r'^(?!api|admin|static|favicon\.ico|debug).*$', serve_react_app),
 ]
