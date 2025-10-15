@@ -15,6 +15,18 @@ def debug_view(request):
     """Debug view to test URL routing"""
     return HttpResponse(f"Debug: URL={request.path}, Method={request.method}")
 
+def debug_static_files(request):
+    """Debug view to check static files"""
+    import os
+    static_root = settings.STATIC_ROOT
+    static_files = []
+    if os.path.exists(static_root):
+        for root, dirs, files in os.walk(static_root):
+            for file in files:
+                static_files.append(os.path.join(root, file).replace(str(static_root), ''))
+    
+    return HttpResponse(f"Static root: {static_root}<br>Files: {', '.join(static_files[:10])}")
+
 def serve_favicon(request):
     """Serve favicon.ico from static files"""
     favicon_path = os.path.join(settings.STATIC_ROOT, 'favicon.ico')
@@ -46,7 +58,7 @@ def serve_static_file(request, path):
 
 urlpatterns = [
     path('favicon.ico', serve_favicon, name='favicon'),
-    path('static/<path:path>', serve_static_file, name='static_file'),
+    path('debug/static/', debug_static_files, name='debug_static'),
 
     # Custom admin views
     path('admin/accounts/user/bulk-creation/', admin.site.admin_view(admin_views.bulk_user_creation), name='admin_accounts_user_bulk_creation'),
