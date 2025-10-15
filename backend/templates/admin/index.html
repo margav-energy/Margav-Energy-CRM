@@ -78,6 +78,22 @@
     letter-spacing: 0.5px;
   }
 
+  .stat-filter {
+    color: #999;
+    font-size: 0.8rem;
+    margin: 5px 0 0 0;
+    font-style: italic;
+  }
+
+  .stat-card {
+    cursor: pointer;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  }
+
   .quick-actions {
     background: white;
     padding: 30px;
@@ -225,21 +241,25 @@
   </div>
 
   <div class="stats-grid">
-    <div class="stat-card agents">
+    <div class="stat-card agents" onclick="filterUsers('agent')">
       <p class="stat-number">{{ agents_count }}</p>
       <p class="stat-label">Agents</p>
+      <p class="stat-filter">Click to filter</p>
     </div>
-    <div class="stat-card qualifiers">
+    <div class="stat-card qualifiers" onclick="filterUsers('qualifier')">
       <p class="stat-number">{{ qualifiers_count }}</p>
       <p class="stat-label">Qualifiers</p>
+      <p class="stat-filter">Click to filter</p>
     </div>
-    <div class="stat-card salesreps">
+    <div class="stat-card salesreps" onclick="filterUsers('sales_rep')">
       <p class="stat-number">{{ salesreps_count }}</p>
       <p class="stat-label">Sales Reps</p>
+      <p class="stat-filter">Click to filter</p>
     </div>
-    <div class="stat-card leads">
+    <div class="stat-card leads" onclick="filterLeads()">
       <p class="stat-number">{{ total_leads }}</p>
       <p class="stat-label">Total Leads</p>
+      <p class="stat-filter">Click to filter</p>
     </div>
   </div>
 
@@ -276,28 +296,6 @@
     </div>
   </div>
 
-  <div class="recent-activity">
-    <h2>Recent Activity</h2>
-    {% if activity_items %}
-      {% for item in activity_items %}
-        <div class="activity-item">
-          <div class="activity-icon {{ item.type }}">{{ item.icon }}</div>
-          <div class="activity-content">
-            <div class="activity-title">{{ item.title }}</div>
-            <div class="activity-time">{{ item.time|timesince }} ago</div>
-          </div>
-        </div>
-      {% endfor %}
-    {% else %}
-      <div class="activity-item">
-        <div class="activity-icon system">🚀</div>
-        <div class="activity-content">
-          <div class="activity-title">No recent activity</div>
-          <div class="activity-time">System ready</div>
-        </div>
-      </div>
-    {% endif %}
-  </div>
 </div>
 
 <!-- Delete User Modal -->
@@ -452,5 +450,17 @@
 
   // Load stats when page loads
   document.addEventListener("DOMContentLoaded", loadDashboardStats);
+
+  // Filter functions
+  function filterUsers(role) {
+    const url = new URL(window.location.origin + '/admin/accounts/user/');
+    url.searchParams.set('role__exact', role);
+    window.open(url.toString(), '_blank');
+  }
+
+  function filterLeads() {
+    const url = new URL(window.location.origin + '/admin/leads/lead/');
+    window.open(url.toString(), '_blank');
+  }
 </script>
 {% endblock %}

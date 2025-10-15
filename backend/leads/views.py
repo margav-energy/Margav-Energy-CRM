@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 import logging
 from .models import Lead, Dialer, LeadNotification, DialerUserLink, Callback
 from django.conf import settings
@@ -595,6 +597,7 @@ def callback_list(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@csrf_exempt
 def callback_create(request):
     """
     Create a new callback.

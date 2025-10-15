@@ -13,6 +13,8 @@ const QualifierDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updatingLead, setUpdatingLead] = useState<Lead | null>(null);
   const [appointmentLead, setAppointmentLead] = useState<Lead | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [agentFilter, setAgentFilter] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLeads();
@@ -85,6 +87,26 @@ const QualifierDashboard: React.FC = () => {
   };
 
   const statusCounts = getStatusCounts();
+
+  // Filter leads based on current filters
+  const getFilteredLeads = () => {
+    let filtered = leads;
+    
+    if (statusFilter) {
+      filtered = filtered.filter(lead => lead.status === statusFilter);
+    }
+    
+    if (agentFilter) {
+      filtered = filtered.filter(lead => lead.assigned_agent === parseInt(agentFilter));
+    }
+    
+    return filtered;
+  };
+
+  const clearFilters = () => {
+    setStatusFilter(null);
+    setAgentFilter(null);
+  };
 
   if (loading) {
     return (
