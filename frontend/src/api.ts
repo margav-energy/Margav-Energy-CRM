@@ -3,8 +3,8 @@ import { AuthResponse, User, Lead, Dialer, ApiResponse, LoginForm, LeadForm, Lea
 
 // Base API configuration
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://crm.margav.energy/api' 
-  : 'http://localhost:8000/api';
+  ? 'https://crm.margav.energy' 
+  : 'http://localhost:8000';
 
 // Create axios instance
 const api = axios.create({
@@ -64,12 +64,12 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: async (credentials: LoginForm): Promise<AuthResponse> => {
-    const response: AxiosResponse<AuthResponse> = await api.post('/api-token-auth/', credentials);
+    const response: AxiosResponse<AuthResponse> = await api.post('/api/api-token-auth/', credentials);
     return response.data;
   },
 
   getCurrentUser: async (): Promise<User> => {
-    const response: AxiosResponse<User> = await api.get('/users/me/');
+    const response: AxiosResponse<User> = await api.get('/api/users/me/');
     return response.data;
   },
 
@@ -81,17 +81,17 @@ export const authAPI = {
 // Users API
 export const usersAPI = {
   getUsers: async (): Promise<ApiResponse<User>> => {
-    const response: AxiosResponse<ApiResponse<User>> = await api.get('/users/');
+    const response: AxiosResponse<ApiResponse<User>> = await api.get('/api/users/');
     return response.data;
   },
 
   getUser: async (id: number): Promise<User> => {
-    const response: AxiosResponse<User> = await api.get(`/users/${id}/`);
+    const response: AxiosResponse<User> = await api.get(`/api/users/${id}/`);
     return response.data;
   },
 
   changePassword: async (oldPassword: string, newPassword: string): Promise<{ message: string }> => {
-    const response: AxiosResponse<{ message: string }> = await api.post('/users/change-password/', {
+    const response: AxiosResponse<{ message: string }> = await api.post('/api/users/change-password/', {
       old_password: oldPassword,
       new_password: newPassword,
     });
@@ -99,7 +99,7 @@ export const usersAPI = {
   },
 
   changePasswordForUser: async (username: string, oldPassword: string, newPassword: string): Promise<{ message: string }> => {
-    const response: AxiosResponse<{ message: string }> = await api.post('/users/change-password-for-user/', {
+    const response: AxiosResponse<{ message: string }> = await api.post('/api/users/change-password-for-user/', {
       username: username,
       old_password: oldPassword,
       new_password: newPassword,
@@ -116,7 +116,7 @@ export const leadsAPI = {
     search?: string;
     ordering?: string;
   }): Promise<ApiResponse<Lead>> => {
-    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/leads/', { params });
+    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/api/leads/', { params });
     return response.data;
   },
 
@@ -130,7 +130,7 @@ export const leadsAPI = {
     console.log('API: Auth token available:', !!authToken);
     console.log('API: Auth token:', authToken);
     try {
-      const response: AxiosResponse<Lead> = await api.post('/leads/', leadData);
+      const response: AxiosResponse<Lead> = await api.post('/api/leads/', leadData);
       console.log('API: Lead created successfully:', response.data);
       return response.data;
     } catch (error: any) {
@@ -203,7 +203,7 @@ export const dialerAPI = {
 // Notifications API
 export const notificationsAPI = {
   getNotifications: async (): Promise<ApiResponse<LeadNotification>> => {
-    const response: AxiosResponse<ApiResponse<LeadNotification>> = await api.get('/notifications/');
+    const response: AxiosResponse<ApiResponse<LeadNotification>> = await api.get('/api/notifications/');
     return response.data;
   },
 
@@ -227,7 +227,7 @@ export const notificationsAPI = {
 export const callbacksAPI = {
   getCallbacks: async (): Promise<Callback[]> => {
     try {
-      const response: AxiosResponse<Callback[]> = await api.get('/callbacks/');
+      const response: AxiosResponse<Callback[]> = await api.get('/api/callbacks/');
       console.log('API: Fetched callbacks:', response.data);
       return response.data;
     } catch (error: any) {

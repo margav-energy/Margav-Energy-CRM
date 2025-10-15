@@ -55,6 +55,12 @@ def serve_favicon(request):
     if os.path.exists(favicon_path):
         with open(favicon_path, 'rb') as f:
             return HttpResponse(f.read(), content_type='image/x-icon')
+    else:
+        # Try to serve from frontend build directory
+        frontend_favicon = os.path.join(settings.STATIC_ROOT, 'favicon.ico')
+        if os.path.exists(frontend_favicon):
+            with open(frontend_favicon, 'rb') as f:
+                return HttpResponse(f.read(), content_type='image/x-icon')
     return HttpResponse(status=404)
 
 def serve_react_app(request):
