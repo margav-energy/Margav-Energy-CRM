@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import admin_views
 from . import data_upload_views
+from . import admin_dashboard_views
 
 urlpatterns = [
     path('users/', views.UserListCreateView.as_view(), name='user-list-create'),
@@ -16,4 +17,5 @@ urlpatterns = [
     # Admin views
     path('admin/bulk-creation/', admin_views.bulk_user_creation, name='bulk_user_creation'),
     path('admin/create-single-user/', admin_views.create_single_user, name='create_single_user'),
+    path('admin/dashboard/', admin_dashboard_views.admin_dashboard, name='admin_dashboard'),
 ]

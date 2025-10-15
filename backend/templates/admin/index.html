@@ -226,19 +226,19 @@
 
   <div class="stats-grid">
     <div class="stat-card agents">
-      <p class="stat-number" id="agents-count">-</p>
+      <p class="stat-number">{{ agents_count }}</p>
       <p class="stat-label">Agents</p>
     </div>
     <div class="stat-card qualifiers">
-      <p class="stat-number" id="qualifiers-count">-</p>
+      <p class="stat-number">{{ qualifiers_count }}</p>
       <p class="stat-label">Qualifiers</p>
     </div>
     <div class="stat-card salesreps">
-      <p class="stat-number" id="salesreps-count">-</p>
+      <p class="stat-number">{{ salesreps_count }}</p>
       <p class="stat-label">Sales Reps</p>
     </div>
     <div class="stat-card leads">
-      <p class="stat-number" id="leads-count">-</p>
+      <p class="stat-number">{{ total_leads }}</p>
       <p class="stat-label">Total Leads</p>
     </div>
   </div>
@@ -278,27 +278,25 @@
 
   <div class="recent-activity">
     <h2>Recent Activity</h2>
-    <div class="activity-item">
-      <div class="activity-icon user">👤</div>
-      <div class="activity-content">
-        <div class="activity-title">18 Dialer Users Created</div>
-        <div class="activity-time">Just now</div>
+    {% if activity_items %}
+      {% for item in activity_items %}
+        <div class="activity-item">
+          <div class="activity-icon {{ item.type }}">{{ item.icon }}</div>
+          <div class="activity-content">
+            <div class="activity-title">{{ item.title }}</div>
+            <div class="activity-time">{{ item.time|timesince }} ago</div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="activity-item">
+        <div class="activity-icon system">🚀</div>
+        <div class="activity-content">
+          <div class="activity-title">No recent activity</div>
+          <div class="activity-time">System ready</div>
+        </div>
       </div>
-    </div>
-    <div class="activity-item">
-      <div class="activity-icon dialer">🔗</div>
-      <div class="activity-content">
-        <div class="activity-title">Dialer User Links Configured</div>
-        <div class="activity-time">Just now</div>
-      </div>
-    </div>
-    <div class="activity-item">
-      <div class="activity-icon lead">📋</div>
-      <div class="activity-content">
-        <div class="activity-title">System Ready for Dialer Integration</div>
-        <div class="activity-time">Just now</div>
-      </div>
-    </div>
+    {% endif %}
   </div>
 </div>
 

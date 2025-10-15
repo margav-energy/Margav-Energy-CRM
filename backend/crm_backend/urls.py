@@ -77,6 +77,16 @@ def serve_react_app(request):
         # Fallback to template if static file not found
         return TemplateView.as_view(template_name='index.html')(request)
 
+def serve_data_upload(request):
+    """Serve the data upload HTML page"""
+    upload_path = os.path.join(settings.BASE_DIR.parent, 'data_upload.html')
+    if os.path.exists(upload_path):
+        with open(upload_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return HttpResponse(content, content_type='text/html')
+    else:
+        return HttpResponse('Data upload page not found', status=404)
+
 def serve_static_file(request, path):
     """Serve static files with proper MIME types"""
     file_path = os.path.join(settings.STATIC_ROOT, path)
@@ -125,10 +135,15 @@ else:
     # In production, also serve static files explicitly as fallback
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
+# Data upload page
+urlpatterns += [
+    path('data_upload.html', serve_data_upload, name='data_upload'),
+]
+
 # React frontend routes
 urlpatterns += [
     path('', serve_react_app, name='home'),
     path('dashboard/', serve_react_app, name='dashboard'),
     path('login/', serve_react_app, name='login'),
-    re_path(r'^(?!api|admin|static|favicon\.ico|debug).*$', serve_react_app),
+    re_path(r'^(?!api|admin|static|favicon\.ico|debug|data_upload\.html).*$', serve_react_app),
 ]
