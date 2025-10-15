@@ -1,4 +1,9 @@
-import pandas as pd
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    pd = None
 import re
 from datetime import datetime
 from django.contrib.auth import get_user_model
@@ -22,6 +27,10 @@ class ExcelLeadParser:
         """
         Parse Excel file and return list of lead data.
         """
+        if not PANDAS_AVAILABLE:
+            self.errors.append("Pandas is not available. Excel parsing is disabled.")
+            return []
+        
         try:
             # Read Excel file
             df = pd.read_excel(file_path)

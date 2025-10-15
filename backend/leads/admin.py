@@ -396,6 +396,8 @@ class LeadAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
                             df = pd.read_excel(tmp_file_path)
                             found_columns = list(df.columns)
                             error_msg += f'. Found columns: {", ".join(found_columns)}'
+                        except ImportError:
+                            error_msg += '. Pandas not available for column inspection'
                         except:
                             pass
                         

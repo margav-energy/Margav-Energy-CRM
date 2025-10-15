@@ -1,7 +1,12 @@
 """
 Utility functions for exporting lead data
 """
-import pandas as pd
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    pd = None
 from io import BytesIO
 from django.http import HttpResponse
 from django.utils import timezone
@@ -9,6 +14,9 @@ from .models import Lead
 
 def export_leads_to_excel(queryset=None):
     """Export leads to Excel format"""
+    if not PANDAS_AVAILABLE:
+        raise ImportError("Pandas is not available. Excel export is disabled.")
+    
     if queryset is None:
         queryset = Lead.objects.all()
     
