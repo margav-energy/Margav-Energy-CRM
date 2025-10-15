@@ -257,13 +257,16 @@ const AgentDashboard: React.FC = () => {
         callbacksAPI.getDueCallbacks()
       ]);
       
-      setCallbacks(callbacksData);
-      setDueCallbacks(dueCallbacksData);
+      // Handle different response structures
+      setCallbacks(Array.isArray(callbacksData) ? callbacksData : []);
+      setDueCallbacks(Array.isArray(dueCallbacksData) ? dueCallbacksData : []);
       
       // DISABLED: Automatic callback notifications to prevent spam
       // Callback reminders are now shown in the UI instead of toasters
     } catch (error) {
       console.error('Error fetching callbacks:', error);
+      setCallbacks([]);
+      setDueCallbacks([]);
     }
   };
 
@@ -568,7 +571,7 @@ const AgentDashboard: React.FC = () => {
       </div>
 
       {/* Callback Reminders */}
-      {dueCallbacks.length > 0 && (
+      {Array.isArray(dueCallbacks) && dueCallbacks.length > 0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -576,10 +579,10 @@ const AgentDashboard: React.FC = () => {
             </div>
             <div className="ml-3 flex-1">
               <h3 className="text-sm font-medium text-orange-800">
-                Callback Reminders ({dueCallbacks.length})
+                Callback Reminders ({Array.isArray(dueCallbacks) ? dueCallbacks.length : 0})
               </h3>
               <div className="mt-2 text-sm text-orange-700">
-                {dueCallbacks.slice(0, 3).map((callback, index) => (
+                {Array.isArray(dueCallbacks) && dueCallbacks.slice(0, 3).map((callback, index) => (
                   <div key={callback.id} className="flex items-center justify-between mb-2">
                     <div className="flex-1">
                       <span className="font-medium">{callback.lead_name}</span>
@@ -595,7 +598,7 @@ const AgentDashboard: React.FC = () => {
                     </button>
                   </div>
                 ))}
-                {dueCallbacks.length > 3 && (
+                {Array.isArray(dueCallbacks) && dueCallbacks.length > 3 && (
                   <div className="text-orange-600 font-medium">
                     +{dueCallbacks.length - 3} more callbacks
                   </div>
