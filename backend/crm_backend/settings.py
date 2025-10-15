@@ -84,36 +84,6 @@ DATABASES = {
 if config('DATABASE_URL', default=None):
     import dj_database_url
     DATABASES['default'] = dj_database_url.parse(config('DATABASE_URL'))
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'margav_crm',
-        'USER': 'margav_user',
-        'PASSWORD': 'margav-energy',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
-
-# Use SQLite as fallback if DATABASE_URL is not provided
-if config('DATABASE_URL', default=None):
-    import dj_database_url
-    DATABASES['default'] = dj_database_url.parse(config('DATABASE_URL'))
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'margav_crm',
-        'USER': 'margav_user',
-        'PASSWORD': 'margav-energy',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
-
-# Use SQLite as fallback if DATABASE_URL is provided (Render production)
-if config('DATABASE_URL', default=None):
-    import dj_database_url
-    DATABASES['default'] = dj_database_url.parse(config('DATABASE_URL'))
 # --------------------
 # Auth & Passwords
 # --------------------
