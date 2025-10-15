@@ -34,10 +34,18 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'crm_backend.csrf_exempt_middleware.CSRFExemptAPIMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# Disable CSRF for API endpoints
+CSRF_TRUSTED_ORIGINS = [
+    'https://crm.margav.energy',
+    'https://www.crm.margav.energy',
+    'https://margav-energy-crm.onrender.com',
 ]
 
 ROOT_URLCONF = 'crm_backend.urls'
@@ -175,7 +183,7 @@ CORS_ALLOW_CREDENTIALS = True
 # Google / API Keys
 # --------------------
 GOOGLE_CREDENTIALS_PATH = config('GOOGLE_CREDENTIALS_PATH', default=None)
-GOOGLE_CALENDAR_EMAIL = config('GOOGLE_CALENDAR_EMAIL', default='ella@margav.energy')
+GOOGLE_CALENDAR_EMAIL = config('GOOGLE_CALENDAR_EMAIL', default='sales@margav.energy')
 DIALER_API_KEY = config('DIALER_API_KEY', default=None)
 
 # --------------------

@@ -56,7 +56,7 @@ Single Render Service
 3. **Build & Start Commands**
    ```
    Build Command:
-   cd ../frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt && python manage.py collectstatic --noinput
+   chmod +x build-production.sh && ./build-production.sh
    
    Start Command:
    gunicorn crm_backend.wsgi:application

@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 import logging
 from .models import Lead, Dialer, LeadNotification, DialerUserLink, Callback
 from django.conf import settings
@@ -355,6 +356,7 @@ def send_to_kelly(request, lead_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@csrf_exempt
 def qualify_lead(request, lead_id):
     """
     Kelly qualifies a lead and notifies the agent.
@@ -597,7 +599,6 @@ def callback_list(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-@csrf_exempt
 def callback_create(request):
     """
     Create a new callback.
