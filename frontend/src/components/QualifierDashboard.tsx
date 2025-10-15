@@ -3,7 +3,7 @@ import { Lead } from '../types';
 import { leadsAPI } from '../api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
-import LeadCard from './LeadCard';
+// import LeadCard from './LeadCard';
 import QualifierLeadModal from './QualifierLeadModal';
 import AppointmentForm from './AppointmentForm';
 
@@ -32,9 +32,9 @@ const QualifierDashboard: React.FC = () => {
     }
   };
 
-  const handleUpdateLead = async (lead: Lead) => {
-    setUpdatingLead(lead);
-  };
+  // const handleUpdateLead = async (lead: Lead) => {
+  //   setUpdatingLead(lead);
+  // };
 
   const handleLeadUpdate = async () => {
     try {
@@ -48,9 +48,9 @@ const QualifierDashboard: React.FC = () => {
     }
   };
 
-  const handleScheduleAppointment = (lead: Lead) => {
-    setAppointmentLead(lead);
-  };
+  // const handleScheduleAppointment = (lead: Lead) => {
+  //   setAppointmentLead(lead);
+  // };
 
   const handleAppointmentSuccess = async () => {
     await fetchLeads();

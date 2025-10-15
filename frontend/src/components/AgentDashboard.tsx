@@ -21,7 +21,7 @@ const AgentDashboard: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [callbacks, setCallbacks] = useState<Callback[]>([]);
   const [dueCallbacks, setDueCallbacks] = useState<Callback[]>([]);
-  const [shownNotifications, setShownNotifications] = useState<Set<number>>(new Set());
+  // const [shownNotifications, setShownNotifications] = useState<Set<number>>(new Set());
   const [selectedCallback, setSelectedCallback] = useState<Callback | null>(null);
   const [showCallbackCompletion, setShowCallbackCompletion] = useState(false);
   const cardsPerPage = 4;
