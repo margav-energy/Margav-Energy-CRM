@@ -223,10 +223,12 @@ const AgentDashboard: React.FC = () => {
       //   });
       // }
       
-      setLeads(response.results);
+      // Handle different response structures
+      const leadsData = response.results || response || [];
+      setLeads(Array.isArray(leadsData) ? leadsData : []);
       
       // Reset to first page if current page is beyond available pages
-      const newTotalPages = Math.ceil(response.results.length / cardsPerPage);
+      const newTotalPages = Math.ceil(leadsData.length / cardsPerPage);
       if (currentPage > newTotalPages && newTotalPages > 0) {
         setCurrentPage(1);
       }
@@ -237,6 +239,7 @@ const AgentDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to fetch leads:', error);
+      setLeads([]); // Set empty array on error
       if (showLoading) {
         toast.error('Failed to fetch leads');
       }

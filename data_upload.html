@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Upload - Margav Energy CRM</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            background-color: #fafafa;
+        }
+        .upload-area.dragover {
+            border-color: #007bff;
+            background-color: #e3f2fd;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .progress {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Data Upload - Margav Energy CRM</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <h3>📁 Upload Your Data Export</h3>
+            <p>Drag and drop your <code>data_export.json</code> file here, or click to select</p>
+            <input type="file" id="fileInput" accept=".json" style="display: none;">
+            <button onclick="document.getElementById('fileInput').click()">Choose File</button>
+        </div>
+        
+        <div id="status"></div>
+        <div class="progress" id="progress" style="display: none;">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <button id="uploadBtn" onclick="uploadData()" disabled>Upload Data</button>
+            <button onclick="checkStatus()">Check Upload Status</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        const API_BASE = 'https://crm.margav.energy/api';
+        
+        // File selection handling
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+        document.getElementById('uploadArea').addEventListener('click', () => document.getElementById('fileInput').click());
+        document.getElementById('uploadArea').addEventListener('dragover', handleDragOver);
+        document.getElementById('uploadArea').addEventListener('drop', handleDrop);
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.name.endsWith('.json')) {
+                selectedFile = file;
+                showStatus('File selected: ' + file.name, 'info');
+                document.getElementById('uploadBtn').disabled = false;
+            } else {
+                showStatus('Please select a valid JSON file', 'error');
+            }
+        }
+        
+        function handleDragOver(event) {
+            event.preventDefault();
+            document.getElementById('uploadArea').classList.add('dragover');
+        }
+        
+        function handleDrop(event) {
+            event.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+            const file = event.dataTransfer.files[0];
+            if (file && file.name.endsWith('.json')) {
+                selectedFile = file;
+                showStatus('File selected: ' + file.name, 'info');
+                document.getElementById('uploadBtn').disabled = false;
+            } else {
+                showStatus('Please drop a valid JSON file', 'error');
+            }
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        async function uploadData() {
+            if (!selectedFile) {
+                showStatus('Please select a file first', 'error');
+                return;
+            }
+            
+            try {
+                showStatus('Reading file...', 'info');
+                document.getElementById('progress').style.display = 'block';
+                updateProgress(10);
+                
+                const text = await selectedFile.text();
+                updateProgress(30);
+                
+                showStatus('Uploading data to server...', 'info');
+                updateProgress(50);
+                
+                const response = await fetch(`${API_BASE}/upload-data/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: text
+                });
+                
+                updateProgress(80);
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`✅ ${result.message}`, 'success');
+                    updateProgress(100);
+                    document.getElementById('results').innerHTML = `
+                        <div class="status success">
+                            <h3>🎉 Upload Successful!</h3>
+                            <p>Your data has been imported successfully.</p>
+                            <p><a href="https://crm.margav.energy/login" target="_blank">Go to CRM Login</a></p>
+                        </div>
+                    `;
+                } else {
+                    showStatus(`❌ Error: ${result.error}`, 'error');
+                }
+                
+            } catch (error) {
+                showStatus(`❌ Upload failed: ${error.message}`, 'error');
+                console.error('Upload error:', error);
+            }
+        }
+        
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/upload-status/`);
+                const result = await response.json();
+                
+                if (result.has_data) {
+                    showStatus(`✅ Database has data: ${result.users} users, ${result.leads} leads`, 'success');
+                } else {
+                    showStatus('📊 Database is empty - no data uploaded yet', 'info');
+                }
+            } catch (error) {
+                showStatus(`❌ Error checking status: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateProgress(percent) {
+            document.getElementById('progressBar').style.width = percent + '%';
+        }
+    </script>
+</body>
+</html>
