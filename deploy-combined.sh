@@ -7,18 +7,17 @@ echo "🚀 Starting Combined Service Deployment..."
 
 # Build Frontend
 echo "📦 Building React Frontend..."
-cd frontend
+cd ../frontend
 npm install
 npm run build
-cd ..
+cd ../backend
 
 # Build Backend
 echo "🐍 Setting up Python Backend..."
-pip install -r backend/requirements.txt
+pip install -r requirements.txt
 
 # Collect static files (includes React build)
 echo "📁 Collecting static files..."
-cd backend
 python manage.py collectstatic --noinput
 
 # Run migrations

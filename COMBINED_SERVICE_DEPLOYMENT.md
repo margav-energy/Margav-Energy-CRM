@@ -33,8 +33,10 @@ Single Render Service
    ```
 
 3. **Save Database URL**
-   - Copy the `DATABASE_URL` from the database dashboard
-   - You'll need this for the web service
+   - Copy the **EXTERNAL** `DATABASE_URL` from the database dashboard
+   - **Important**: Use the EXTERNAL URL, not the internal one
+   - The external URL allows your web service to connect from outside the database's internal network
+   - You'll need this for the web service environment variables
 
 ### Step 2: Create Combined Web Service
 
@@ -54,7 +56,7 @@ Single Render Service
 3. **Build & Start Commands**
    ```
    Build Command:
-   cd frontend && npm install && npm run build && cd .. && pip install -r requirements.txt && python manage.py collectstatic --noinput
+   cd ../frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt && python manage.py collectstatic --noinput
    
    Start Command:
    gunicorn crm_backend.wsgi:application
@@ -65,11 +67,11 @@ Single Render Service
 Add these environment variables in Render dashboard:
 
 ```bash
-# Database
-DATABASE_URL=<your_database_url_from_step_1>
+# Database (use EXTERNAL URL from your PostgreSQL service)
+DATABASE_URL=<your_external_database_url_from_step_1>
 
 # Django
-SECRET_KEY=<generate_a_secure_secret_key>
+SECRET_KEY=&r@&_825l!e#)sy9r*_ke@v%s!um(z!odhl76ytl==vl97t^mn
 DEBUG=False
 ALLOWED_HOSTS=crm.margav.energy,www.crm.margav.energy,<your_render_url>
 
@@ -91,6 +93,11 @@ GOOGLE_CALENDAR_EMAIL=your_calendar_email
 # Dialer API (optional)
 DIALER_API_KEY=your_dialer_api_key
 ```
+
+**Important Notes:**
+- **Use EXTERNAL database URL**: Your web service needs the external URL to connect to the database
+- **Secret Key**: The provided secret key is secure and ready for production
+- **Replace placeholders**: Update `<your_render_url>` with your actual Render service URL
 
 ### Step 4: Deploy
 
@@ -194,3 +201,28 @@ If you encounter issues:
 4. Check static file serving
 
 Your combined service will be available at your Render URL and serve both the React frontend and Django API seamlessly!
+
+## 📋 Quick Reference
+
+### Essential Environment Variables
+```bash
+SECRET_KEY=&r@&_825l!e#)sy9r*_ke@v%s!um(z!odhl76ytl==vl97t^mn
+DATABASE_URL=<your_external_database_url>
+DEBUG=False
+ALLOWED_HOSTS=crm.margav.energy,www.crm.margav.energy,<your_render_url>
+```
+
+### Build & Start Commands
+```bash
+# Build Command
+cd ../frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt && python manage.py collectstatic --noinput
+
+# Start Command  
+gunicorn crm_backend.wsgi:application
+```
+
+### Service Configuration
+- **Root Directory**: `backend`
+- **Environment**: Python 3
+- **Database**: Use EXTERNAL URL
+- **Domain**: `crm.margav.energy` (optional)
