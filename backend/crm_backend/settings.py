@@ -116,10 +116,21 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'  # collected static files
 
 # Static files directories - only add if the directory exists
 frontend_static_dir = BASE_DIR.parent / 'frontend' / 'build' / 'static'
+frontend_build_dir = BASE_DIR.parent / 'frontend' / 'build'
+
+STATICFILES_DIRS = []
 if frontend_static_dir.exists():
-    STATICFILES_DIRS = [frontend_static_dir]
+    STATICFILES_DIRS.append(frontend_static_dir)
+    print(f"Added frontend static directory: {frontend_static_dir}")
 else:
-    STATICFILES_DIRS = []
+    print(f"Frontend static directory not found: {frontend_static_dir}")
+
+# Also add the entire frontend build directory for index.html
+if frontend_build_dir.exists():
+    STATICFILES_DIRS.append(frontend_build_dir)
+    print(f"Added frontend build directory: {frontend_build_dir}")
+else:
+    print(f"Frontend build directory not found: {frontend_build_dir}")
 
 # WhiteNoise settings for proper MIME types and static file serving
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'

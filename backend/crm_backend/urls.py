@@ -25,7 +25,29 @@ def debug_static_files(request):
             for file in files:
                 static_files.append(os.path.join(root, file).replace(str(static_root), ''))
     
-    return HttpResponse(f"Static root: {static_root}<br>Files: {', '.join(static_files[:10])}")
+    # Also check STATICFILES_DIRS
+    static_dirs_info = []
+    for static_dir in settings.STATICFILES_DIRS:
+        if os.path.exists(static_dir):
+            dir_files = []
+            for root, dirs, files in os.walk(static_dir):
+                for file in files:
+                    dir_files.append(os.path.join(root, file).replace(str(static_dir), ''))
+            static_dirs_info.append(f"{static_dir}: {', '.join(dir_files[:5])}")
+        else:
+            static_dirs_info.append(f"{static_dir}: NOT FOUND")
+    
+    return HttpResponse(f"""
+    <h3>Static Files Debug</h3>
+    <p><strong>STATIC_ROOT:</strong> {static_root}</p>
+    <p><strong>STATIC_URL:</strong> {settings.STATIC_URL}</p>
+    <p><strong>STATICFILES_DIRS:</strong></p>
+    <ul>
+        {''.join(f'<li>{info}</li>' for info in static_dirs_info)}
+    </ul>
+    <p><strong>Collected Files (first 10):</strong> {', '.join(static_files[:10])}</p>
+    <p><strong>Total Files:</strong> {len(static_files)}</p>
+    """)
 
 def serve_favicon(request):
     """Serve favicon.ico from static files"""

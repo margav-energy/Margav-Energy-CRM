@@ -32,4 +32,9 @@ python manage.py migrate
 echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput
 
+# Debug: List collected static files
+echo "🔍 Checking collected static files..."
+ls -la staticfiles/ || echo "No staticfiles directory found"
+ls -la staticfiles/static/ || echo "No staticfiles/static directory found"
+
 echo "✅ Production build complete!"
