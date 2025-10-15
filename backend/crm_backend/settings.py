@@ -1,11 +1,17 @@
 from pathlib import Path
-from decouple import config
+from decouple import config, Csv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Explicitly specify .env file path
+import os
+env_path = BASE_DIR / '.env'
+if env_path.exists():
+    os.environ.setdefault('DECOUPLE_CONFIG', str(env_path))
+
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,crm.margav.energy,www.crm.margav.energy,testserver').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,crm.margav.energy,www.crm.margav.energy,testserver,margav-crm-backend.onrender.com').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -206,8 +212,19 @@ LOGGING = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# --------------------
+# Admin Site Configuration
+# --------------------
+ADMIN_SITE_HEADER = "Margav Energy CRM Administration"
+ADMIN_SITE_TITLE = "Margav Energy CRM Administration"
+ADMIN_INDEX_TITLE = "Margav Energy CRM Administration"
+
 # Google Calendar OAuth Configuration
-GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
-GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='your_google_client_id_here')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='your_google_client_secret_here')
 GOOGLE_REDIRECT_URI = config('GOOGLE_REDIRECT_URI', default='http://localhost:8000/api/auth/google/callback')
-GOOGLE_REFRESH_TOKEN = config('GOOGLE_REFRESH_TOKEN', default='')
+GOOGLE_REFRESH_TOKEN = config('GOOGLE_REFRESH_TOKEN', default='your_google_refresh_token_here')
+
+# Google Sheets Configuration
+GOOGLE_SHEETS_SPREADSHEET_ID = config('GOOGLE_SHEETS_SPREADSHEET_ID', default='')
+GOOGLE_SHEETS_WORKSHEET_NAME = config('GOOGLE_SHEETS_WORKSHEET_NAME', default='Leads')

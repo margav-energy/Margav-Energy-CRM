@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Lead, LeadForm as LeadFormType } from '../types';
-import { leadsAPI, notificationsAPI } from '../api';
+import { Lead, LeadForm as LeadFormType, Callback, CallbackForm } from '../types';
+import { leadsAPI, notificationsAPI, callbacksAPI } from '../api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import LeadCard from './LeadCard';
 import LeadForm from './LeadForm';
 import NotificationPanel from './NotificationPanel';
+import CallbackCompletionModal from './CallbackCompletionModal';
 
 const AgentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -18,6 +19,11 @@ const AgentDashboard: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [callbacks, setCallbacks] = useState<Callback[]>([]);
+  const [dueCallbacks, setDueCallbacks] = useState<Callback[]>([]);
+  const [shownNotifications, setShownNotifications] = useState<Set<number>>(new Set());
+  const [selectedCallback, setSelectedCallback] = useState<Callback | null>(null);
+  const [showCallbackCompletion, setShowCallbackCompletion] = useState(false);
   const cardsPerPage = 4;
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [prepopulatedData, setPrepopulatedData] = useState<{
@@ -80,13 +86,15 @@ const AgentDashboard: React.FC = () => {
   useEffect(() => {
     fetchLeads();
     fetchNotificationCount();
+    fetchCallbacks();
     checkForDialerLead();
     
-    // Set up auto-refresh every 2 seconds
+    // Set up auto-refresh every 30 seconds (reduced frequency)
     const refreshInterval = setInterval(() => {
       fetchLeads(false); // Don't show loading during auto-refresh
       fetchNotificationCount();
-    }, 2000);
+      // fetchCallbacks(); // Disabled to prevent spam notifications
+    }, 30000);
     
     // Cleanup interval on unmount
     return () => clearInterval(refreshInterval);
@@ -207,17 +215,13 @@ const AgentDashboard: React.FC = () => {
       }
       const response = await leadsAPI.getMyLeads();
       
-      // Check if there are new leads (leads that weren't in the previous state)
-      const currentLeadIds = new Set(leads.map(lead => lead.id));
-      const newLeads = response.results.filter(lead => !currentLeadIds.has(lead.id));
-      
-      // If there are new leads and this is not the initial load, show a notification
-      if (newLeads.length > 0 && !showLoading && !isInitialLoad) {
-        toast.success(`${newLeads.length} new lead(s) received!`, {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-      }
+      // DISABLED: Toast notifications for new leads are disabled
+      // if (newLeads.length > 0 && !showLoading && !isInitialLoad) {
+      //   toast.success(`${newLeads.length} new lead(s) received!`, {
+      //     position: 'top-right',
+      //     autoClose: 3000,
+      //   });
+      // }
       
       setLeads(response.results);
       
@@ -243,8 +247,27 @@ const AgentDashboard: React.FC = () => {
     }
   };
 
-  const handleCreateLead = async (leadData: LeadFormType) => {
+  const fetchCallbacks = async () => {
     try {
+      const [callbacksData, dueCallbacksData] = await Promise.all([
+        callbacksAPI.getCallbacks(),
+        callbacksAPI.getDueCallbacks()
+      ]);
+      
+      setCallbacks(callbacksData);
+      setDueCallbacks(dueCallbacksData);
+      
+      // DISABLED: Automatic callback notifications to prevent spam
+      // Callback reminders are now shown in the UI instead of toasters
+    } catch (error) {
+      console.error('Error fetching callbacks:', error);
+    }
+  };
+
+  const handleCreateLead = async (leadData: LeadFormType, pendingCallback?: CallbackForm) => {
+    try {
+      console.log('AgentDashboard: User authenticated:', !!user);
+      console.log('AgentDashboard: User ID:', user?.id);
       setFormLoading(true);
       
       // Check if we're updating an existing lead from dialer
@@ -264,20 +287,48 @@ const AgentDashboard: React.FC = () => {
         
         toast.success('Lead updated successfully and sent to qualifier!');
       } else {
-        // Create new lead - check if there's a pending callback
-        const hasPendingCallback = (leadData as any).hasPendingCallback;
-        
-        const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
+        // Create new lead - check if it's a callback lead by looking for callback status in the data
+        const isCallbackLead = (leadData as any).status === 'callback';
+        console.log('Lead data status:', (leadData as any).status);
+        console.log('Is callback lead:', isCallbackLead);
+        const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
           ...leadData,
-          status: hasPendingCallback ? 'callback' as Lead['status'] : 'sent_to_kelly' as Lead['status'],
-          assigned_agent: user?.id || 0
+          status: isCallbackLead ? 'callback' as Lead['status'] : 'sent_to_kelly' as Lead['status']
         };
+        console.log('Creating lead with data:', leadDataWithStatus);
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
         
-        if (hasPendingCallback) {
-          // Callback will be automatically created by Django signals
-          toast.success('Lead created successfully! Callback will be automatically scheduled.');
+        if (isCallbackLead) {
+          toast.success('Lead created successfully with callback status!');
+          
+          // Schedule the callback if there's pending callback data
+          if (pendingCallback) {
+            try {
+              console.log('Original callback data:', pendingCallback);
+              console.log('New lead ID:', newLead.id);
+              
+              const callbackDataWithLeadId = {
+                lead: Number(newLead.id), // Ensure it's a number
+                scheduled_time: pendingCallback.scheduled_time,
+                notes: pendingCallback.notes || ''
+              };
+              console.log('Original pendingCallback:', pendingCallback);
+              console.log('New lead ID:', newLead.id);
+              console.log('New lead ID type:', typeof newLead.id);
+              console.log('Creating callback with data:', callbackDataWithLeadId);
+              console.log('Callback data lead field type:', typeof callbackDataWithLeadId.lead);
+              await callbacksAPI.createCallback(callbackDataWithLeadId);
+              toast.success('Callback scheduled successfully!');
+              
+              // Refresh callbacks to update the display
+              await fetchCallbacks(); // Immediate refresh
+            } catch (callbackError: any) {
+              console.error('Error scheduling callback:', callbackError);
+              console.error('Callback error details:', callbackError.response?.data);
+              toast.error(`Lead created but callback scheduling failed: ${callbackError.response?.data?.error || callbackError.message || 'Unknown error'}. Please schedule manually.`);
+            }
+          }
         } else {
           toast.success('Lead created successfully and sent to qualifier!');
         }
@@ -422,13 +473,27 @@ const AgentDashboard: React.FC = () => {
     setPrepopulatedData(null);
   };
 
+  const handleCompleteCallback = (callback: Callback) => {
+    setSelectedCallback(callback);
+    setShowCallbackCompletion(true);
+  };
+
+  const handleCallbackCompleted = async () => {
+    if (selectedCallback) {
+      // Refresh callbacks to update the display
+      await fetchCallbacks();
+      toast.success('Callback marked as completed!');
+    }
+    setSelectedCallback(null);
+    setShowCallbackCompletion(false);
+  };
+
 
 
   const getStatusCounts = () => {
     const counts = {
       cold_call: 0,
       interested: 0,
-      qualified: 0,
       appointment_set: 0,
       not_interested: 0,
       tenant: 0,
@@ -446,17 +511,14 @@ const AgentDashboard: React.FC = () => {
       }
     });
 
+    // Update callback count from actual callbacks data
+    counts.callbacks = callbacks.filter(callback => callback.status === 'scheduled').length;
+
     return counts;
   };
 
   const getCallbackCount = () => {
-    const callbackCount = leads.filter(lead => lead.status === 'callback').length;
-    // console.log('📊 AgentDashboard: Callback count calculation:', {
-    //   totalLeads: leads.length,
-    //   callbackLeads: leads.filter(lead => lead.status === 'callback').length,
-    //   callbackCount
-    // });
-    return callbackCount;
+    return callbacks.filter(callback => callback.status === 'scheduled').length;
   };
 
   const statusCounts = getStatusCounts();
@@ -502,8 +564,47 @@ const AgentDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Callback Reminders */}
+      {dueCallbacks.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <span className="text-2xl">⏰</span>
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-orange-800">
+                Callback Reminders ({dueCallbacks.length})
+              </h3>
+              <div className="mt-2 text-sm text-orange-700">
+                {dueCallbacks.slice(0, 3).map((callback, index) => (
+                  <div key={callback.id} className="flex items-center justify-between mb-2">
+                    <div className="flex-1">
+                      <span className="font-medium">{callback.lead_name}</span>
+                      <span className="ml-2 text-orange-600">
+                        {new Date(callback.scheduled_time).toLocaleString()}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleCompleteCallback(callback)}
+                      className="ml-2 px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      Complete
+                    </button>
+                  </div>
+                ))}
+                {dueCallbacks.length > 3 && (
+                  <div className="text-orange-600 font-medium">
+                    +{dueCallbacks.length - 3} more callbacks
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <button 
           onClick={() => handleStatusFilter(statusFilter === 'interested' ? null : 'interested')}
           className={`card-margav p-6 transition-all duration-200 hover:shadow-lg ${statusFilter === 'interested' ? 'ring-2 ring-green-500 bg-green-50' : ''}`}
@@ -524,42 +625,24 @@ const AgentDashboard: React.FC = () => {
         </button>
 
         <button 
-          onClick={() => handleStatusFilter(statusFilter === 'qualified' ? null : 'qualified')}
-          className={`card-margav p-6 transition-all duration-200 hover:shadow-lg ${statusFilter === 'qualified' ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
-        >
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-lg font-bold">Q</span>
-              </div>
-            </div>
-            <div className="ml-4 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">Qualified</dt>
-                <dd className="text-2xl font-bold text-gray-900">{statusCounts.qualified}</dd>
-              </dl>
-            </div>
-          </div>
-        </button>
-
-        <button 
           onClick={() => handleStatusFilter(statusFilter === 'appointment_set' ? null : 'appointment_set')}
           className={`card-margav p-6 transition-all duration-200 hover:shadow-lg ${statusFilter === 'appointment_set' ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`}
         >
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-purple-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-lg font-bold">A</span>
+                <span className="text-white text-lg font-bold">📅</span>
               </div>
             </div>
             <div className="ml-4 flex-1">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">Appointments</dt>
+                <dt className="text-sm font-medium text-gray-500 truncate">Appointments Set</dt>
                 <dd className="text-2xl font-bold text-gray-900">{statusCounts.appointment_set}</dd>
               </dl>
             </div>
           </div>
         </button>
+
 
         <button 
           onClick={() => handleStatusFilter(statusFilter === 'not_interested' ? null : 'not_interested')}
@@ -660,11 +743,12 @@ const AgentDashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {currentLeads.map((lead) => (
                   <LeadCard
-                    key={lead.id}
+                    key={`lead-${lead.id}`}
                     lead={lead}
                     onUpdate={handleUpdateLead}
                     onDelete={handleDeleteLead}
                     showActions={true}
+                    callbacks={callbacks}
                   />
                 ))}
               </div>
@@ -716,6 +800,19 @@ const AgentDashboard: React.FC = () => {
           fetchNotificationCount(); // Refresh count when closing
         }}
       />
+
+      {/* Callback Completion Modal */}
+      {selectedCallback && (
+        <CallbackCompletionModal
+          callback={selectedCallback}
+          isOpen={showCallbackCompletion}
+          onClose={() => {
+            setShowCallbackCompletion(false);
+            setSelectedCallback(null);
+          }}
+          onComplete={handleCallbackCompleted}
+        />
+      )}
     </div>
   );
 };

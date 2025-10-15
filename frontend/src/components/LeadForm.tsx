@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Lead, LeadForm as LeadFormType } from '../types';
+import { Lead, LeadForm as LeadFormType, CallbackForm } from '../types';
+import CallbackScheduler from './CallbackScheduler';
+import { callbacksAPI } from '../api';
 
 interface LeadFormProps {
   lead?: Lead;
-  onSubmit: (data: LeadFormType) => Promise<void>;
+  onSubmit: (data: LeadFormType, pendingCallback?: CallbackForm) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
   prepopulatedData?: {
@@ -71,6 +73,7 @@ interface ExtendedLeadFormData {
   phone: string;
   email: string;
   address: string;
+  city: string;
   postcode: string;
   preferred_contact_time: string;
   
@@ -194,6 +197,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
   // Function to build address from dialer components
   const buildAddress = () => {
     if (prepopulatedData?.address) return prepopulatedData.address;
+    if (lead?.address1) return lead.address1;
     if (parsedData.address) return parsedData.address;
     
     const address1 = prepopulatedData?.address1 || '';
@@ -207,6 +211,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
   // Function to get postcode from dialer data
   const getPostcode = () => {
     if (prepopulatedData?.postcode) return prepopulatedData.postcode;
+    if (lead?.postal_code) return lead.postal_code;
     if (parsedData.postcode) return parsedData.postcode;
     if (prepopulatedData?.postal_code) return prepopulatedData.postal_code;
     return '';
@@ -218,6 +223,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
     phone: getPhoneNumber(),
     email: prepopulatedData?.email || lead?.email || '',
     address: buildAddress(),
+    city: prepopulatedData?.city || lead?.city || parsedData.city || '',
     postcode: getPostcode(),
     preferred_contact_time: parsedData.preferred_contact_time || '',
     
@@ -260,6 +266,8 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showCallbackScheduler, setShowCallbackScheduler] = useState(false);
+  const [pendingCallback, setPendingCallback] = useState<CallbackForm | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -380,9 +388,10 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         full_name: formData.full_name,
         phone: formData.phone,
         email: formData.email,
+        address1: formData.address,
+        city: formData.city,
+        postal_code: formData.postcode,
         notes: `${formData.notes}\n\n--- DETAILED LEAD INFORMATION ---\n` +
-               `Address: ${formData.address}\n` +
-               `Postcode: ${formData.postcode}\n` +
                `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                `Property Ownership: ${formData.property_ownership}\n` +
                `Property Type: ${formData.property_type}\n` +
@@ -403,7 +412,13 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '')
       };
       
-      await onSubmit(basicFormData);
+      // Pass pending callback data as separate parameter
+      await onSubmit(basicFormData, pendingCallback || undefined);
+      
+      // Clear pending callback after submission
+      if (pendingCallback) {
+        setPendingCallback(null);
+      }
     } catch (error) {
       console.error('Form submission error:', error);
     }
@@ -426,9 +441,10 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         full_name: formData.full_name,
         phone: formData.phone,
         email: formData.email,
+        address1: formData.address,
+        city: formData.city,
+        postal_code: formData.postcode,
         notes: `${formData.notes}\n\n--- DETAILED LEAD INFORMATION ---\n` +
-               `Address: ${formData.address}\n` +
-               `Postcode: ${formData.postcode}\n` +
                `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                `Property Ownership: ${formData.property_ownership}\n` +
                `Property Type: ${formData.property_type}\n` +
@@ -452,6 +468,80 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
       await onSendToQualifier(basicFormData);
     } catch (error) {
       console.error('Send to qualifier error:', error);
+    }
+  };
+
+  const handleScheduleCallback = async (callbackData: CallbackForm) => {
+    try {
+      if (lead) {
+        // Existing lead - schedule callback directly with correct lead ID
+        const callbackDataWithLeadId = {
+          ...callbackData,
+          lead: lead.id
+        };
+        console.log('Creating callback with data:', callbackDataWithLeadId);
+        await callbacksAPI.createCallback(callbackDataWithLeadId);
+        alert('Callback scheduled successfully!');
+        setShowCallbackScheduler(false);
+        
+        // Refresh the page to show the callback
+        window.location.reload();
+      } else {
+        // New lead - auto-create lead with callback status and schedule callback
+        if (!validateForm()) {
+          alert('Please fill in all required fields before scheduling callback.');
+          return;
+        }
+        
+        const basicFormData: LeadFormType = {
+          full_name: formData.full_name,
+          phone: formData.phone,
+          email: formData.email,
+          address1: formData.address,
+          city: formData.city,
+          postal_code: formData.postcode,
+          notes: `${formData.notes}\n\n--- DETAILED LEAD INFORMATION ---\n` +
+                 `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
+                 `Property Ownership: ${formData.property_ownership}\n` +
+                 `Property Type: ${formData.property_type}\n` +
+                 `Number of Bedrooms: ${formData.number_of_bedrooms}\n` +
+                 `Roof Type: ${formData.roof_type}\n` +
+                 `Roof Material: ${formData.roof_material}\n` +
+                 `Average Monthly Electricity Bill: ${formData.average_monthly_electricity_bill}\n` +
+                 (formData.energy_bill_amount ? `Specific Energy Bill Amount: £${formData.energy_bill_amount}\n` : '') +
+                 `Has EV Charger: ${formData.has_ev_charger === 'true' ? 'Yes' : formData.has_ev_charger === 'false' ? 'No' : 'Not specified'}\n` +
+                 `Day/Night Rate: ${formData.day_night_rate || 'Not specified'}\n` +
+                 `Current Energy Supplier: ${formData.current_energy_supplier}\n` +
+                 `Electric Heating/Appliances: ${formData.electric_heating_appliances}\n` +
+                 `Energy Details: ${formData.energy_details}\n` +
+                 `Timeframe: ${formData.timeframe}\n` +
+                 `Moving Properties Next 5 Years: ${formData.moving_properties_next_five_years}\n` +
+                 `Timeframe Details: ${formData.timeframe_details}\n` +
+                 `Has Previous Quotes: ${formData.has_previous_quotes === 'true' ? 'Yes' : formData.has_previous_quotes === 'false' ? 'No' : 'Not specified'}\n` +
+                 (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '')
+        };
+        
+        // Create lead with callback status (without pendingCallback in the data)
+        const leadDataWithCallback = {
+          ...basicFormData,
+          status: 'callback' as Lead['status'],
+          assigned_agent: 0 // Will be set by parent
+        };
+        
+        // Store the callback data for later use (without the lead field)
+        const callbackDataWithoutLead = {
+          scheduled_time: callbackData.scheduled_time,
+          notes: callbackData.notes
+        };
+        setPendingCallback(callbackDataWithoutLead);
+        
+        // Submit the form with callback status and pending callback data
+        await onSubmit(leadDataWithCallback, callbackDataWithoutLead);
+        setShowCallbackScheduler(false);
+      }
+    } catch (error) {
+      console.error('Error scheduling callback:', error);
+      alert('Failed to schedule callback. Please try again.');
     }
   };
 
@@ -568,6 +658,22 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 onChange={handleChange}
                 className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 placeholder="Enter full address"
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                City
+              </label>
+              <input
+                type="text"
+                id="city"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                placeholder="Enter city"
                 disabled={loading}
               />
             </div>
@@ -1005,21 +1111,32 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
 
 
         {/* Submit Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-8">
+        <div className="flex flex-wrap gap-3 pt-6">
           <button
             type="button"
             onClick={onCancel}
-            className="w-full bg-white py-2 px-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+            className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
             disabled={loading}
           >
             Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowCallbackScheduler(true)}
+            className={`px-3 py-2 border border-transparent rounded-md text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+              pendingCallback ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+            disabled={loading}
+          >
+            {pendingCallback ? '✅ Callback Scheduled' : '📞 Schedule Callback'}
           </button>
 
           {lead && onSendToQualifier && (
             <button
               type="button"
               onClick={handleSendToQualifier}
-              className="w-full bg-green-600 py-2 px-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
             >
               {loading ? (
@@ -1035,7 +1152,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           
           <button
             type="submit"
-            className="w-full bg-green-600 py-2 px-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
           >
             {loading ? (
@@ -1050,6 +1167,18 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         </div>
       </form>
 
+      {/* Callback Scheduler Modal */}
+      <CallbackScheduler
+        lead={lead}
+        leadData={lead ? undefined : {
+          full_name: formData.full_name,
+          phone: formData.phone,
+          email: formData.email
+        }}
+        isOpen={showCallbackScheduler}
+        onClose={() => setShowCallbackScheduler(false)}
+        onSchedule={handleScheduleCallback}
+      />
     </div>
   );
 };

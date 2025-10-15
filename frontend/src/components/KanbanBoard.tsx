@@ -177,7 +177,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
   });
 
   return (
-    <div key={column.id} className="flex-shrink-0 w-56 lg:w-60">
+    <div key={column.id} className="flex-shrink-0 w-64 lg:w-72">
       <div 
         ref={setNodeRef}
         className={`${column.color} rounded-lg p-4 h-full min-h-[400px] transition-all duration-200 ${
@@ -244,6 +244,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
     fetchLeads();
   }, [userRole]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-refresh disabled for qualifier dashboard to avoid distraction
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     fetchLeads();
+  //   }, 30000);
+
+  //   return () => clearInterval(interval);
+  // }, []);
+
   const fetchLeads = async () => {
     try {
       setLoading(true);
@@ -272,7 +281,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
       } else if (userRole === 'qualifier') {
         columnDefinitions = [
           { id: 'sent_to_kelly', title: 'To Qualify', statuses: ['sent_to_kelly'], color: 'bg-blue-100' },
-          { id: 'qualified', title: 'Qualified', statuses: ['qualified'], color: 'bg-green-100' },
           { id: 'appointments', title: 'Appointments Set', statuses: ['appointment_set'], color: 'bg-purple-100' },
           { id: 'no_contact', title: 'No Contact', statuses: ['no_contact'], color: 'bg-yellow-100' },
           { id: 'not_qualified', title: 'Not Qualified', statuses: ['not_interested', 'blow_out', 'pass_back_to_agent'], color: 'bg-red-100' },

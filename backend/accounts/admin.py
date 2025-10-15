@@ -20,9 +20,9 @@ class UserAdmin(BaseUserAdmin):
     """
     Custom admin interface for User model with enhanced features for dialer integration.
     """
-    list_display = ('username', 'email', 'role', 'first_name', 'last_name', 'is_active', 'dialer_links_count', 'date_joined')
+    list_display = ('username', 'email', 'role', 'first_name', 'last_name', 'phone', 'is_active', 'dialer_links_count', 'date_joined')
     list_filter = ('role', 'is_active', 'is_staff', 'is_superuser', 'date_joined')
-    search_fields = ('username', 'email', 'first_name', 'last_name')
+    search_fields = ('username', 'email', 'first_name', 'last_name', 'phone')
     ordering = ('-date_joined',)
     change_list_template = 'admin/accounts/user/change_list.html'
     change_form_template = 'admin/accounts/user/change_form.html'
@@ -59,7 +59,7 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
     
-    readonly_fields = ('dialer_links_count',)
+    readonly_fields = ('dialer_links_count', 'last_login', 'date_joined')
     
     def dialer_links_count(self, obj):
         """Display count of dialer links for this user."""

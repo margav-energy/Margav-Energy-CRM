@@ -7,6 +7,9 @@ from django.http import HttpResponse
 import os
 from accounts import admin_views
 
+# Import admin configuration to apply custom site settings
+from . import admin as admin_config
+
 def debug_view(request):
     """Debug view to test URL routing"""
     return HttpResponse(f"Debug: URL={request.path}, Method={request.method}")

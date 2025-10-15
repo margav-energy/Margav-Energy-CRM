@@ -5,14 +5,20 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 import logging
-from .models import Lead, Dialer, LeadNotification, DialerUserLink
+from .models import Lead, Dialer, LeadNotification, DialerUserLink, Callback
 from django.conf import settings
 from .serializers import (
     LeadSerializer, LeadCreateSerializer, LeadUpdateSerializer, 
     LeadDispositionSerializer, DialerSerializer, LeadNotificationSerializer,
-    DialerLeadSerializer
+    DialerLeadSerializer, CallbackSerializer, CallbackCreateSerializer
 )
 from .permissions import LeadPermission
+from .google_sheets_service import GoogleSheetsService
+from .excel_parser import ExcelLeadParser
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import os
+import tempfile
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -509,5 +515,254 @@ def bulk_delete_leads_forever(request):
             'deleted_count': count
         })
     except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def sync_leads_to_sheets(request):
+    """
+    Sync all leads to Google Sheets
+    """
+    try:
+        # Check if user has permission (admin only)
+        if not request.user.is_admin:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get all leads (including deleted ones for audit trail)
+        leads = Lead.objects.all()
+        
+        if not leads.exists():
+            return Response({'error': 'No leads found to sync'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Initialize Google Sheets service
+        sheets_service = GoogleSheetsService()
+        
+        # Sync all leads
+        result = sheets_service.sync_all_leads_to_sheets()
+        
+        if result['success'] > 0:
+            return Response({
+                'message': f'Successfully synced {result["success"]} leads to Google Sheets',
+                'success_count': result['success'],
+                'failed_count': result['failed']
+            })
+        else:
+            return Response({
+                'error': 'Failed to sync leads to Google Sheets',
+                'success_count': result['success'],
+                'failed_count': result['failed']
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        logger.error(f"Error syncing leads to Google Sheets: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Callback Views
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def callback_list(request):
+    """
+    List callbacks for the authenticated user.
+    """
+    try:
+        user = request.user
+        
+        # Get callbacks based on user role
+        if user.is_admin:
+            callbacks = Callback.objects.filter(is_deleted=False)
+        elif user.is_agent:
+            callbacks = Callback.objects.filter(created_by=user, is_deleted=False)
+        else:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Filter by status if provided
+        status_filter = request.GET.get('status')
+        if status_filter:
+            callbacks = callbacks.filter(status=status_filter)
+        
+        # Order by scheduled time
+        callbacks = callbacks.order_by('scheduled_time')
+        
+        serializer = CallbackSerializer(callbacks, many=True)
+        return Response(serializer.data)
+        
+    except Exception as e:
+        logger.error(f"Error fetching callbacks: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def callback_create(request):
+    """
+    Create a new callback.
+    """
+    try:
+        serializer = CallbackCreateSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            callback = serializer.save()
+            response_serializer = CallbackSerializer(callback)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        logger.error(f"Error creating callback: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def callback_update(request, callback_id):
+    """
+    Update a callback.
+    """
+    try:
+        callback = Callback.objects.get(id=callback_id, is_deleted=False)
+        
+        # Check permissions
+        if not request.user.is_admin and callback.created_by != request.user:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = CallbackSerializer(callback, data=request.data, partial=True)
+        if serializer.is_valid():
+            updated_callback = serializer.save()
+            
+            # If status is being updated to 'completed', set completed_at
+            if 'status' in request.data and request.data['status'] == 'completed':
+                from django.utils import timezone
+                updated_callback.completed_at = timezone.now()
+                updated_callback.save()
+            
+            return Response(CallbackSerializer(updated_callback).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Callback.DoesNotExist:
+        return Response({'error': 'Callback not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error updating callback: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def callback_due_reminders(request):
+    """
+    Get callbacks that are due or overdue for reminders.
+    """
+    try:
+        user = request.user
+        
+        # Get callbacks that are due or overdue
+        from django.utils import timezone
+        now = timezone.now()
+        
+        if user.is_admin:
+            callbacks = Callback.objects.filter(
+                is_deleted=False,
+                status='scheduled',
+                scheduled_time__lte=now
+            )
+        elif user.is_agent:
+            callbacks = Callback.objects.filter(
+                created_by=user,
+                is_deleted=False,
+                status='scheduled',
+                scheduled_time__lte=now
+            )
+        else:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = CallbackSerializer(callbacks, many=True)
+        return Response(serializer.data)
+        
+    except Exception as e:
+        logger.error(f"Error fetching due callbacks: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_excel_leads(request):
+    """
+    Upload Excel file and bulk import leads.
+    Admin only endpoint.
+    """
+    try:
+        # Check if user is admin
+        if not request.user.is_admin:
+            return Response({'error': 'Permission denied. Admin access required.'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        # Check if file is provided
+        if 'file' not in request.FILES:
+            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        excel_file = request.FILES['file']
+        
+        # Validate file type
+        if not excel_file.name.endswith(('.xlsx', '.xls')):
+            return Response({'error': 'Invalid file type. Please upload an Excel file (.xlsx or .xls)'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Save file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+            for chunk in excel_file.chunks():
+                tmp_file.write(chunk)
+            tmp_file_path = tmp_file.name
+        
+        try:
+            # Parse Excel file
+            parser = ExcelLeadParser()
+            leads_data = parser.parse_excel_file(tmp_file_path)
+            
+            if not leads_data:
+                return Response({
+                    'error': 'No valid lead data found in Excel file',
+                    'parser_errors': parser.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Create leads
+            result = parser.create_leads_from_data(leads_data)
+            
+            # Prepare response
+            response_data = {
+                'message': f'Successfully processed {len(leads_data)} leads',
+                'created_count': len(result['created_leads']),
+                'failed_count': len(result['failed_leads']),
+                'created_leads': [
+                    {
+                        'id': lead.id,
+                        'full_name': lead.full_name,
+                        'phone': lead.phone,
+                        'status': lead.status
+                    } for lead in result['created_leads']
+                ],
+                'warnings': result['warnings'],
+                'errors': result['errors']
+            }
+            
+            if result['failed_leads']:
+                response_data['failed_leads'] = [
+                    {
+                        'full_name': failed['data'].get('full_name', 'Unknown'),
+                        'phone': failed['data'].get('phone', 'Unknown'),
+                        'error': failed['error']
+                    } for failed in result['failed_leads']
+                ]
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
+            
+        finally:
+            # Clean up temporary file
+            try:
+                os.unlink(tmp_file_path)
+            except OSError:
+                pass
+        
+    except Exception as e:
+        logger.error(f"Error uploading Excel file: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

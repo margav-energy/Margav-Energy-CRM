@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
-import { AuthResponse, User, Lead, Dialer, ApiResponse, LoginForm, LeadForm, LeadUpdateForm, LeadDispositionForm, LeadNotification } from './types';
+import { AuthResponse, User, Lead, Dialer, ApiResponse, LoginForm, LeadForm, LeadUpdateForm, LeadDispositionForm, LeadNotification, Callback, CallbackForm } from './types';
 
 // Base API configuration
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
@@ -38,6 +38,9 @@ api.interceptors.request.use(
   (config) => {
     if (authToken) {
       config.headers.Authorization = `Token ${authToken}`;
+      console.log('API: Request with auth token:', config.headers.Authorization);
+    } else {
+      console.log('API: No auth token available');
     }
     return config;
   },
@@ -123,8 +126,20 @@ export const leadsAPI = {
   },
 
   createLead: async (leadData: LeadForm): Promise<Lead> => {
-    const response: AxiosResponse<Lead> = await api.post('/leads/', leadData);
-    return response.data;
+    console.log('API: Creating lead with data:', leadData);
+    console.log('API: Auth token available:', !!authToken);
+    console.log('API: Auth token:', authToken);
+    try {
+      const response: AxiosResponse<Lead> = await api.post('/leads/', leadData);
+      console.log('API: Lead created successfully:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('API: Lead creation failed:', error);
+      console.error('API: Error response:', error.response?.data);
+      console.error('API: Error status:', error.response?.status);
+      console.error('API: Error headers:', error.response?.headers);
+      throw error;
+    }
   },
 
   updateLead: async (id: number, leadData: LeadUpdateForm): Promise<Lead> => {
@@ -207,6 +222,46 @@ export const notificationsAPI = {
     return response.data;
   },
 };
+
+// Callbacks API
+export const callbacksAPI = {
+  getCallbacks: async (): Promise<Callback[]> => {
+    try {
+      const response: AxiosResponse<Callback[]> = await api.get('/callbacks/');
+      console.log('API: Fetched callbacks:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('API: Failed to fetch callbacks:', error);
+      console.error('API: Error response:', error.response?.data);
+      throw error;
+    }
+  },
+
+  createCallback: async (callbackData: CallbackForm): Promise<Callback> => {
+    console.log('API: Creating callback with data:', callbackData);
+    try {
+      const response: AxiosResponse<Callback> = await api.post('/callbacks/create/', callbackData);
+      console.log('API: Callback created successfully:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('API: Callback creation failed:', error);
+      console.error('API: Error response:', error.response?.data);
+      console.error('API: Error status:', error.response?.status);
+      throw error;
+    }
+  },
+
+  updateCallback: async (callbackId: number, callbackData: Partial<Callback>): Promise<Callback> => {
+    const response: AxiosResponse<Callback> = await api.patch(`/callbacks/${callbackId}/update/`, callbackData);
+    return response.data;
+  },
+
+  getDueCallbacks: async (): Promise<Callback[]> => {
+    const response: AxiosResponse<Callback[]> = await api.get('/callbacks/due-reminders/');
+    return response.data;
+  },
+};
+
 
 
 export default api;

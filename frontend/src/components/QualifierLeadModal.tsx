@@ -49,6 +49,12 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate appointment date is required when status is appointment_set
+    if (formData.status === 'appointment_set' && !formData.appointment_date) {
+      toast.error('Please select an appointment date and time');
+      return;
+    }
+    
     try {
       setLoading(true);
       
@@ -169,8 +175,8 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                   <option value="sent_to_kelly">📋 Sent to Kelly (Current)</option>
                   <option value="no_contact">📞 No Contact</option>
                   <option value="blow_out">💨 Blow Out</option>
-                  <option value="qualified">✅ Qualified (Appointment Set)</option>
-                  <option value="callback">🔄 Call Back</option>
+                  <option value="appointment_set">📅 Appointment Set</option>
+                  <option value="not_interested">❌ Not Interested</option>
                   <option value="pass_back_to_agent">↩️ Pass Back to Agent</option>
                 </select>
               </div>
@@ -197,7 +203,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
             </div>
 
             {/* Appointment Date */}
-            {formData.status === 'qualified' && (
+            {formData.status === 'appointment_set' && (
               <div>
                 <label htmlFor="appointment_date" className="block text-sm font-medium text-gray-700 mb-1">
                   Schedule Appointment
@@ -209,6 +215,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                   value={formData.appointment_date || ''}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required
                 />
               </div>
             )}

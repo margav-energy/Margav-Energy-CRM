@@ -1,0 +1,151 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{% trans "Upload Excel Leads" %}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans "Home" %}</a>
+&rsaquo; <a href="{% url 'admin:leads_lead_changelist' %}">{% trans "Leads" %}</a>
+&rsaquo; {% trans "Upload Excel" %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module aligned">
+    <h1>{% trans "Upload Excel Leads" %}</h1>
+    
+    <div class="form-row">
+        <div class="help">
+            <h3>Excel File Format Requirements:</h3>
+            <p>Your Excel file must contain the following columns (in any order):</p>
+            <ul>
+                <li><strong>Agent</strong> - Name of the agent (will be matched to existing users)</li>
+                <li><strong>Date & Time</strong> - When the lead was created (format: DD.MM.YYYY HH.MMpm)</li>
+                <li><strong>Customer Name</strong> - Full name of the customer</li>
+                <li><strong>Customer Number</strong> - Phone number</li>
+                <li><strong>Customer address</strong> - Street address</li>
+                <li><strong>Customer Postcode</strong> - Postal code</li>
+                <li><strong>Contact Centre Notes</strong> - Notes from contact centre</li>
+                <li><strong>Outcome</strong> - Lead outcome (On hold, Pass Back, Blow Out, etc.)</li>
+                <li><strong>Kelly Notes</strong> - Additional notes from Kelly</li>
+                <li><strong>Data Source</strong> - Source of the lead data</li>
+            </ul>
+            
+            <h3>Important Notes:</h3>
+            <ul>
+                <li>Phone numbers must be unique - duplicates will be skipped</li>
+                <li>Agent names will be matched to existing users by username or first name</li>
+                <li>If an agent is not found, leads will be assigned to the admin user</li>
+                <li>Outcome will be mapped to lead status automatically</li>
+                <li>Maximum file size: 10MB</li>
+            </ul>
+        </div>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <fieldset class="module aligned">
+            <h2>Upload File</h2>
+            
+            <div class="form-row">
+                <div>
+                    <label for="{{ form.excel_file.id_for_label }}" class="required">{{ form.excel_file.label }}:</label>
+                    {{ form.excel_file }}
+                    {% if form.excel_file.help_text %}
+                        <p class="help">{{ form.excel_file.help_text }}</p>
+                    {% endif %}
+                    {% if form.excel_file.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.excel_file.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            </div>
+        </fieldset>
+        
+        <div class="submit-row">
+            <input type="submit" value="{% trans 'Upload and Import' %}" class="default" />
+            <a href="{% url 'admin:leads_lead_changelist' %}" class="button cancel-link">{% trans "Cancel" %}</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.help {
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 4px;
+}
+
+.help h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+.help ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.help li {
+    margin: 5px 0;
+}
+
+.form-row {
+    margin: 15px 0;
+}
+
+.form-row label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.form-row input[type="file"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.submit-row {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.submit-row input[type="submit"] {
+    background: #417690;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.submit-row input[type="submit"]:hover {
+    background: #205067;
+}
+
+.cancel-link {
+    background: #ba2121;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.cancel-link:hover {
+    background: #a41515;
+    color: white;
+}
+</style>
+{% endblock %}

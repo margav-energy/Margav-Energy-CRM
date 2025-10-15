@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: margav-crm-backend
+    env: python
+    plan: starter
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate
+    startCommand: gunicorn crm_backend.wsgi:application
+    envVars:
+      - key: DEBUG
+        value: False
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: margav-crm-db
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        value: crm.margav.energy,www.crm.margav.energy,margav-crm-backend.onrender.com,localhost,127.0.0.1
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://crm.margav.energy,https://www.crm.margav.energy,https://margav-crm-frontend.onrender.com,http://localhost:3000,http://127.0.0.1:3000
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://crm.margav.energy/api/auth/google/callback
+      - key: GOOGLE_SHEETS_SPREADSHEET_ID
+        sync: false
+      - key: GOOGLE_SHEETS_WORKSHEET_NAME
+        value: Leads
+      - key: GOOGLE_CALENDAR_EMAIL
+        sync: false
+      - key: DIALER_API_KEY
+        sync: false
+
+databases:
+  - name: margav-crm-db
+    plan: starter

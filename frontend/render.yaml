@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: margav-crm-frontend
+    env: static
+    plan: starter
+    buildCommand: |
+      npm install
+      npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://crm.margav.energy

@@ -31,6 +31,10 @@ export interface Lead {
   full_name: string;
   phone: string;
   email?: string;
+  address1?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
   status: 'cold_call' | 'interested' | 'not_interested' | 'tenant' | 'other_disposition' | 'sent_to_kelly' | 'qualified' | 'appointment_set' | 'appointment_completed' | 'sale_made' | 'sale_lost' | 'no_contact' | 'blow_out' | 'callback' | 'pass_back_to_agent';
   disposition?: 'not_interested' | 'tenant' | 'wrong_number' | 'no_answer' | 'callback_requested' | 'do_not_call' | 'other';
   assigned_agent: number;
@@ -79,6 +83,9 @@ export interface LeadForm {
   full_name: string;
   phone: string;
   email?: string;
+  address1?: string;
+  city?: string;
+  postal_code?: string;
   notes?: string;
 }
 
@@ -107,4 +114,26 @@ export interface CallData {
   isActive: boolean;
   lead?: Lead;
   duration: number;
+}
+
+// Callback types
+export interface Callback {
+  id: number;
+  lead: number;
+  lead_name: string;
+  lead_phone: string;
+  scheduled_time: string;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_answer' | 'sent_to_qualifier';
+  notes?: string;
+  created_by: number;
+  created_by_name: string;
+  completed_at?: string;
+  is_due: boolean;
+  is_overdue: boolean;
+}
+
+export interface CallbackForm {
+  lead?: number;
+  scheduled_time: string;
+  notes?: string;
 }

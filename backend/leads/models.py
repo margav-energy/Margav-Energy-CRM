@@ -51,6 +51,10 @@ class Lead(SoftDeleteModel):
         ('blow_out', 'Blow Out'),
         ('callback', 'Call Back'),
         ('pass_back_to_agent', 'Pass Back to Agent'),
+        ('pass_back', 'Pass Back'),
+        ('desk_top_survey', 'Desk Top Survey'),
+        ('on_hold', 'On Hold'),
+        ('sold', 'Sold'),
     ]
     
     DISPOSITION_CHOICES = [
@@ -63,6 +67,13 @@ class Lead(SoftDeleteModel):
         ('other', 'Other'),
     ]
     
+    lead_number = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text='Custom lead number (e.g., ME001, ME002)'
+    )
     full_name = models.CharField(max_length=255, help_text='Full name of the lead')
     phone = models.CharField(max_length=20, help_text='Phone number of the lead')
     email = models.EmailField(blank=True, null=True, help_text='Email address of the lead')
@@ -214,6 +225,26 @@ class Lead(SoftDeleteModel):
     def __str__(self):
         return f"{self.full_name} ({self.get_status_display()})"
     
+    def generate_lead_number(self):
+        """Generate the next custom lead number (ME001, ME002, etc.)"""
+        from django.db.models import Max
+        
+        # Get the highest existing lead number
+        last_lead = Lead.objects.filter(
+            lead_number__isnull=False,
+            lead_number__startswith='ME'
+        ).aggregate(Max('lead_number'))
+        
+        if last_lead['lead_number__max']:
+            # Extract the number part and increment
+            last_number = int(last_lead['lead_number__max'][2:])  # Remove 'ME' prefix
+            next_number = last_number + 1
+        else:
+            # First lead
+            next_number = 1
+        
+        return f"ME{next_number:03d}"  # Format as ME001, ME002, etc.
+    
     @property
     def is_interested(self):
         return self.status == 'interested'
@@ -294,6 +325,42 @@ class Lead(SoftDeleteModel):
         except Exception as e:
             logger.error(f"Error removing lead {self.id} from Google Calendar: {e}")
             return False
+    
+    def save(self, *args, **kwargs):
+        """Override save to generate lead number and log audit trail"""
+        is_new = self.pk is None
+        
+        # Generate lead number for new leads
+        if is_new and not self.lead_number:
+            self.lead_number = self.generate_lead_number()
+        
+        # Check if this is an audit logging save (to prevent infinite loops)
+        skip_audit = kwargs.pop('skip_audit', False)
+        
+        # Call the parent save method
+        super().save(*args, **kwargs)
+        
+        # Log the audit trail only if not skipping audit
+        if not skip_audit:
+            try:
+                from .audit_logger import log_lead_created, log_lead_updated
+                if is_new:
+                    log_lead_created(self)
+                else:
+                    log_lead_updated(self)
+            except Exception as e:
+                logger.error(f"Failed to log audit trail for lead {self.id}: {e}")
+    
+    def delete(self, *args, **kwargs):
+        """Override delete to log audit trail"""
+        try:
+            from .audit_logger import log_lead_deleted
+            log_lead_deleted(self)
+        except Exception as e:
+            logger.error(f"Failed to log audit trail for lead deletion {self.id}: {e}")
+        
+        # Call the parent delete method
+        super().delete(*args, **kwargs)
 
 
 class LeadNotification(models.Model):
@@ -373,4 +440,72 @@ class DialerUserLink(models.Model):
 
     def __str__(self) -> str:
         return f"{self.dialer_user_id} -> {self.crm_user.username}"
+
+
+class Callback(SoftDeleteModel):
+    """
+    Model for managing callbacks requested by leads.
+    """
+    CALLBACK_STATUS_CHOICES = [
+        ('scheduled', 'Scheduled'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+        ('no_answer', 'No Answer'),
+        ('sent_to_qualifier', 'Sent to Qualifier'),
+    ]
+    
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.CASCADE,
+        related_name='callbacks',
+        help_text='Lead requesting the callback'
+    )
+    scheduled_time = models.DateTimeField(
+        help_text='When the callback should be made'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=CALLBACK_STATUS_CHOICES,
+        default='scheduled',
+        help_text='Current status of the callback'
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Additional notes about the callback'
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='created_callbacks',
+        help_text='Agent who created the callback'
+    )
+    completed_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='When the callback was completed'
+    )
+    
+    class Meta:
+        verbose_name = 'Callback'
+        verbose_name_plural = 'Callbacks'
+        ordering = ['scheduled_time']
+    
+    def __str__(self) -> str:
+        return f"Callback for {self.lead.full_name} at {self.scheduled_time}"
+    
+    @property
+    def is_due(self) -> bool:
+        """Check if the callback is due (within 15 minutes of scheduled time)"""
+        from django.utils import timezone
+        now = timezone.now()
+        time_diff = (self.scheduled_time - now).total_seconds()
+        return 0 <= time_diff <= 900  # 15 minutes in seconds
+    
+    @property
+    def is_overdue(self) -> bool:
+        """Check if the callback is overdue"""
+        from django.utils import timezone
+        now = timezone.now()
+        return now > self.scheduled_time
 

@@ -22,6 +22,14 @@ urlpatterns = [
     path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark-all-notifications-read'),
     
     path('leads/bulk-delete-forever/', views.bulk_delete_leads_forever, name='bulk-delete-leads-forever'),
+    path('leads/sync-to-sheets/', views.sync_leads_to_sheets, name='sync-leads-to-sheets'),
+    path('leads/upload-excel/', views.upload_excel_leads, name='upload-excel-leads'),
+    
+    # Callback routes
+    path('callbacks/', views.callback_list, name='callback-list'),
+    path('callbacks/create/', views.callback_create, name='callback-create'),
+    path('callbacks/<int:callback_id>/update/', views.callback_update, name='callback-update'),
+    path('callbacks/due-reminders/', views.callback_due_reminders, name='callback-due-reminders'),
     
     # Google Calendar OAuth routes
     path('auth/google/', calendar_views.google_calendar_auth, name='google-calendar-auth'),

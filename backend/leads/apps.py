@@ -6,4 +6,4 @@ class LeadsConfig(AppConfig):
     name = 'leads'
     
     def ready(self):
-        pass
+        import leads.sheets_signals

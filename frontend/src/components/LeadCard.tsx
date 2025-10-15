@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Lead } from '../types';
+import React from 'react';
+import { Lead, Callback } from '../types';
 import { formatDateSafe, formatDateShortSafe } from '../utils/dateUtils';
+import CallbackBadge from './CallbackBadge';
 
 interface LeadCardProps {
   lead: Lead;
   onUpdate?: (lead: Lead) => void;
   onDelete?: (lead: Lead) => void;
+  onScheduleAppointment?: (lead: Lead) => void;
   showActions?: boolean;
+  callbacks?: Callback[];
 }
 
-const LeadCard: React.FC<LeadCardProps> = ({ lead, onUpdate, onDelete, showActions = true }) => {
+const LeadCard: React.FC<LeadCardProps> = ({ lead, onUpdate, onDelete, onScheduleAppointment, showActions = true, callbacks = [] }) => {
   // console.log('🎯 LeadCard: Component rendered for lead:', lead.id, 'status:', lead.status);
   
 
@@ -61,11 +64,12 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onUpdate, onDelete, showActio
           <div className="flex-1">
             <h3 className="font-semibold text-gray-900 text-sm">{lead.full_name}</h3>
             <p className="text-xs text-gray-500">{lead.phone}</p>
-            {/* Status badge under the name */}
-            <div className="mt-2">
+            {/* Status badge and callback badge under the name */}
+            <div className="mt-2 flex flex-wrap gap-1">
               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
                 {getStatusDisplayName(lead.status)}
               </span>
+                     <CallbackBadge callbacks={callbacks} leadId={lead.id} leadStatus={lead.status} />
             </div>
           </div>
         </div>
@@ -92,6 +96,39 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onUpdate, onDelete, showActio
               <span className="font-medium">Appointment: {formatDateSafe(lead.appointment_date)}</span>
             </div>
           )}
+
+          {/* Callback Information */}
+          {(() => {
+            const leadCallbacks = callbacks.filter(callback => callback.lead === lead.id && callback.status === 'scheduled');
+            if (leadCallbacks.length > 0) {
+              const nextCallback = leadCallbacks.sort((a, b) => 
+                new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime()
+              )[0];
+              
+              const isOverdue = new Date(nextCallback.scheduled_time) < new Date();
+              const isDue = !isOverdue && (new Date(nextCallback.scheduled_time).getTime() - new Date().getTime()) <= 15 * 60 * 1000; // 15 minutes
+              
+              return (
+                <div className={`flex items-center text-xs ${
+                  isOverdue 
+                    ? 'text-red-600' 
+                    : isDue 
+                    ? 'text-orange-600'
+                    : 'text-blue-600'
+                }`}>
+                  <svg className="w-3 h-3 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                  <span className="font-medium">
+                    Callback: {new Date(nextCallback.scheduled_time).toLocaleDateString()} {new Date(nextCallback.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {isOverdue && ' (Overdue)'}
+                    {isDue && !isOverdue && ' (Due Soon)'}
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           
         </div>
@@ -123,7 +160,7 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onUpdate, onDelete, showActio
       </div>
 
       {/* Actions */}
-      {showActions && (onUpdate || onDelete) && (
+      {showActions && (onUpdate || onDelete || onScheduleAppointment) && (
         <div className="px-4 py-3 bg-gray-50/50 border-t border-gray-100 flex space-x-2">
           {onUpdate && (
             <button
@@ -131,6 +168,14 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onUpdate, onDelete, showActio
               className="flex-1 bg-white text-gray-700 text-xs px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors font-medium"
             >
               Edit
+            </button>
+          )}
+          {onScheduleAppointment && (
+            <button
+              onClick={() => onScheduleAppointment(lead)}
+              className="flex-1 bg-green-50 text-green-700 text-xs px-3 py-2 rounded-lg border border-green-200 hover:bg-green-100 hover:border-green-300 transition-colors font-medium"
+            >
+              Qualify Lead
             </button>
           )}
           {onDelete && (

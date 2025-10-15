@@ -23,7 +23,10 @@ class GoogleCalendarOAuthService:
     """Service for managing Google Calendar events using OAuth 2.0."""
     
     # Scopes required for calendar access
-    SCOPES = ['https://www.googleapis.com/auth/calendar']
+    SCOPES = [
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/spreadsheets'
+    ]
     
     def __init__(self):
         self.service = None
@@ -115,6 +118,27 @@ class GoogleCalendarOAuthService:
         except Exception as e:
             logger.error(f"Failed to handle OAuth callback: {e}")
             return False
+    
+    def get_connection_status(self) -> str:
+        """
+        Check the current connection status.
+        
+        Returns:
+            'connected' if authenticated, 'not_connected' otherwise
+        """
+        try:
+            if not self.refresh_token:
+                return "not_connected"
+            
+            # Try to initialize the service
+            self._initialize_service()
+            if self.service:
+                return "connected"
+            else:
+                return "not_connected"
+        except Exception as e:
+            logger.error(f"Error checking connection status: {e}")
+            return "not_connected"
     
     def _update_env_file(self, key: str, value: str):
         """Update the .env file with new values."""

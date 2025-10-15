@@ -46,6 +46,7 @@ static/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.staging
 
 # Node.js / Frontend
 node_modules/
@@ -75,117 +76,107 @@ frontend/dist/
 ehthumbs.db
 Thumbs.db
 
-# Logs - Comprehensive exclusion
+# Database files
+*.sqlite3
+*.db
+db.sqlite3
+
+# Log files
 logs/
 **/logs/
 *.log
-*.log.*
-*.log-*
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-.pnpm-debug.log*
-django.log
-access.log
-error.log
-debug.log
-info.log
-warn.log
-trace.log
-audit.log
-security.log
-application.log
-server.log
-app.log
-system.log
-*.out
-*.err
-*.trace
-*.audit
-*.access
-*.error
-*.debug
-*.info
-*.warn
-*.security
-*.application
-*.server
-*.app
-*.system
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# nyc test coverage
-.nyc_output
-
-# Dependency directories
-node_modules/
-jspm_packages/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# Next.js build output
-.next
-
-# Nuxt.js build / generate output
-.nuxt
-dist
-
-# Gatsby files
-.cache/
-public
-
-# Storybook build outputs
-.out
-.storybook-out
-
-# Temporary folders
-tmp/
-temp/
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
+# Test files
+test_*.py
+*_test.py
+test_*.js
+*_test.js
 
 # Backup files
 *.bak
 *.backup
 *.old
+*_backup.*
+*_old.*
 
-# Test files and coverage
+# Recovery files
+recovered_*.json
+*_recovery.*
+
+# Migration backup files
+*_backup_*.py
+*_old_*.py
+
+# Project specific files to ignore
+backend/check_lead_fields.py
+backend/test_*.py
+backend/debug_*.py
+backend/create_*.py
+backend/setup_*.py
+backend/diagnose_*.py
+backend/fix_*.py
+backend/check_*.py
+backend/simulate_*.py
+backend/verify_*.py
+backend/validate_*.py
+
+# Temporary files
+*.tmp
+*.temp
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Large files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# SSH keys and sensitive files
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.p7b
+*.p7c
+*.p7m
+*.p7s
+*.spc
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+margav*
+*.pub
+
+# Google OAuth credentials
+google_oauth.json
+google_credentials.json
+service_account.json
+credentials.json
+CRM.json
+backend/.env
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+
+# Postman collections (keep main ones, ignore backups)
+*_backup.json
+*_old.json
+*_test.json
+
+# Coverage reports
 .coverage
 htmlcov/
 .pytest_cache/
@@ -233,69 +224,12 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Large files that shouldn't be in git
-*.zip
-*.tar.gz
-*.rar
-*.7z
-
-# SSH keys and sensitive files
-*.pem
-*.key
-*.p12
-*.pfx
-*.crt
-*.cer
-*.der
-*.p7b
-*.p7c
-*.p7m
-*.p7s
-*.spc
-*.pfx
-*.p12
-*.key
-*.pem
-*.crt
-*.cer
-*.der
-*.p7b
-*.p7c
-*.p7m
-*.p7s
-*.spc
-id_rsa*
-id_dsa*
-id_ecdsa*
-id_ed25519*
-margav*
-*.pub
-
-# Postman collections (keep the main ones, ignore backups)
-*_backup.json
-*_old.json
-
 # Generated documentation
 docs/_build/
 
 # Local development files
 local_*
 dev_*
-test_*
-
-# Large test files
-test_*.py
-*_test.py
-test_*.js
-*_test.js
-
-# Build artifacts
-*.o
-*.a
-*.so
-*.dylib
-*.dll
-*.exe
 
 # IDE specific files
 *.sublime-project
@@ -366,15 +300,14 @@ $RECYCLE.BIN/
 .Trash-*
 .nfs*
 
-# Project specific
-# Keep important config files but ignore large generated ones
+# Project specific - Keep important files
 !package.json
 !package-lock.json
 !requirements.txt
 !Pipfile
 !Pipfile.lock
 
-# Keep documentation but ignore generated files
+# Keep documentation
 !README.md
 !*.md
 !docs/
@@ -402,66 +335,24 @@ $RECYCLE.BIN/
 !**/migrations/
 !**/migrations/*.py
 
-# Keep static files structure but not the actual files
+# Keep static files structure
 !static/
 !**/static/
 !static/**/
 !**/static/**/
 
-# Keep media structure but not the actual files
+# Keep media structure
 !media/
 !**/media/
 !media/**/
 !**/media/**/
 
-# Project specific sensitive files
-CRM.json
-*.json
+# Keep important config files
 !package.json
 !package-lock.json
 !tsconfig.json
 !tailwind.config.js
 !postcss.config.js
-
-# Google OAuth credentials
-google_oauth.json
-google_credentials.json
-service_account.json
-
-# Database files
-*.sqlite3
-*.db
-db.sqlite3
-
-# Environment files
-.env
-.env.local
-.env.development
-.env.production
-.env.staging
-
-# Log files
-*.log
-logs/
-**/logs/
-
-# Test files
-test_*.py
-*_test.py
-test_*.js
-*_test.js
-
-# Backup files
-*.bak
-*.backup
-*.old
-*_backup.*
-
-# Recovery files
-recovered_*.json
-*_recovery.*
-
-# Migration backup files
-*_backup_*.py
-*_old_*.py
-
+!render.yaml
+!backend/render.yaml
+!frontend/render.yaml

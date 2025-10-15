@@ -1,13 +1,66 @@
-{% extends "admin/base_site.html" %} {% load i18n admin_urls static admin_modify
-%} {% block title %}{{ title }} | {{ site_title|default:_('Django site admin')
-}}{% endblock %} {% block breadcrumbs %}
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Margav Energy CRM Administration') }}{% endblock %}
+
+{% block breadcrumbs %}
 <div class="breadcrumbs">
   <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
   &rsaquo;
   <a href="{% url 'admin:accounts_user_changelist' %}">{% trans 'Users' %}</a>
   &rsaquo; {% trans 'Bulk User Creation' %}
 </div>
-{% endblock %} {% block content %}
+{% endblock %}
+
+{% block content %}
+<style>
+  /* Breadcrumb links styling */
+  .breadcrumbs a {
+    color: #417690;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .breadcrumbs a:hover {
+    color: #205067;
+    text-decoration: underline;
+  }
+
+  /* Quick action buttons styling */
+  .default {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .default:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    color: white;
+  }
+
+  /* Form styling */
+  .form-row {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+  }
+
+  .form-row h3 {
+    color: #333;
+    margin-top: 0;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 10px;
+  }
+</style>
+
 <div class="module aligned">
   <h2>Bulk User Creation</h2>
 

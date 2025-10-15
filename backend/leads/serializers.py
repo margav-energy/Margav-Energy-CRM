@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Lead, Dialer, LeadNotification, DialerUserLink
+from .models import Lead, Dialer, LeadNotification, DialerUserLink, Callback
 
 
 class DialerSerializer(serializers.ModelSerializer):
@@ -73,22 +73,40 @@ class LeadCreateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Lead
-        fields = ['full_name', 'phone', 'email', 'status', 'notes', 'appointment_date', 'assigned_agent']
-        read_only_fields = ['is_deleted', 'deleted_at', 'deleted_by', 'deletion_reason']
+        fields = ['id', 'full_name', 'phone', 'email', 'address1', 'city', 'postal_code', 'status', 'notes', 'appointment_date', 'assigned_agent']
+        read_only_fields = ['id', 'is_deleted', 'deleted_at', 'deleted_by', 'deletion_reason', 'assigned_agent']
     
     def validate_phone(self, value):
         """
         Validate that the phone number is unique.
         """
-        if Lead.objects.filter(phone=value).exists():
-            existing_lead = Lead.objects.filter(phone=value).first()
+        # Check for existing leads with this phone number (including soft-deleted ones)
+        existing_leads = Lead.objects.filter(phone=value)
+        if existing_leads.exists():
+            existing_lead = existing_leads.first()
             raise serializers.ValidationError(f"A lead with this phone number already exists (Lead ID: {existing_lead.id}, Name: {existing_lead.full_name}).")
         return value
     
     def create(self, validated_data):
         # Always assign the lead to the current user (agents can only create leads for themselves)
         validated_data['assigned_agent'] = self.context['request'].user
-        return Lead.objects.create(**validated_data)
+        try:
+            return Lead.objects.create(**validated_data)
+        except Exception as e:
+            # Check if it's a duplicate phone number error
+            if 'unique_phone_per_lead' in str(e):
+                # Find the existing lead with this phone number
+                existing_lead = Lead.objects.filter(phone=validated_data['phone']).first()
+                if existing_lead:
+                    raise serializers.ValidationError({
+                        'phone': f"A lead with this phone number already exists (Lead ID: {existing_lead.id}, Name: {existing_lead.full_name})."
+                    })
+                else:
+                    raise serializers.ValidationError({
+                        'phone': "A lead with this phone number already exists."
+                    })
+            else:
+                raise e
 
 
 class LeadUpdateSerializer(serializers.ModelSerializer):
@@ -224,4 +242,58 @@ class DialerLeadSerializer(serializers.ModelSerializer):
         
         instance.save()
         return instance
+
+
+class CallbackSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Callback model.
+    """
+    lead_name = serializers.SerializerMethodField()
+    lead_phone = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+    
+    def get_lead_name(self, obj):
+        try:
+            return obj.lead.full_name if obj.lead else 'Unknown Lead'
+        except:
+            return 'Unknown Lead'
+    
+    def get_lead_phone(self, obj):
+        try:
+            return obj.lead.phone if obj.lead else 'Unknown Phone'
+        except:
+            return 'Unknown Phone'
+    
+    def get_created_by_name(self, obj):
+        try:
+            return obj.created_by.get_full_name() if obj.created_by else 'Unknown User'
+        except:
+            return 'Unknown User'
+    
+    class Meta:
+        model = Callback
+        fields = [
+            'id', 'lead', 'lead_name', 'lead_phone', 'scheduled_time', 'status', 
+            'notes', 'created_by', 'created_by_name', 'completed_at', 'is_due', 'is_overdue'
+        ]
+        read_only_fields = ['id', 'created_by', 'completed_at', 'is_due', 'is_overdue']
+    
+    def create(self, validated_data):
+        # Always assign the callback to the current user
+        validated_data['created_by'] = self.context['request'].user
+        return Callback.objects.create(**validated_data)
+
+
+class CallbackCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating new callbacks.
+    """
+    class Meta:
+        model = Callback
+        fields = ['lead', 'scheduled_time', 'notes']
+    
+    def create(self, validated_data):
+        # Always assign the callback to the current user
+        validated_data['created_by'] = self.context['request'].user
+        return Callback.objects.create(**validated_data)
 

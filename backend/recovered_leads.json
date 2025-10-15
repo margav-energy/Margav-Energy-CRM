@@ -1,0 +1,281 @@
+[
+  {
+    "first_name": "Bob",
+    "last_name": "Smith",
+    "status": "Interested",
+    "created_at": "2025-10-07 09:17:31.473247+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cBob Smith (Interested).\u201d"
+  },
+  {
+    "first_name": "Carol",
+    "last_name": "Davis",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.472754+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cCarol Davis (Qualified).\u201d"
+  },
+  {
+    "first_name": "Eva",
+    "last_name": "Brown",
+    "status": "Not Interested",
+    "created_at": "2025-10-07 09:17:31.472235+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cEva Brown (Not Interested).\u201d"
+  },
+  {
+    "first_name": "Frank",
+    "last_name": "Miller",
+    "status": "Interested",
+    "created_at": "2025-10-07 09:17:31.471604+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cFrank Miller (Interested).\u201d"
+  },
+  {
+    "first_name": "Henry",
+    "last_name": "Taylor",
+    "status": "Appointment Set",
+    "created_at": "2025-10-07 09:17:31.470996+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cHenry Taylor (Appointment Set).\u201d"
+  },
+  {
+    "first_name": "Robert",
+    "last_name": "Martinez",
+    "status": "Cold Call",
+    "created_at": "2025-10-07 09:17:31.470539+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cRobert Martinez (Cold Call).\u201d"
+  },
+  {
+    "first_name": "Jennifer",
+    "last_name": "Lee",
+    "status": "Cold Call",
+    "created_at": "2025-10-07 09:17:31.470067+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cJennifer Lee (Cold Call).\u201d"
+  },
+  {
+    "first_name": "Maria",
+    "last_name": "Rodriguez",
+    "status": "Not Interested",
+    "created_at": "2025-10-07 09:17:31.469565+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cMaria Rodriguez (Not Interested).\u201d"
+  },
+  {
+    "first_name": "James",
+    "last_name": "Wilson",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.468886+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cJames Wilson (Qualified).\u201d"
+  },
+  {
+    "first_name": "Michael",
+    "last_name": "Anderson",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.468324+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cMichael Anderson (Qualified).\u201d"
+  },
+  {
+    "first_name": "Amanda",
+    "last_name": "Taylor",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.467670+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cAmanda Taylor (Qualified).\u201d"
+  },
+  {
+    "first_name": "Christopher",
+    "last_name": "Moore",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.466955+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cChristopher Moore (Qualified).\u201d"
+  },
+  {
+    "first_name": "Jessica",
+    "last_name": "White",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.466380+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cJessica White (Qualified).\u201d"
+  },
+  {
+    "first_name": "Ryan",
+    "last_name": "Clark",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.465815+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cRyan Clark (Qualified).\u201d"
+  },
+  {
+    "first_name": "Nicole",
+    "last_name": "Lewis",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.465215+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cNicole Lewis (Qualified).\u201d"
+  },
+  {
+    "first_name": "Kevin",
+    "last_name": "Walker",
+    "status": "Appointment Completed",
+    "created_at": "2025-10-07 09:17:31.464717+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cKevin Walker (Appointment Completed).\u201d"
+  },
+  {
+    "first_name": "Rachel",
+    "last_name": "Hall",
+    "status": "Appointment Completed",
+    "created_at": "2025-10-07 09:17:31.464104+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cRachel Hall (Appointment Completed).\u201d"
+  },
+  {
+    "first_name": "Brandon",
+    "last_name": "Young",
+    "status": "Sale Made",
+    "created_at": "2025-10-07 09:17:31.463559+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cBrandon Young (Sale Made).\u201d"
+  },
+  {
+    "first_name": "Tyler",
+    "last_name": "Wright",
+    "status": "Appointment Completed",
+    "created_at": "2025-10-07 09:17:31.462989+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cTyler Wright (Appointment Completed).\u201d"
+  },
+  {
+    "first_name": "Justin",
+    "last_name": "Hill",
+    "status": "Tenant",
+    "created_at": "2025-10-07 09:17:31.462465+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cJustin Hill (Tenant).\u201d"
+  },
+  {
+    "first_name": "John",
+    "last_name": "Smith",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.461914+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cJohn Smith (Qualified).\u201d"
+  },
+  {
+    "first_name": "Demo",
+    "last_name": "User",
+    "status": "Interested",
+    "created_at": "2025-10-07 09:17:31.461421+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cDemo User (Interested).\u201d"
+  },
+  {
+    "first_name": "Emily",
+    "last_name": "Davis",
+    "status": "Interested",
+    "created_at": "2025-10-07 09:17:31.460942+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cEmily Davis (Interested).\u201d"
+  },
+  {
+    "first_name": "Lisa",
+    "last_name": "Anderson",
+    "status": "Interested",
+    "created_at": "2025-10-07 09:17:31.460371+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cLisa Anderson (Interested).\u201d"
+  },
+  {
+    "first_name": "Lisa",
+    "last_name": "Anderson",
+    "status": "Interested",
+    "created_at": "2025-10-07 09:17:31.459822+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cLisa Anderson (Interested).\u201d"
+  },
+  {
+    "first_name": "John",
+    "last_name": "Smith",
+    "status": "Interested",
+    "created_at": "2025-10-07 09:17:31.459274+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cJohn Smith (Interested).\u201d"
+  },
+  {
+    "first_name": "John",
+    "last_name": "Smith",
+    "status": "Sent to Kelly",
+    "created_at": "2025-10-07 09:17:31.458738+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cJohn Smith (Sent to Kelly).\u201d"
+  },
+  {
+    "first_name": "Emma",
+    "last_name": "Thompson",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.457899+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cEmma Thompson (Qualified).\u201d"
+  },
+  {
+    "first_name": "Sarah",
+    "last_name": "Johnson",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.456912+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cSarah Johnson (Qualified).\u201d"
+  },
+  {
+    "first_name": "John",
+    "last_name": "A Smith",
+    "status": "Interested",
+    "created_at": "2025-10-07 09:17:31.456300+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cJohn A Smith (Interested).\u201d"
+  },
+  {
+    "first_name": "John",
+    "last_name": "Doe",
+    "status": "Qualified",
+    "created_at": "2025-10-07 09:17:31.455362+00:00",
+    "action_flag": 3,
+    "user": "admin",
+    "original_log": "Deleted \u201cJohn Doe (Qualified).\u201d"
+  }
+]

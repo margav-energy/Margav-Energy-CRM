@@ -22,7 +22,9 @@ def google_calendar_auth(request):
     Redirects user to Google's OAuth consent page.
     """
     try:
+        logger.info("Initiating Google Calendar OAuth flow")
         authorization_url = google_calendar_oauth_service.get_authorization_url()
+        logger.info(f"Generated authorization URL: {authorization_url}")
         return redirect(authorization_url)
     except Exception as e:
         logger.error(f"Failed to initiate OAuth flow: {e}")
@@ -37,10 +39,26 @@ def google_calendar_callback(request):
     Exchange authorization code for tokens and store refresh token.
     """
     try:
+        # Debug: Log all GET parameters
+        logger.info(f"OAuth callback received. GET params: {dict(request.GET)}")
+        
         authorization_code = request.GET.get('code')
-        if not authorization_code:
+        state = request.GET.get('state')
+        error = request.GET.get('error')
+        
+        # Check for OAuth errors
+        if error:
+            logger.error(f"OAuth error: {error}")
             return JsonResponse({
-                'error': 'Authorization code not provided'
+                'error': f'OAuth error: {error}',
+                'description': request.GET.get('error_description', 'Unknown error')
+            }, status=400)
+        
+        if not authorization_code:
+            logger.error("No authorization code provided in callback")
+            return JsonResponse({
+                'error': 'Authorization code not provided',
+                'received_params': dict(request.GET)
             }, status=400)
         
         # Handle the OAuth callback
