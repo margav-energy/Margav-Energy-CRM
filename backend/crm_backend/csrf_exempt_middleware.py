@@ -15,5 +15,4 @@ class CSRFExemptAPIMiddleware(MiddlewareMixin):
         if is_api_request and request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
             # Set a flag to skip CSRF verification
             request._dont_enforce_csrf_checks = True
-            print(f"CSRF exempted for {request.method} {request.path}")
         return None

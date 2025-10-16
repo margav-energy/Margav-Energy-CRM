@@ -1,7 +1,72 @@
-{% extends "admin/base_site.html" %} {% load i18n admin_urls static admin_modify
-%} {% block title %}{{ title }} | {{ site_title|default:_('Margav Energy CRM Administration')
-}}{% endblock %} {% block extrahead %} {{ block.super }}
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+{% block title %}{{ title }} | {{ site_title|default:_('Margav Energy CRM Administration') }}{% endblock %} {% block extrahead %} {{ block.super }}
 <style>
+  /* Dark mode styles */
+  .dark-theme .admin-dashboard {
+    background: #1a1a1a;
+    color: #ffffff;
+  }
+  
+  .dark-theme .dashboard-header {
+    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+  }
+  
+  .dark-theme .stat-card {
+    background: #2d3748;
+    color: #ffffff;
+    border-left: 4px solid #667eea;
+  }
+  
+  .dark-theme .stat-card:hover {
+    background: #4a5568;
+  }
+  
+  .dark-theme .stat-number {
+    color: #ffffff;
+  }
+  
+  .dark-theme .stat-label {
+    color: #e2e8f0;
+  }
+  
+  .dark-theme .stat-filter {
+    color: #a0aec0;
+  }
+  
+  .dark-theme .action-card {
+    background: #2d3748;
+    color: #ffffff;
+  }
+  
+  .dark-theme .action-card:hover {
+    background: #4a5568;
+  }
+  
+  .dark-theme .action-card h3 {
+    color: #ffffff;
+  }
+  
+  .dark-theme .action-card p {
+    color: #e2e8f0;
+  }
+  
+  .dark-theme .activity-item {
+    background: #2d3748;
+    color: #ffffff;
+  }
+  
+  .dark-theme .activity-item:hover {
+    background: #4a5568;
+  }
+  
+  .dark-theme .activity-title {
+    color: #ffffff;
+  }
+  
+  .dark-theme .activity-time {
+    color: #a0aec0;
+  }
   .admin-dashboard {
     padding: 20px;
     background: #f8f9fa;
@@ -251,7 +316,7 @@
       <p class="stat-label">Qualifiers</p>
       <p class="stat-filter">Click to filter</p>
     </div>
-    <div class="stat-card salesreps" onclick="filterUsers('sales_rep')">
+    <div class="stat-card salesreps" onclick="filterUsers('salesrep')">
       <p class="stat-number">{{ salesreps_count }}</p>
       <p class="stat-label">Sales Reps</p>
       <p class="stat-filter">Click to filter</p>
@@ -444,7 +509,6 @@
         }
       })
       .catch((error) => {
-        console.error("Error loading stats:", error);
       });
   }
 

@@ -228,22 +228,52 @@ class Lead(SoftDeleteModel):
     def generate_lead_number(self):
         """Generate the next custom lead number (ME001, ME002, etc.)"""
         from django.db.models import Max
+        from django.db import transaction
+        import time
+        import random
         
-        # Get the highest existing lead number
-        last_lead = Lead.objects.filter(
-            lead_number__isnull=False,
-            lead_number__startswith='ME'
-        ).aggregate(Max('lead_number'))
-        
-        if last_lead['lead_number__max']:
-            # Extract the number part and increment
-            last_number = int(last_lead['lead_number__max'][2:])  # Remove 'ME' prefix
-            next_number = last_number + 1
-        else:
-            # First lead
-            next_number = 1
-        
-        return f"ME{next_number:03d}"  # Format as ME001, ME002, etc.
+        try:
+            with transaction.atomic():
+                # Get the highest existing lead number
+                last_lead = Lead.objects.filter(
+                    lead_number__isnull=False,
+                    lead_number__startswith='ME'
+                ).aggregate(Max('lead_number'))
+                
+                
+                if last_lead['lead_number__max']:
+                    # Extract the number part and increment
+                    last_number = int(last_lead['lead_number__max'][2:])  # Remove 'ME' prefix
+                    next_number = last_number + 1
+                else:
+                    # First lead
+                    next_number = 1
+                
+                
+                # Find the next available number with some randomness to avoid collisions
+                counter = 0
+                while counter < 1000:  # Increased limit
+                    # Add some randomness to avoid race conditions
+                    random_offset = random.randint(0, 10)
+                    test_number = next_number + random_offset
+                    lead_number = f"ME{test_number:03d}"  # Format as ME001, ME002, etc.
+                    
+                    
+                    # Check if this lead number already exists
+                    if not Lead.objects.filter(lead_number=lead_number).exists():
+                        return lead_number
+                    
+                    next_number += 1
+                    counter += 1
+                
+                # If we still haven't found a unique number, use timestamp
+                timestamp = int(time.time())
+                return f"ME{timestamp}"
+            
+        except Exception as e:
+            # If all else fails, use timestamp as fallback
+            timestamp = int(time.time())
+            return f"ME{timestamp}"
     
     @property
     def is_interested(self):
@@ -330,7 +360,7 @@ class Lead(SoftDeleteModel):
         """Override save to generate lead number and log audit trail"""
         is_new = self.pk is None
         
-        # Generate lead number for new leads
+        # Generate lead number for new leads only if not already set
         if is_new and not self.lead_number:
             self.lead_number = self.generate_lead_number()
         

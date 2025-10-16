@@ -45,6 +45,35 @@ class LeadViewSet(viewsets.ModelViewSet):
             return LeadUpdateSerializer
         return LeadSerializer
     
+    def create(self, request, *args, **kwargs):
+        """
+        Override create to return full lead data with related fields.
+        """
+        serializer = self.get_serializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        lead = serializer.save()
+        
+        # Return the full lead data using LeadSerializer
+        response_serializer = LeadSerializer(lead, context={'request': request})
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Override update to return full lead data with related fields.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        lead = serializer.save()
+        
+        # Return the full lead data using LeadSerializer
+        response_serializer = LeadSerializer(lead, context={'request': request})
+        return Response(response_serializer.data)
+    
     def get_queryset(self):
         user = self.request.user
         
@@ -360,19 +389,12 @@ def qualify_lead(request, lead_id):
     """
     Kelly qualifies a lead and notifies the agent.
     """
-    print(f"Qualify lead request: lead_id={lead_id}, data={request.data}, user={request.user}")
     try:
         lead = Lead.objects.get(id=lead_id)
-        print(f"Found lead: {lead.full_name}, status: {lead.status}")
     except Lead.DoesNotExist:
-        print(f"Lead {lead_id} not found")
         return Response({'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
     
     serializer = LeadUpdateSerializer(lead, data=request.data, partial=True)
-    print(f"Serializer data: {serializer.initial_data}")
-    print(f"Serializer valid: {serializer.is_valid()}")
-    if not serializer.is_valid():
-        print(f"Serializer errors: {serializer.errors}")
     if serializer.is_valid():
         old_status = lead.status
         old_appointment_date = lead.appointment_date
@@ -386,6 +408,20 @@ def qualify_lead(request, lead_id):
         # Create notification for the agent
         from .models import LeadNotification
         notification_message = f"Lead {lead.full_name} status updated to: {updated_lead.get_status_display()}"
+        
+        # Check Google Calendar status only when setting an appointment
+        if updated_lead.status == 'appointment_set':
+            try:
+                from .google_calendar_oauth import google_calendar_oauth_service
+                
+                calendar_available = google_calendar_oauth_service.get_connection_status() == "connected"
+                
+                if not calendar_available:
+                    # Add warning to the notification message
+                    notification_message += " (Warning: Google Calendar service unavailable - appointment may not sync to calendar)"
+                    
+            except Exception as e:
+                logger.error(f"Error checking Google Calendar during appointment setting: {e}")
         
         # Add calendar sync info to notification
         if calendar_synced:
@@ -562,6 +598,8 @@ def sync_leads_to_sheets(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
 # Callback Views
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -640,7 +678,8 @@ def callback_update(request, callback_id):
                 updated_callback.save()
             
             return Response(CallbackSerializer(updated_callback).data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
     except Callback.DoesNotExist:
         return Response({'error': 'Callback not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -688,9 +727,9 @@ def callback_due_reminders(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def upload_excel_leads(request):
+def upload_json_leads(request):
     """
-    Upload Excel file and bulk import leads.
+    Upload JSON file and bulk import leads.
     Admin only endpoint.
     """
     try:
@@ -703,69 +742,138 @@ def upload_excel_leads(request):
         if 'file' not in request.FILES:
             return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
         
-        excel_file = request.FILES['file']
+        json_file = request.FILES['file']
         
         # Validate file type
-        if not excel_file.name.endswith(('.xlsx', '.xls')):
-            return Response({'error': 'Invalid file type. Please upload an Excel file (.xlsx or .xls)'}, 
+        if not json_file.name.endswith('.json'):
+            return Response({'error': 'Invalid file type. Please upload a JSON file (.json)'}, 
                           status=status.HTTP_400_BAD_REQUEST)
         
-        # Save file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
-            for chunk in excel_file.chunks():
-                tmp_file.write(chunk)
-            tmp_file_path = tmp_file.name
-        
         try:
-            # Parse Excel file
-            parser = ExcelLeadParser()
-            leads_data = parser.parse_excel_file(tmp_file_path)
+            # Parse JSON file
+            import json
+            from io import TextIOWrapper
             
-            if not leads_data:
+            # Read JSON file
+            json_data = json.load(TextIOWrapper(json_file, encoding='utf-8'))
+            
+            # Validate JSON structure
+            if not isinstance(json_data, list):
                 return Response({
-                    'error': 'No valid lead data found in Excel file',
-                    'parser_errors': parser.errors
+                    'error': 'JSON file must contain an array of lead objects'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Create leads
-            result = parser.create_leads_from_data(leads_data)
+            # Process leads
+            created_count = 0
+            failed_count = 0
+            created_leads = []
+            failed_leads = []
+            errors = []
             
-            # Prepare response
-            response_data = {
-                'message': f'Successfully processed {len(leads_data)} leads',
-                'created_count': len(result['created_leads']),
-                'failed_count': len(result['failed_leads']),
-                'created_leads': [
-                    {
+            for index, lead_data in enumerate(json_data):
+                try:
+                    # Validate required fields
+                    required_fields = ['full_name', 'phone']
+                    missing_fields = [field for field in required_fields if field not in lead_data]
+                    if missing_fields:
+                        failed_leads.append({
+                            'data': lead_data,
+                            'error': f"Missing required fields: {', '.join(missing_fields)}"
+                        })
+                        failed_count += 1
+                        continue
+                    
+                    # Map JSON data to Lead model fields
+                    lead_obj_data = {
+                        'full_name': str(lead_data.get('full_name', '')).strip(),
+                        'phone': str(lead_data.get('phone', '')).strip(),
+                        'email': lead_data.get('email', ''),
+                        'address1': lead_data.get('address1', ''),
+                        'city': lead_data.get('city', ''),
+                        'postal_code': lead_data.get('postal_code', ''),
+                        'notes': lead_data.get('notes', ''),
+                        'status': lead_data.get('status', 'cold_call'),
+                        'energy_bill_amount': lead_data.get('energy_bill_amount'),
+                        'has_ev_charger': lead_data.get('has_ev_charger'),
+                        'day_night_rate': lead_data.get('day_night_rate'),
+                        'has_previous_quotes': lead_data.get('has_previous_quotes'),
+                        'previous_quotes_details': lead_data.get('previous_quotes_details'),
+                    }
+                    
+                    # Find agent by ID or username
+                    if 'assigned_agent' in lead_data:
+                        try:
+                            agent_id = lead_data['assigned_agent']
+                            if isinstance(agent_id, int):
+                                agent = User.objects.get(id=agent_id)
+                            else:
+                                agent = User.objects.get(username=agent_id)
+                            lead_obj_data['assigned_agent'] = agent
+                        except User.DoesNotExist:
+                            failed_leads.append({
+                                'data': lead_data,
+                                'error': f"Agent not found: {agent_id}"
+                            })
+                            failed_count += 1
+                            continue
+                    
+                    # Parse appointment date if provided
+                    if 'appointment_date' in lead_data and lead_data['appointment_date']:
+                        try:
+                            from datetime import datetime
+                            appointment_date = datetime.fromisoformat(lead_data['appointment_date'].replace('Z', '+00:00'))
+                            lead_obj_data['appointment_date'] = appointment_date
+                        except:
+                            pass  # Skip if date parsing fails
+                    
+                    # Create lead
+                    lead = Lead.objects.create(**lead_obj_data)
+                    created_leads.append({
                         'id': lead.id,
                         'full_name': lead.full_name,
                         'phone': lead.phone,
                         'status': lead.status
-                    } for lead in result['created_leads']
-                ],
-                'warnings': result['warnings'],
-                'errors': result['errors']
+                    })
+                    created_count += 1
+                    
+                except Exception as e:
+                    failed_leads.append({
+                        'data': lead_data,
+                        'error': str(e)
+                    })
+                    failed_count += 1
+                    continue
+            
+            # Prepare response
+            response_data = {
+                'message': f'Successfully processed {len(json_data)} leads',
+                'created_count': created_count,
+                'failed_count': failed_count,
+                'created_leads': created_leads,
+                'errors': errors
             }
             
-            if result['failed_leads']:
+            if failed_leads:
                 response_data['failed_leads'] = [
                     {
                         'full_name': failed['data'].get('full_name', 'Unknown'),
                         'phone': failed['data'].get('phone', 'Unknown'),
                         'error': failed['error']
-                    } for failed in result['failed_leads']
+                    } for failed in failed_leads
                 ]
             
             return Response(response_data, status=status.HTTP_201_CREATED)
             
-        finally:
-            # Clean up temporary file
-            try:
-                os.unlink(tmp_file_path)
-            except OSError:
-                pass
+        except json.JSONDecodeError as e:
+            return Response({
+                'error': f'Invalid JSON format: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'error': f'Error processing JSON file: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
     except Exception as e:
-        logger.error(f"Error uploading Excel file: {e}")
+        logger.error(f"Error uploading JSON file: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

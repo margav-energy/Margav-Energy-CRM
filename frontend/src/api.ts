@@ -38,9 +38,6 @@ api.interceptors.request.use(
   (config) => {
     if (authToken) {
       config.headers.Authorization = `Token ${authToken}`;
-      console.log('API: Request with auth token:', config.headers.Authorization);
-    } else {
-      console.log('API: No auth token available');
     }
     return config;
   },
@@ -121,68 +118,60 @@ export const leadsAPI = {
   },
 
   getLead: async (id: number): Promise<Lead> => {
-    const response: AxiosResponse<Lead> = await api.get(`/leads/${id}/`);
+    const response: AxiosResponse<Lead> = await api.get(`/api/leads/${id}/`);
     return response.data;
   },
 
   createLead: async (leadData: LeadForm): Promise<Lead> => {
-    console.log('API: Creating lead with data:', leadData);
-    console.log('API: Auth token available:', !!authToken);
-    console.log('API: Auth token:', authToken);
     try {
       const response: AxiosResponse<Lead> = await api.post('/api/leads/', leadData);
-      console.log('API: Lead created successfully:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('API: Lead creation failed:', error);
-      console.error('API: Error response:', error.response?.data);
-      console.error('API: Error status:', error.response?.status);
-      console.error('API: Error headers:', error.response?.headers);
       throw error;
     }
   },
 
   updateLead: async (id: number, leadData: LeadUpdateForm): Promise<Lead> => {
-    const response: AxiosResponse<Lead> = await api.patch(`/leads/${id}/`, leadData);
+    const response: AxiosResponse<Lead> = await api.patch(`/api/leads/${id}/`, leadData);
     return response.data;
   },
 
   deleteLead: async (id: number): Promise<void> => {
-    await api.delete(`/leads/${id}/`);
+    await api.delete(`/api/leads/${id}/`);
   },
 
   getMyLeads: async (): Promise<ApiResponse<Lead>> => {
-    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/leads/my/');
+    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/api/leads/my/');
     return response.data;
   },
 
   getColdCallLeads: async (): Promise<ApiResponse<Lead>> => {
-    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/leads/cold-call/');
+    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/api/leads/cold-call/');
     return response.data;
   },
 
   updateLeadDisposition: async (id: number, disposition: LeadDispositionForm): Promise<Lead> => {
-    const response: AxiosResponse<Lead> = await api.post(`/leads/${id}/disposition/`, disposition);
+    const response: AxiosResponse<Lead> = await api.post(`/api/leads/${id}/disposition/`, disposition);
     return response.data;
   },
 
   sendToKelly: async (id: number): Promise<{ message: string }> => {
-    const response: AxiosResponse<{ message: string }> = await api.post(`/leads/${id}/send-to-kelly/`);
+    const response: AxiosResponse<{ message: string }> = await api.post(`/api/leads/${id}/send-to-kelly/`);
     return response.data;
   },
 
   qualifyLead: async (id: number, data: LeadUpdateForm): Promise<{ lead: Lead; notification: any; calendar_synced: boolean }> => {
-    const response: AxiosResponse<{ lead: Lead; notification: any; calendar_synced: boolean }> = await api.post(`/leads/${id}/qualify/`, data);
+    const response: AxiosResponse<{ lead: Lead; notification: any; calendar_synced: boolean }> = await api.post(`/api/leads/${id}/qualify/`, data);
     return response.data;
   },
 
   completeAppointment: async (id: number, data: LeadUpdateForm): Promise<Lead> => {
-    const response: AxiosResponse<Lead> = await api.post(`/leads/${id}/complete-appointment/`, data);
+    const response: AxiosResponse<Lead> = await api.post(`/api/leads/${id}/complete-appointment/`, data);
     return response.data;
   },
 
   bulkDeleteLeadsForever: async (leadIds: number[]): Promise<{ message: string; deleted_count: number }> => {
-    const response: AxiosResponse<{ message: string; deleted_count: number }> = await api.post('/leads/bulk-delete-forever/', { lead_ids: leadIds });
+    const response: AxiosResponse<{ message: string; deleted_count: number }> = await api.post('/api/leads/bulk-delete-forever/', { lead_ids: leadIds });
     return response.data;
   },
 };
@@ -228,39 +217,32 @@ export const callbacksAPI = {
   getCallbacks: async (): Promise<Callback[]> => {
     try {
       const response: AxiosResponse<Callback[]> = await api.get('/api/callbacks/');
-      console.log('API: Fetched callbacks:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('API: Failed to fetch callbacks:', error);
-      console.error('API: Error response:', error.response?.data);
       throw error;
     }
   },
 
   createCallback: async (callbackData: CallbackForm): Promise<Callback> => {
-    console.log('API: Creating callback with data:', callbackData);
     try {
-      const response: AxiosResponse<Callback> = await api.post('/callbacks/create/', callbackData);
-      console.log('API: Callback created successfully:', response.data);
+      const response: AxiosResponse<Callback> = await api.post('/api/callbacks/create/', callbackData);
       return response.data;
     } catch (error: any) {
-      console.error('API: Callback creation failed:', error);
-      console.error('API: Error response:', error.response?.data);
-      console.error('API: Error status:', error.response?.status);
       throw error;
     }
   },
 
   updateCallback: async (callbackId: number, callbackData: Partial<Callback>): Promise<Callback> => {
-    const response: AxiosResponse<Callback> = await api.patch(`/callbacks/${callbackId}/update/`, callbackData);
+    const response: AxiosResponse<Callback> = await api.patch(`/api/callbacks/${callbackId}/update/`, callbackData);
     return response.data;
   },
 
   getDueCallbacks: async (): Promise<Callback[]> => {
-    const response: AxiosResponse<Callback[]> = await api.get('/callbacks/due-reminders/');
+    const response: AxiosResponse<Callback[]> = await api.get('/api/callbacks/due-reminders/');
     return response.data;
   },
 };
+
 
 
 

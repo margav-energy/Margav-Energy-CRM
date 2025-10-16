@@ -32,7 +32,6 @@ const CallbackCompletionModal: React.FC<CallbackCompletionModalProps> = ({
       onComplete();
       onClose();
     } catch (error) {
-      console.error('Error completing callback:', error);
       alert('Failed to complete callback. Please try again.');
     } finally {
       setLoading(false);

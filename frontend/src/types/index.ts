@@ -47,6 +47,11 @@ export interface Lead {
   appointment_date?: string;
   google_calendar_event_id?: string;
   sale_amount?: number;
+  energy_bill_amount?: number;
+  has_ev_charger?: boolean;
+  day_night_rate?: 'yes' | 'no';
+  has_previous_quotes?: boolean;
+  previous_quotes_details?: string;
   created_at: string;
   updated_at: string;
 }
@@ -87,6 +92,11 @@ export interface LeadForm {
   city?: string;
   postal_code?: string;
   notes?: string;
+  energy_bill_amount?: number;
+  has_ev_charger?: boolean;
+  day_night_rate?: 'yes' | 'no';
+  has_previous_quotes?: boolean;
+  previous_quotes_details?: string;
 }
 
 export interface LeadUpdateForm {
@@ -96,6 +106,11 @@ export interface LeadUpdateForm {
   appointment_date?: string | null;
   field_sales_rep?: number | null;
   sale_amount?: number;
+  energy_bill_amount?: number;
+  has_ev_charger?: boolean;
+  day_night_rate?: 'yes' | 'no';
+  has_previous_quotes?: boolean;
+  previous_quotes_details?: string;
 }
 
 export interface LeadDispositionForm {

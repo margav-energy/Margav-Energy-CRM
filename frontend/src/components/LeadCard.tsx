@@ -13,7 +13,6 @@ interface LeadCardProps {
 }
 
 const LeadCard: React.FC<LeadCardProps> = ({ lead, onUpdate, onDelete, onScheduleAppointment, showActions = true, callbacks = [] }) => {
-  // console.log('🎯 LeadCard: Component rendered for lead:', lead.id, 'status:', lead.status);
   
 
   const getStatusColor = (status: string) => {

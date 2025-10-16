@@ -73,8 +73,11 @@ class LeadCreateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Lead
-        fields = ['id', 'full_name', 'phone', 'email', 'address1', 'city', 'postal_code', 'status', 'notes', 'appointment_date', 'assigned_agent']
-        read_only_fields = ['id', 'is_deleted', 'deleted_at', 'deleted_by', 'deletion_reason', 'assigned_agent']
+        fields = ['id', 'full_name', 'phone', 'email', 'address1', 'city', 'postal_code', 'status', 'notes', 'appointment_date', 'assigned_agent', 'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 'has_previous_quotes', 'previous_quotes_details', 'lead_number']
+        read_only_fields = ['id', 'is_deleted', 'deleted_at', 'deleted_by', 'deletion_reason', 'assigned_agent', 'lead_number']
+    
+    def validate(self, data):
+        return super().validate(data)
     
     def validate_phone(self, value):
         """
@@ -90,23 +93,52 @@ class LeadCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Always assign the lead to the current user (agents can only create leads for themselves)
         validated_data['assigned_agent'] = self.context['request'].user
-        try:
-            return Lead.objects.create(**validated_data)
-        except Exception as e:
-            # Check if it's a duplicate phone number error
-            if 'unique_phone_per_lead' in str(e):
-                # Find the existing lead with this phone number
-                existing_lead = Lead.objects.filter(phone=validated_data['phone']).first()
-                if existing_lead:
-                    raise serializers.ValidationError({
-                        'phone': f"A lead with this phone number already exists (Lead ID: {existing_lead.id}, Name: {existing_lead.full_name})."
-                    })
+        
+        # Try to create the lead with retry mechanism for lead number conflicts
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                # Generate lead number before creating the lead
+                temp_lead = Lead(**validated_data)
+                validated_data['lead_number'] = temp_lead.generate_lead_number()
+                
+                # Debug: Print validated data
+                
+                lead = Lead.objects.create(**validated_data)
+                return lead
+                
+            except Exception as e:
+                
+                # Check if it's a duplicate phone number error
+                if 'unique_phone_per_lead' in str(e):
+                    # Find the existing lead with this phone number
+                    existing_lead = Lead.objects.filter(phone=validated_data['phone']).first()
+                    if existing_lead:
+                        raise serializers.ValidationError({
+                            'phone': f"A lead with this phone number already exists (Lead ID: {existing_lead.id}, Name: {existing_lead.full_name})."
+                        })
+                    else:
+                        raise serializers.ValidationError({
+                            'phone': "A lead with this phone number already exists."
+                        })
+                
+                # Check if it's a duplicate lead number error
+                elif 'leads_lead_lead_number_key' in str(e):
+                    if attempt < max_retries - 1:
+                        # Remove the lead_number from validated_data and try again
+                        validated_data.pop('lead_number', None)
+                        continue
+                    else:
+                        raise serializers.ValidationError({
+                            'non_field_errors': ["Unable to create lead due to a temporary system issue. Please try again."]
+                        })
                 else:
-                    raise serializers.ValidationError({
-                        'phone': "A lead with this phone number already exists."
-                    })
-            else:
-                raise e
+                    raise e
+        
+        # This should never be reached, but just in case
+        raise serializers.ValidationError({
+            'non_field_errors': ["Unable to create lead due to a temporary system issue. Please try again."]
+        })
 
 
 class LeadUpdateSerializer(serializers.ModelSerializer):

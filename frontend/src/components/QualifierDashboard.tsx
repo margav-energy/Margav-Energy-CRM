@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Lead } from '../types';
 import { leadsAPI } from '../api';
 import { toast } from 'react-toastify';
@@ -13,26 +13,70 @@ const QualifierDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updatingLead, setUpdatingLead] = useState<Lead | null>(null);
   const [appointmentLead, setAppointmentLead] = useState<Lead | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [agentFilter, setAgentFilter] = useState<string | null>(null);
+  const [statusFilter] = useState<string | null>(null);
+  const [agentFilter] = useState<string | null>(null);
+  const previousLeadCount = useRef<number>(0);
 
-  useEffect(() => {
-    fetchLeads();
-  }, []);
+  // Function to play notification sound
+  const playNotificationSound = () => {
+    try {
+      // Create a simple notification sound using Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+    }
+  };
 
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     try {
       setLoading(true);
       // Fetch all leads that the qualifier has processed (not just sent_to_kelly)
       const response = await leadsAPI.getLeads();
-      setLeads(response.results);
+      const newLeads = response.results;
+      
+      // Check if there are new leads (increase in count)
+      if (previousLeadCount.current > 0 && newLeads.length > previousLeadCount.current) {
+        // Play notification sound for new leads
+        playNotificationSound();
+        toast.info(`New lead received! Total leads: ${newLeads.length}`);
+      }
+      
+      previousLeadCount.current = newLeads.length;
+      setLeads(newLeads);
     } catch (error) {
-      console.error('Failed to fetch leads:', error);
       toast.error('Failed to fetch leads');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+
+  useEffect(() => {
+    fetchLeads();
+    
+    // Auto-refresh every 30 seconds to check for new leads
+    const interval = setInterval(() => {
+      fetchLeads();
+    }, 30000);
+    
+    return () => {
+      clearInterval(interval);
+    };
+  }, [fetchLeads]);
 
   // const handleUpdateLead = async (lead: Lead) => {
   //   setUpdatingLead(lead);
@@ -45,7 +89,6 @@ const QualifierDashboard: React.FC = () => {
       
       setUpdatingLead(null);
     } catch (error) {
-      console.error('Failed to qualify lead:', error);
       toast.error('Failed to qualify lead');
     }
   };
@@ -59,7 +102,22 @@ const QualifierDashboard: React.FC = () => {
     setAppointmentLead(null);
   };
 
-  const getStatusCounts = () => {
+  // Filter leads based on current filters
+  const getFilteredLeads = () => {
+    let filtered = leads;
+    
+    if (statusFilter) {
+      filtered = filtered.filter(lead => lead.status === statusFilter);
+    }
+    
+    if (agentFilter) {
+      filtered = filtered.filter(lead => lead.assigned_agent === parseInt(agentFilter));
+    }
+    
+    return filtered;
+  };
+
+  const getStatusCounts = (leadsToCount: Lead[]) => {
     const counts = {
       cold_call: 0,
       interested: 0,
@@ -77,7 +135,7 @@ const QualifierDashboard: React.FC = () => {
       pass_back_to_agent: 0,
     };
 
-    leads.forEach(lead => {
+    leadsToCount.forEach(lead => {
       if (lead.status in counts) {
         counts[lead.status as keyof typeof counts]++;
       }
@@ -86,27 +144,9 @@ const QualifierDashboard: React.FC = () => {
     return counts;
   };
 
-  const statusCounts = getStatusCounts();
 
-  // Filter leads based on current filters
-  const getFilteredLeads = () => {
-    let filtered = leads;
-    
-    if (statusFilter) {
-      filtered = filtered.filter(lead => lead.status === statusFilter);
-    }
-    
-    if (agentFilter) {
-      filtered = filtered.filter(lead => lead.assigned_agent === parseInt(agentFilter));
-    }
-    
-    return filtered;
-  };
-
-  const clearFilters = () => {
-    setStatusFilter(null);
-    setAgentFilter(null);
-  };
+  const filteredLeads = getFilteredLeads();
+  const statusCounts = getStatusCounts(filteredLeads);
 
   if (loading) {
     return (
@@ -127,14 +167,9 @@ const QualifierDashboard: React.FC = () => {
             </h2>
             <p className="text-gray-600">Review and qualify leads sent from agents</p>
           </div>
-          <button
-            onClick={fetchLeads}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          >
-            Refresh Leads
-          </button>
         </div>
       </div>
+
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

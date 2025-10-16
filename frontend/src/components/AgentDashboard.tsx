@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Lead, LeadForm as LeadFormType, Callback, CallbackForm } from '../types';
 import { leadsAPI, notificationsAPI, callbacksAPI } from '../api';
 import { toast } from 'react-toastify';
@@ -24,6 +24,7 @@ const AgentDashboard: React.FC = () => {
   // const [shownNotifications, setShownNotifications] = useState<Set<number>>(new Set());
   const [selectedCallback, setSelectedCallback] = useState<Callback | null>(null);
   const [showCallbackCompletion, setShowCallbackCompletion] = useState(false);
+  const lastLeadCreationTimeRef = useRef<number>(0);
   const cardsPerPage = 4;
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [prepopulatedData, setPrepopulatedData] = useState<{
@@ -91,7 +92,11 @@ const AgentDashboard: React.FC = () => {
     
     // Set up auto-refresh every 30 seconds (reduced frequency)
     const refreshInterval = setInterval(() => {
-      fetchLeads(false); // Don't show loading during auto-refresh
+      // Only refresh if no lead was created in the last 60 seconds
+      const timeSinceLastLeadCreation = Date.now() - lastLeadCreationTimeRef.current;
+      if (timeSinceLastLeadCreation > 60000) {
+        fetchLeads(false); // Don't show loading during auto-refresh
+      }
       fetchNotificationCount();
       // fetchCallbacks(); // Disabled to prevent spam notifications
     }, 30000);
@@ -204,7 +209,6 @@ const AgentDashboard: React.FC = () => {
       const unread = response.results.filter(n => !n.is_read).length;
       setUnreadCount(unread);
     } catch (error) {
-      console.error('Failed to fetch notification count:', error);
     }
   };
 
@@ -238,7 +242,6 @@ const AgentDashboard: React.FC = () => {
         setIsInitialLoad(false);
       }
     } catch (error) {
-      console.error('Failed to fetch leads:', error);
       setLeads([]); // Set empty array on error
       if (showLoading) {
         toast.error('Failed to fetch leads');
@@ -264,7 +267,6 @@ const AgentDashboard: React.FC = () => {
       // DISABLED: Automatic callback notifications to prevent spam
       // Callback reminders are now shown in the UI instead of toasters
     } catch (error) {
-      console.error('Error fetching callbacks:', error);
       setCallbacks([]);
       setDueCallbacks([]);
     }
@@ -272,8 +274,6 @@ const AgentDashboard: React.FC = () => {
 
   const handleCreateLead = async (leadData: LeadFormType, pendingCallback?: CallbackForm) => {
     try {
-      console.log('AgentDashboard: User authenticated:', !!user);
-      console.log('AgentDashboard: User ID:', user?.id);
       setFormLoading(true);
       
       // Check if we're updating an existing lead from dialer
@@ -295,15 +295,14 @@ const AgentDashboard: React.FC = () => {
       } else {
         // Create new lead - check if it's a callback lead by looking for callback status in the data
         const isCallbackLead = (leadData as any).status === 'callback';
-        console.log('Lead data status:', (leadData as any).status);
-        console.log('Is callback lead:', isCallbackLead);
         const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
           ...leadData,
           status: isCallbackLead ? 'callback' as Lead['status'] : 'sent_to_kelly' as Lead['status']
         };
-        console.log('Creating lead with data:', leadDataWithStatus);
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
+        const now = Date.now();
+        lastLeadCreationTimeRef.current = now;
         
         if (isCallbackLead) {
           toast.success('Lead created successfully with callback status!');
@@ -311,27 +310,18 @@ const AgentDashboard: React.FC = () => {
           // Schedule the callback if there's pending callback data
           if (pendingCallback) {
             try {
-              console.log('Original callback data:', pendingCallback);
-              console.log('New lead ID:', newLead.id);
               
               const callbackDataWithLeadId = {
                 lead: Number(newLead.id), // Ensure it's a number
                 scheduled_time: pendingCallback.scheduled_time,
                 notes: pendingCallback.notes || ''
               };
-              console.log('Original pendingCallback:', pendingCallback);
-              console.log('New lead ID:', newLead.id);
-              console.log('New lead ID type:', typeof newLead.id);
-              console.log('Creating callback with data:', callbackDataWithLeadId);
-              console.log('Callback data lead field type:', typeof callbackDataWithLeadId.lead);
               await callbacksAPI.createCallback(callbackDataWithLeadId);
               toast.success('Callback scheduled successfully!');
               
               // Refresh callbacks to update the display
               await fetchCallbacks(); // Immediate refresh
             } catch (callbackError: any) {
-              console.error('Error scheduling callback:', callbackError);
-              console.error('Callback error details:', callbackError.response?.data);
               toast.error(`Lead created but callback scheduling failed: ${callbackError.response?.data?.error || callbackError.message || 'Unknown error'}. Please schedule manually.`);
             }
           }
@@ -344,7 +334,6 @@ const AgentDashboard: React.FC = () => {
       setEditingLead(null);
       setPrepopulatedData(null);
     } catch (error) {
-      console.error('Failed to create/update lead:', error);
       
       // Extract error message from response
       let errorMessage = 'Failed to create/update lead';
@@ -386,7 +375,6 @@ const AgentDashboard: React.FC = () => {
       setPrepopulatedData(null);
       toast.success('Lead updated successfully!');
     } catch (error) {
-      console.error('Failed to update lead:', error);
       toast.error('Failed to update lead');
     } finally {
       setFormLoading(false);
@@ -426,6 +414,8 @@ const AgentDashboard: React.FC = () => {
         };
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
+        const now = Date.now();
+        lastLeadCreationTimeRef.current = now;
         toast.success('Lead created and sent to qualifier!');
       }
       
@@ -433,7 +423,6 @@ const AgentDashboard: React.FC = () => {
       setEditingLead(null);
       setPrepopulatedData(null);
     } catch (error) {
-      console.error('Failed to send lead to qualifier:', error);
       
       // Extract error message from response
       let errorMessage = 'Failed to send lead to qualifier';
@@ -468,7 +457,6 @@ const AgentDashboard: React.FC = () => {
       setLeads(prev => prev.filter(l => l.id !== lead.id));
       toast.success('Lead deleted successfully!');
     } catch (error) {
-      console.error('Failed to delete lead:', error);
       toast.error('Failed to delete lead');
     }
   };

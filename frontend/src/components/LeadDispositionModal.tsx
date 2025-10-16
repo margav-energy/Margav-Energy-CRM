@@ -34,7 +34,6 @@ const LeadDispositionModal: React.FC<LeadDispositionModalProps> = ({
     try {
       await onUpdate(formData);
     } catch (error) {
-      console.error('Update error:', error);
     }
   };
 

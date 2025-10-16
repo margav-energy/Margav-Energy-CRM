@@ -13,6 +13,7 @@ from .soft_delete import SoftDeleteModel
 from .export_utils import export_leads_to_excel, export_leads_to_csv, create_excel_response, create_csv_response
 from .google_sheets_service import google_sheets_service
 from .excel_parser import ExcelLeadParser
+from .forms import JsonUploadForm
 
 
 class ExcelUploadForm(forms.Form):
@@ -322,7 +323,7 @@ class LeadAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
             path('download-all-excel/', self.download_all_excel, name='leads_lead_download_all_excel'),
             path('download-all-csv/', self.download_all_csv, name='leads_lead_download_all_csv'),
             path('sync-all-sheets/', self.sync_all_sheets, name='leads_lead_sync_all_sheets'),
-            path('upload-excel/', self.upload_excel, name='leads_lead_upload_excel'),
+            path('upload-json/', self.upload_json, name='leads_lead_upload_json'),
         ]
         return custom_urls + urls
     
@@ -360,85 +361,123 @@ class LeadAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
             messages.error(request, f"Error syncing to Google Sheets: {str(e)}")
         return redirect('..')
     
-    def upload_excel(self, request):
-        """Upload Excel file and bulk import leads"""
+    def upload_json(self, request):
+        """Upload JSON file and bulk import leads"""
         if request.method == 'POST':
-            form = ExcelUploadForm(request.POST, request.FILES)
+            form = JsonUploadForm(request.POST, request.FILES)
             if form.is_valid():
-                excel_file = request.FILES['excel_file']
+                json_file = request.FILES['json_file']
                 
                 # Validate file type
-                if not excel_file.name.endswith(('.xlsx', '.xls')):
-                    messages.error(request, 'Invalid file type. Please upload an Excel file (.xlsx or .xls)')
-                    return render(request, 'admin/leads/lead/upload_excel.html', {'form': form})
-                
-                # Save file temporarily
-                import tempfile
-                import os
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
-                    for chunk in excel_file.chunks():
-                        tmp_file.write(chunk)
-                    tmp_file_path = tmp_file.name
+                if not json_file.name.endswith('.json'):
+                    messages.error(request, 'Invalid file type. Please upload a JSON file (.json)')
+                    return render(request, 'admin/leads/lead/upload_json.html', {'form': form})
                 
                 try:
-                    # Parse Excel file
-                    parser = ExcelLeadParser()
-                    leads_data = parser.parse_excel_file(tmp_file_path)
+                    # Parse JSON file
+                    import json
+                    from io import TextIOWrapper
                     
-                    if not leads_data:
-                        error_msg = 'No valid lead data found in Excel file'
-                        if parser.errors:
-                            error_msg += f'. Errors: {"; ".join(parser.errors)}'
-                        
-                        # Add debug info about what columns were found
+                    # Read JSON file
+                    json_data = json.load(TextIOWrapper(json_file, encoding='utf-8'))
+                    
+                    # Validate JSON structure
+                    if not isinstance(json_data, list):
+                        messages.error(request, 'JSON file must contain an array of lead objects')
+                        return render(request, 'admin/leads/lead/upload_json.html', {'form': form})
+                    
+                    # Process leads
+                    created_count = 0
+                    failed_count = 0
+                    errors = []
+                    
+                    for index, lead_data in enumerate(json_data):
                         try:
-                            import pandas as pd
-                            df = pd.read_excel(tmp_file_path)
-                            found_columns = list(df.columns)
-                            error_msg += f'. Found columns: {", ".join(found_columns)}'
-                        except ImportError:
-                            error_msg += '. Pandas not available for column inspection'
-                        except:
-                            pass
-                        
-                        messages.error(request, error_msg)
-                        return render(request, 'admin/leads/lead/upload_excel.html', {'form': form})
-                    
-                    # Create leads
-                    result = parser.create_leads_from_data(leads_data)
+                            # Validate required fields
+                            required_fields = ['full_name', 'phone']
+                            missing_fields = [field for field in required_fields if field not in lead_data]
+                            if missing_fields:
+                                errors.append(f"Lead {index + 1}: Missing required fields: {', '.join(missing_fields)}")
+                                failed_count += 1
+                                continue
+                            
+                            # Map JSON data to Lead model fields
+                            lead_obj_data = {
+                                'full_name': str(lead_data.get('full_name', '')).strip(),
+                                'phone': str(lead_data.get('phone', '')).strip(),
+                                'email': lead_data.get('email', ''),
+                                'address1': lead_data.get('address1', ''),
+                                'city': lead_data.get('city', ''),
+                                'postal_code': lead_data.get('postal_code', ''),
+                                'notes': lead_data.get('notes', ''),
+                                'status': lead_data.get('status', 'cold_call'),
+                                'energy_bill_amount': lead_data.get('energy_bill_amount'),
+                                'has_ev_charger': lead_data.get('has_ev_charger'),
+                                'day_night_rate': lead_data.get('day_night_rate'),
+                                'has_previous_quotes': lead_data.get('has_previous_quotes'),
+                                'previous_quotes_details': lead_data.get('previous_quotes_details'),
+                            }
+                            
+                            # Find agent by ID or username
+                            if 'assigned_agent' in lead_data:
+                                try:
+                                    agent_id = lead_data['assigned_agent']
+                                    if isinstance(agent_id, int):
+                                        agent = User.objects.get(id=agent_id)
+                                    else:
+                                        agent = User.objects.get(username=agent_id)
+                                    lead_obj_data['assigned_agent'] = agent
+                                except User.DoesNotExist:
+                                    errors.append(f"Lead {index + 1}: Agent not found: {agent_id}")
+                                    failed_count += 1
+                                    continue
+                            
+                            # Parse appointment date if provided
+                            if 'appointment_date' in lead_data and lead_data['appointment_date']:
+                                try:
+                                    from datetime import datetime
+                                    appointment_date = datetime.fromisoformat(lead_data['appointment_date'].replace('Z', '+00:00'))
+                                    lead_obj_data['appointment_date'] = appointment_date
+                                except:
+                                    pass  # Skip if date parsing fails
+                            
+                            # Create lead
+                            Lead.objects.create(**lead_obj_data)
+                            created_count += 1
+                            
+                        except Exception as e:
+                            errors.append(f"Lead {index + 1}: {str(e)}")
+                            failed_count += 1
+                            continue
                     
                     # Show results
-                    created_count = len(result['created_leads'])
-                    failed_count = len(result['failed_leads'])
-                    
                     if created_count > 0:
                         messages.success(request, f'Successfully imported {created_count} leads')
                     
                     if failed_count > 0:
                         messages.warning(request, f'{failed_count} leads failed to import')
                     
-                    # Show warnings
-                    for warning in result['warnings']:
-                        messages.warning(request, warning)
-                    
-                    # Show errors
-                    for error in result['errors']:
+                    # Show errors (limit to first 10)
+                    for error in errors[:10]:
                         messages.error(request, error)
+                    
+                    if len(errors) > 10:
+                        messages.warning(request, f'... and {len(errors) - 10} more errors')
                     
                     return redirect('..')
                     
-                finally:
-                    # Clean up temporary file
-                    try:
-                        os.unlink(tmp_file_path)
-                    except OSError:
-                        pass
+                except json.JSONDecodeError as e:
+                    messages.error(request, f'Invalid JSON format: {str(e)}')
+                    return render(request, 'admin/leads/lead/upload_json.html', {'form': form})
+                except Exception as e:
+                    messages.error(request, f'Error processing JSON file: {str(e)}')
+                    return render(request, 'admin/leads/lead/upload_json.html', {'form': form})
             else:
                 messages.error(request, 'Please correct the errors below')
         else:
-            form = ExcelUploadForm()
+            form = JsonUploadForm()
         
-        return render(request, 'admin/leads/lead/upload_excel.html', {'form': form})
+        return render(request, 'admin/leads/lead/upload_json.html', {'form': form})
 
 
 @admin.register(DialerUserLink)

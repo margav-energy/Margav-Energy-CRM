@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lead Persistence Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Lead Persistence Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Instructions</h2>
+        <ol>
+            <li>Open the CRM application at <a href="http://localhost:3000" target="_blank">http://localhost:3000</a></li>
+            <li>Login as an agent</li>
+            <li>Create a new lead</li>
+            <li>Watch the browser console for auto-refresh logs</li>
+            <li>Verify the lead persists for at least 60 seconds</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h2>Expected Behavior</h2>
+        <ul>
+            <li class="success">✅ Lead should appear immediately after creation</li>
+            <li class="info">ℹ️ Console should show "Lead created, timestamp set to: [timestamp]"</li>
+            <li class="info">ℹ️ Console should show "Skipping auto-refresh due to recent lead creation" for 60 seconds</li>
+            <li class="success">✅ Lead should persist for at least 60 seconds</li>
+            <li class="info">ℹ️ After 60 seconds, auto-refresh should resume normally</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>Console Logs to Look For</h2>
+        <pre>
+Auto-refresh check: {timeSinceLastLeadCreation: 0, lastLeadCreationTime: 1234567890, shouldRefresh: false}
+Skipping auto-refresh due to recent lead creation
+
+Lead created, timestamp set to: 1234567890
+        </pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>If Issues Persist</h2>
+        <ul>
+            <li>Check if the backend is running on port 8000</li>
+            <li>Check if the frontend is running on port 3000</li>
+            <li>Check browser console for any errors</li>
+            <li>Verify the lead is actually created in the database</li>
+        </ul>
+    </div>
+</body>
+</html>
+

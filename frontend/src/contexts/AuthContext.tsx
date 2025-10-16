@@ -37,7 +37,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userData = await authAPI.getCurrentUser();
           setUser(userData);
         } catch (error) {
-          console.error('Failed to get current user:', error);
           setAuthToken(null);
         }
       }
@@ -53,7 +52,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthToken(response.token);
       setUser(response.user);
     } catch (error) {
-      console.error('Login failed:', error);
       throw error;
     }
   };

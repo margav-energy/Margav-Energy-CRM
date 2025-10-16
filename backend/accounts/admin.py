@@ -4,15 +4,12 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.http import HttpResponseRedirect
 from .models import User
 
-# Set custom admin site template and title
+# Set custom admin site template
 admin.site.index_template = 'admin/index.html'
-admin.site.site_header = 'Margav Energy CRM Administration'
-admin.site.site_title = 'Margav Energy CRM'
-admin.site.index_title = 'Margav Energy CRM Administration'
 
 
 @admin.register(User)
@@ -77,6 +74,25 @@ class UserAdmin(BaseUserAdmin):
     def get_queryset(self, request):
         """Optimize queryset with prefetch_related for dialer links."""
         return super().get_queryset(request).prefetch_related('dialer_link')
+    
+    def changelist_view(self, request, extra_context=None):
+        """Override changelist view to add user statistics."""
+        # Get user counts by role
+        agents_count = User.objects.filter(role='agent').count()
+        qualifiers_count = User.objects.filter(role='qualifier').count()
+        salesreps_count = User.objects.filter(role='salesrep').count()
+        total_users = User.objects.count()
+        
+        # Add user stats to context
+        extra_context = extra_context or {}
+        extra_context['user_stats'] = {
+            'agents': agents_count,
+            'qualifiers': qualifiers_count,
+            'salesreps': salesreps_count,
+            'total': total_users,
+        }
+        
+        return super().changelist_view(request, extra_context)
     
     actions = ['create_dialer_users_action', 'delete_selected_users', 'reset_user_passwords']
     

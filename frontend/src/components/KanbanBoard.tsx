@@ -76,7 +76,6 @@ const SortableLeadCard: React.FC<SortableLeadCardProps> = ({
 
   // Safety check for lead data
   if (!lead || typeof lead.id === 'undefined') {
-    console.warn('SortableLeadCard received invalid lead data:', lead);
     return null;
   }
 
@@ -302,7 +301,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
 
       setColumns(populatedColumns);
     } catch (error) {
-      console.error('Failed to fetch leads:', error);
       toast.error('Failed to fetch leads');
     } finally {
       setLoading(false);
@@ -488,14 +486,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole }) => {
             toast.success(`Lead moved to ${targetColumn.title}. Please set an appointment date to sync to Google Calendar.`);
           }
         } catch (calendarError) {
-          console.error('Google Calendar sync failed:', calendarError);
           toast.warning(`Lead moved to ${targetColumn.title}, but Google Calendar sync failed. Please check calendar integration.`);
         }
       } else {
         toast.success(`Lead moved to ${targetColumn.title}`);
       }
     } catch (error) {
-      console.error('Failed to update lead status:', error);
       toast.error('Failed to update lead status');
     }
   };

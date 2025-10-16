@@ -1,0 +1,71 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Upload JSON Leads" %}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:leads_lead_changelist' %}">{% trans 'Leads' %}</a>
+&rsaquo; {% trans "Upload JSON" %}
+</div>
+{% endblock %}
+
+{% block content %}
+    <h1>{% trans "Upload JSON Leads" %}</h1>
+    
+    <div class="module aligned">
+        <h2>{% trans "JSON File Format" %}</h2>
+        <p>{% trans "Upload a JSON file containing an array of lead objects. Each lead object should have the following structure:" %}</p>
+        
+        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto;">
+{
+  "full_name": "John Doe",
+  "phone": "1234567890",
+  "email": "john@example.com",
+  "address1": "123 Main St",
+  "city": "London",
+  "postal_code": "SW1A 1AA",
+  "notes": "Additional notes",
+  "status": "cold_call",
+  "energy_bill_amount": 150.50,
+  "has_ev_charger": true,
+  "day_night_rate": false,
+  "has_previous_quotes": false,
+  "previous_quotes_details": "",
+  "assigned_agent": "agent_username",
+  "appointment_date": "2024-01-15T10:00:00Z"
+}
+        </pre>
+        
+        <p><strong>{% trans "Required fields:" %}</strong> full_name, phone</p>
+        <p><strong>{% trans "Optional fields:" %}</strong> email, address1, city, postal_code, notes, status, energy_bill_amount, has_ev_charger, day_night_rate, has_previous_quotes, previous_quotes_details, assigned_agent, appointment_date</p>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <fieldset class="module aligned">
+            <div class="form-row">
+                <div>
+                    <label for="{{ form.json_file.id_for_label }}">{{ form.json_file.label }}:</label>
+                    {{ form.json_file }}
+                    {% if form.json_file.help_text %}
+                        <p class="help">{{ form.json_file.help_text }}</p>
+                    {% endif %}
+                    {% if form.json_file.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.json_file.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            </div>
+        </fieldset>
+        
+        <div class="submit-row">
+            <input type="submit" value="{% trans 'Upload JSON File' %}" class="default" />
+            <a href="{% url 'admin:leads_lead_changelist' %}" class="button">{% trans 'Cancel' %}</a>
+        </div>
+    </form>
+{% endblock %}

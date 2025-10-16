@@ -23,7 +23,7 @@ urlpatterns = [
     
     path('leads/bulk-delete-forever/', views.bulk_delete_leads_forever, name='bulk-delete-leads-forever'),
     path('leads/sync-to-sheets/', views.sync_leads_to_sheets, name='sync-leads-to-sheets'),
-    path('leads/upload-excel/', views.upload_excel_leads, name='upload-excel-leads'),
+    path('leads/upload-json/', views.upload_json_leads, name='upload-json-leads'),
     
     # Callback routes
     path('callbacks/', views.callback_list, name='callback-list'),

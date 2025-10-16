@@ -57,7 +57,6 @@ const CallbackScheduler: React.FC<CallbackSchedulerProps> = ({
       setNotes('');
       onClose();
     } catch (error) {
-      console.error('Failed to schedule callback:', error);
       alert('Failed to schedule callback. Please try again.');
     } finally {
       setLoading(false);

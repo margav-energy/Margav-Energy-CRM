@@ -39,7 +39,6 @@ const QualifyLeadModal: React.FC<QualifyLeadModalProps> = ({
           const minutes = String(date.getMinutes()).padStart(2, '0');
           setAppointmentDate(`${year}-${month}-${day}T${hours}:${minutes}`);
         } catch (error) {
-          console.error('Error formatting appointment date:', error);
           setAppointmentDate('');
         }
       } else {
@@ -59,7 +58,6 @@ const QualifyLeadModal: React.FC<QualifyLeadModalProps> = ({
           { id: 3, name: 'Mike Johnson' }
         ]);
       } catch (error) {
-        console.error('Failed to fetch field sales reps:', error);
       }
     };
     
@@ -99,7 +97,6 @@ const QualifyLeadModal: React.FC<QualifyLeadModalProps> = ({
             formData.appointment_date = date.toISOString();
           }
         } catch (error) {
-          console.error('Invalid appointment date format:', error);
         }
       }
 
@@ -111,7 +108,6 @@ const QualifyLeadModal: React.FC<QualifyLeadModalProps> = ({
       toast.success('Lead status updated successfully!');
       onClose();
     } catch (error) {
-      console.error('Failed to update lead:', error);
       toast.error('Failed to update lead status');
     } finally {
       setLoading(false);

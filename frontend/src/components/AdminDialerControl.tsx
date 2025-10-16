@@ -18,7 +18,6 @@ const AdminDialerControl: React.FC = () => {
       const dialerData = await dialerAPI.getDialerStatus();
       setDialer(dialerData);
     } catch (error) {
-      console.error('Failed to fetch dialer status:', error);
       toast.error('Failed to fetch dialer status');
     } finally {
       setLoading(false);
@@ -40,7 +39,6 @@ const AdminDialerControl: React.FC = () => {
         toast.info('Dialer deactivated. No new calls will be distributed.');
       }
     } catch (error) {
-      console.error('Failed to update dialer status:', error);
       toast.error('Failed to update dialer status');
     } finally {
       setUpdating(false);

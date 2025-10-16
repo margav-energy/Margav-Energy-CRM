@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lead Persistence Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .code { background: #f5f5f5; padding: 10px; border-radius: 4px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Lead Persistence Fix Test</h1>
+    
+    <div class="test-section">
+        <h2>✅ Fix Applied</h2>
+        <p><strong>Problem:</strong> Auto-refresh was using stale state value (always 0)</p>
+        <p><strong>Solution:</strong> Changed from <code>useState</code> to <code>useRef</code> for timestamp tracking</p>
+        <div class="code">
+// Before (BROKEN):
+const [lastLeadCreationTime, setLastLeadCreationTime] = useState(0);
+// Auto-refresh always saw 0 because of closure
+
+// After (FIXED):
+const lastLeadCreationTimeRef = useRef(0);
+// Auto-refresh now sees current value via .current
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🧪 Test Instructions</h2>
+        <ol>
+            <li>Open <a href="http://localhost:3000" target="_blank">http://localhost:3000</a></li>
+            <li>Login as an agent</li>
+            <li>Create a new lead</li>
+            <li>Watch console for these logs:</li>
+        </ol>
+        
+        <div class="code">
+✅ Expected Console Logs:
+Lead created, timestamp set to: 1234567890
+Auto-refresh check: {timeSinceLastLeadCreation: 0, lastLeadCreationTime: 1234567890, shouldRefresh: false}
+Skipping auto-refresh due to recent lead creation
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎯 Expected Behavior</h2>
+        <ul>
+            <li class="success">✅ Lead appears immediately after creation</li>
+            <li class="success">✅ Lead persists for 60+ seconds</li>
+            <li class="info">ℹ️ Auto-refresh skips for 60 seconds after lead creation</li>
+            <li class="info">ℹ️ Console shows correct timestamp values</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🔍 Debug Information</h2>
+        <p>If the lead still disappears, check:</p>
+        <ul>
+            <li>Console shows <code>lastLeadCreationTime: 0</code> → Fix not applied</li>
+            <li>Console shows <code>shouldRefresh: true</code> immediately → Auto-refresh still running</li>
+            <li>Backend API returns different data than expected</li>
+        </ul>
+    </div>
+</body>
+</html>
+

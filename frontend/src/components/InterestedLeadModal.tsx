@@ -134,7 +134,6 @@ ${formData.notes}
       toast.success('Lead sheet completed and sent to Kelly for qualification!');
       onSuccess();
     } catch (error) {
-      console.error('Failed to update lead:', error);
       toast.error('Failed to submit lead sheet');
     } finally {
       setLoading(false);

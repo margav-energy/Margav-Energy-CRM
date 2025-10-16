@@ -31,7 +31,6 @@ const ColdCallDashboard: React.FC = () => {
       const dialer = await dialerAPI.getDialerStatus();
       setDialerActive(dialer.is_active);
     } catch (error) {
-      console.error('Failed to fetch dialer status:', error);
     }
   };
 
@@ -41,7 +40,6 @@ const ColdCallDashboard: React.FC = () => {
       const response = await leadsAPI.getColdCallLeads();
       setLeads(response.results);
     } catch (error) {
-      console.error('Failed to fetch cold call leads:', error);
       toast.error('Failed to fetch cold call leads');
     } finally {
       setLoading(false);
@@ -65,7 +63,6 @@ const ColdCallDashboard: React.FC = () => {
       
       toast.success('Lead disposition updated successfully!');
     } catch (error) {
-      console.error('Failed to update disposition:', error);
       toast.error('Failed to update lead disposition');
     } finally {
       setDispositionLoading(false);

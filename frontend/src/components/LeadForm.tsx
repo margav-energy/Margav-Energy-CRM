@@ -236,9 +236,9 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
     
     // Energy Usage
     average_monthly_electricity_bill: parsedData.average_monthly_electricity_bill || '',
-    energy_bill_amount: parsedData.energy_bill_amount || '',
-    has_ev_charger: parsedData.has_ev_charger || '',
-    day_night_rate: parsedData.day_night_rate || '',
+    energy_bill_amount: lead?.energy_bill_amount !== null && lead?.energy_bill_amount !== undefined ? lead.energy_bill_amount.toString() : (parsedData.energy_bill_amount || ''),
+    has_ev_charger: lead?.has_ev_charger !== null && lead?.has_ev_charger !== undefined ? lead.has_ev_charger.toString() : (parsedData.has_ev_charger || ''),
+    day_night_rate: lead?.day_night_rate || parsedData.day_night_rate || '',
     current_energy_supplier: parsedData.current_energy_supplier || '',
     electric_heating_appliances: parsedData.electric_heating_appliances || '',
     energy_details: parsedData.energy_details || '',
@@ -391,6 +391,11 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         address1: formData.address,
         city: formData.city,
         postal_code: formData.postcode,
+        energy_bill_amount: formData.energy_bill_amount ? parseFloat(formData.energy_bill_amount) : undefined,
+        has_ev_charger: formData.has_ev_charger === 'true' ? true : formData.has_ev_charger === 'false' ? false : undefined,
+        day_night_rate: formData.day_night_rate as 'yes' | 'no' | undefined,
+        has_previous_quotes: formData.has_previous_quotes === 'true' ? true : formData.has_previous_quotes === 'false' ? false : undefined,
+        previous_quotes_details: formData.previous_quotes_details || undefined,
         notes: `${formData.notes}\n\n--- DETAILED LEAD INFORMATION ---\n` +
                `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                `Property Ownership: ${formData.property_ownership}\n` +
@@ -412,6 +417,8 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '')
       };
       
+      // Debug: Log the final form data being sent
+      
       // Pass pending callback data as separate parameter
       await onSubmit(basicFormData, pendingCallback || undefined);
       
@@ -420,7 +427,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         setPendingCallback(null);
       }
     } catch (error) {
-      console.error('Form submission error:', error);
     }
   };
 
@@ -444,6 +450,11 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         address1: formData.address,
         city: formData.city,
         postal_code: formData.postcode,
+        energy_bill_amount: formData.energy_bill_amount ? parseFloat(formData.energy_bill_amount) : undefined,
+        has_ev_charger: formData.has_ev_charger === 'true' ? true : formData.has_ev_charger === 'false' ? false : undefined,
+        day_night_rate: formData.day_night_rate as 'yes' | 'no' | undefined,
+        has_previous_quotes: formData.has_previous_quotes === 'true' ? true : formData.has_previous_quotes === 'false' ? false : undefined,
+        previous_quotes_details: formData.previous_quotes_details || undefined,
         notes: `${formData.notes}\n\n--- DETAILED LEAD INFORMATION ---\n` +
                `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                `Property Ownership: ${formData.property_ownership}\n` +
@@ -467,7 +478,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
       
       await onSendToQualifier(basicFormData);
     } catch (error) {
-      console.error('Send to qualifier error:', error);
     }
   };
 
@@ -479,7 +489,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           ...callbackData,
           lead: lead.id
         };
-        console.log('Creating callback with data:', callbackDataWithLeadId);
         await callbacksAPI.createCallback(callbackDataWithLeadId);
         alert('Callback scheduled successfully!');
         setShowCallbackScheduler(false);
@@ -500,6 +509,11 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           address1: formData.address,
           city: formData.city,
           postal_code: formData.postcode,
+          energy_bill_amount: formData.energy_bill_amount ? parseFloat(formData.energy_bill_amount) : undefined,
+          has_ev_charger: formData.has_ev_charger === 'true' ? true : formData.has_ev_charger === 'false' ? false : undefined,
+          day_night_rate: formData.day_night_rate as 'yes' | 'no' | undefined,
+        has_previous_quotes: formData.has_previous_quotes === 'true' ? true : formData.has_previous_quotes === 'false' ? false : undefined,
+        previous_quotes_details: formData.previous_quotes_details || undefined,
           notes: `${formData.notes}\n\n--- DETAILED LEAD INFORMATION ---\n` +
                  `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                  `Property Ownership: ${formData.property_ownership}\n` +
@@ -540,7 +554,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         setShowCallbackScheduler(false);
       }
     } catch (error) {
-      console.error('Error scheduling callback:', error);
       alert('Failed to schedule callback. Please try again.');
     }
   };

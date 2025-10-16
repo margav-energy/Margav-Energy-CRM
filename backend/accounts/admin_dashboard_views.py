@@ -14,7 +14,8 @@ def admin_dashboard(request):
     # Get user counts by role
     agents_count = User.objects.filter(role='agent').count()
     qualifiers_count = User.objects.filter(role='qualifier').count()
-    salesreps_count = User.objects.filter(role='sales_rep').count()
+    salesreps_count = User.objects.filter(role='salesrep').count()
+    total_users = User.objects.count()
     total_leads = Lead.objects.count()
     
     # Get recent activity (last 24 hours)
@@ -30,10 +31,10 @@ def admin_dashboard(request):
         created_at__gte=yesterday
     ).order_by('-created_at')[:5]
     
-    # Get recent callbacks
+    # Get recent callbacks (using scheduled_time since created_at doesn't exist)
     recent_callbacks = Callback.objects.filter(
-        created_at__gte=yesterday
-    ).order_by('-created_at')[:5]
+        scheduled_time__gte=yesterday
+    ).order_by('-scheduled_time')[:5]
     
     # Process activity items
     activity_items = []
@@ -68,8 +69,8 @@ def admin_dashboard(request):
     for callback in recent_callbacks:
         activity_items.append({
             'type': 'callback',
-            'title': f"Callback scheduled: {callback.lead_name}",
-            'time': callback.created_at,
+            'title': f"Callback scheduled: {callback.lead.full_name}",
+            'time': callback.scheduled_time,
             'icon': '⏰'
         })
     
@@ -92,6 +93,7 @@ def admin_dashboard(request):
         'agents_count': agents_count,
         'qualifiers_count': qualifiers_count,
         'salesreps_count': salesreps_count,
+        'total_users': total_users,
         'total_leads': total_leads,
         'activity_items': activity_items,
     }

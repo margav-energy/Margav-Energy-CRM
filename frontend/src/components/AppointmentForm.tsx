@@ -39,7 +39,6 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ lead, onClose, onSucc
       onClose();
       
     } catch (error) {
-      console.error('Failed to schedule appointment:', error);
       toast.error('Failed to schedule appointment');
     } finally {
       setLoading(false);

@@ -33,7 +33,6 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
       const minutes = String(date.getMinutes()).padStart(2, '0');
       return `${year}-${month}-${day}T${hours}:${minutes}`;
     } catch (error) {
-      console.error('Error formatting date:', error);
       return '';
     }
   };
@@ -59,7 +58,6 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
       setLoading(true);
       
       // Debug: Log the form data being sent
-      console.log('Form data being sent:', formData);
       
       // Clean up form data before sending
       const cleanFormData = {
@@ -71,25 +69,28 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               return date.toISOString();
             }
           } catch (error) {
-            console.error('Invalid date format:', error);
           }
           return null;
         })() : null,
         field_sales_rep: formData.field_sales_rep || null,
       };
       
-      console.log('Clean form data:', cleanFormData);
       
       // Update the lead with qualification data
-      await leadsAPI.qualifyLead(lead.id, cleanFormData);
+      const response = await leadsAPI.qualifyLead(lead.id, cleanFormData);
       
-      toast.success('Lead qualified successfully!');
+      // Check if Google Calendar sync failed
+      if (formData.status === 'appointment_set' && !response.calendar_synced) {
+        toast.warning('Lead qualified successfully, but Google Calendar sync failed. The appointment may not appear in the calendar.', {
+          autoClose: 8000,
+          position: 'top-right'
+        });
+      } else {
+        toast.success('Lead qualified successfully!');
+      }
+      
       onSuccess();
     } catch (error) {
-      console.error('Failed to qualify lead:', error);
-      if (error && typeof error === 'object' && 'response' in error) {
-        console.error('Error details:', (error as any).response?.data);
-      }
       toast.error('Failed to qualify lead');
     } finally {
       setLoading(false);

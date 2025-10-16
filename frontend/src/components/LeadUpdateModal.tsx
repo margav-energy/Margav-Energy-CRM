@@ -30,7 +30,6 @@ const LeadUpdateModal: React.FC<LeadUpdateModalProps> = ({
       const minutes = String(date.getMinutes()).padStart(2, '0');
       return `${year}-${month}-${day}T${hours}:${minutes}`;
     } catch (error) {
-      console.error('Error formatting date:', error);
       return '';
     }
   };
@@ -66,14 +65,12 @@ const LeadUpdateModal: React.FC<LeadUpdateModalProps> = ({
             updateData.appointment_date = date.toISOString();
           }
         } catch (error) {
-          console.error('Invalid date format:', error);
         }
       }
 
       await onUpdate(lead.id, updateData);
       onClose();
     } catch (error) {
-      console.error('Update error:', error);
     }
   };
 

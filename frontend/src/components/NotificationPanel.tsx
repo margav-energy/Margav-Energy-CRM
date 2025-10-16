@@ -24,7 +24,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
       const response = await notificationsAPI.getNotifications();
       setNotifications(response.results);
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
       toast.error('Failed to fetch notifications');
     } finally {
       setLoading(false);
@@ -40,7 +39,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
         )
       );
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
       toast.error('Failed to mark notification as read');
     }
   };
@@ -53,7 +51,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
       );
       toast.success('All notifications marked as read');
     } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
       toast.error('Failed to mark all notifications as read');
     }
   };
@@ -66,7 +63,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
       );
       toast.success('Notification deleted');
     } catch (error) {
-      console.error('Failed to delete notification:', error);
       toast.error('Failed to delete notification');
     }
   };
