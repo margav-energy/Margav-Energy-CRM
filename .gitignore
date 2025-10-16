@@ -91,6 +91,8 @@ test_*.py
 *_test.py
 test_*.js
 *_test.js
+test_*.html
+*_test.html
 
 # Backup files
 *.bak
