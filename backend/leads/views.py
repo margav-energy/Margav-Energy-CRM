@@ -22,6 +22,10 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import os
 import tempfile
+import hmac
+import hashlib
+import time
+from django.utils import timezone
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -88,7 +92,7 @@ class LeadViewSet(viewsets.ModelViewSet):
         # Qualifiers can see leads they've processed (sent_to_kelly and beyond)
         if user.is_qualifier:
             return Lead.objects.filter(
-                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent']
+                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']
             )
         
         # SalesReps can see leads with appointments
@@ -97,32 +101,96 @@ class LeadViewSet(viewsets.ModelViewSet):
         
         return Lead.objects.none()
     
-    @action(detail=False, methods=['post'], url_path='from-dialer', permission_classes=[AllowAny])
+    @action(detail=False, methods=['post', 'get'], url_path='from-dialer', permission_classes=[AllowAny])
     def from_dialer(self, request):
         """
         Create or update a lead from dialer when agent clicks "Client Interested".
         Handles comprehensive dialer data with proper logging.
         """
-        logger.info(f"Received dialer lead data: {request.data}")
+        # Accept both POST (JSON/body) and GET (query params) for dialer compatibility
+        if request.method == 'GET':
+            incoming_data = request.query_params.copy()
+        else:
+            incoming_data = request.data.copy()
+
+        # Normalize common alternative param names from dialers
+        # Support fullname -> full_name, phone_number -> phone, recording_filename -> recording_file
+        if not incoming_data.get('full_name') and incoming_data.get('fullname'):
+            incoming_data['full_name'] = incoming_data.get('fullname')
+        if not incoming_data.get('phone') and incoming_data.get('phone_number'):
+            incoming_data['phone'] = incoming_data.get('phone_number')
+        if not incoming_data.get('recording_file') and incoming_data.get('recording_filename'):
+            incoming_data['recording_file'] = incoming_data.get('recording_filename')
+
+        logger.info(f"Received dialer lead data: {dict(incoming_data)}")
         
-        # Optional API key check - check both headers and request body
+        # Security: IP allowlist check
+        client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+        allowed_ips = getattr(settings, 'DIALER_ALLOWED_IPS', [])
+        if allowed_ips and client_ip not in allowed_ips:
+            logger.warning(f'Dialer request from unauthorized IP: {client_ip}')
+            return Response({'error': 'Unauthorized IP address'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # API key validation - prefer header over query param for security
         api_key = (
             request.headers.get('X-Dialer-Api-Key') or 
-            request.headers.get('x-dialer-api-key') or
-            request.data.get('api_key') or
-            request.data.get('dialer_api_key')
+            request.headers.get('x-dialer-api-key')
         )
+        # Only allow query param api_key in development
+        if not api_key and settings.DEBUG:
+            api_key = incoming_data.get('api_key') or incoming_data.get('dialer_api_key')
+        
         expected_key = getattr(settings, 'DIALER_API_KEY', None)
         if expected_key:
             if not api_key or api_key != expected_key:
                 logger.warning('Dialer API key missing or invalid')
                 return Response({'error': 'Invalid API key'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # HMAC signature validation for production security
+        if not settings.DEBUG:
+            signature = request.headers.get('X-Dialer-Signature')
+            timestamp = request.headers.get('X-Dialer-Timestamp')
+            
+            if not signature or not timestamp:
+                logger.warning('Missing HMAC signature or timestamp')
+                return Response({'error': 'Missing security headers'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Check timestamp to prevent replay attacks (5 minute window)
+            try:
+                request_time = int(timestamp)
+                current_time = int(time.time())
+                if abs(current_time - request_time) > 300:  # 5 minutes
+                    logger.warning(f'Request timestamp too old: {timestamp}')
+                    return Response({'error': 'Request timestamp expired'}, status=status.HTTP_401_UNAUTHORIZED)
+            except ValueError:
+                logger.warning(f'Invalid timestamp format: {timestamp}')
+                return Response({'error': 'Invalid timestamp format'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Verify HMAC signature
+            secret_key = getattr(settings, 'DIALER_SECRET_KEY', expected_key)
+            if secret_key:
+                # Create canonical string for signing
+                canonical_params = []
+                for key in sorted(incoming_data.keys()):
+                    if key not in ['api_key', 'dialer_api_key', 'signature']:  # Exclude auth params
+                        canonical_params.append(f"{key}={incoming_data[key]}")
+                canonical_string = "&".join(canonical_params)
+                
+                expected_signature = hmac.new(
+                    secret_key.encode('utf-8'),
+                    canonical_string.encode('utf-8'),
+                    hashlib.sha256
+                ).hexdigest()
+                
+                if not hmac.compare_digest(signature, expected_signature):
+                    logger.warning('HMAC signature validation failed')
+                    return Response({'error': 'Invalid signature'}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Validate required fields - prefer dialer_user_id mapping; fallback to user
         required_fields = []
-        if not request.data.get('dialer_user_id') and not request.data.get('user'):
+        if not incoming_data.get('dialer_user_id') and not incoming_data.get('user'):
             required_fields = ['dialer_user_id or user']
-        missing_fields = [field for field in required_fields if not request.data.get(field)]
+        missing_fields = [field for field in required_fields if not incoming_data.get(field)]
         
         if missing_fields:
             logger.warning(f"Missing required fields: {missing_fields}")
@@ -132,13 +200,13 @@ class LeadViewSet(viewsets.ModelViewSet):
         
         # Resolve agent via dialer mapping first; fallback to username
         agent = None
-        dialer_user_id = request.data.get('dialer_user_id')
+        dialer_user_id = incoming_data.get('dialer_user_id')
         if dialer_user_id:
             link = DialerUserLink.objects.filter(dialer_user_id=dialer_user_id).select_related('crm_user').first()
             if link:
                 agent = link.crm_user
-        if agent is None and request.data.get('user'):
-            agent_username = request.data.get('user')
+        if agent is None and incoming_data.get('user'):
+            agent_username = incoming_data.get('user')
             try:
                 agent = User.objects.get(username=agent_username)
             except User.DoesNotExist:
@@ -148,8 +216,8 @@ class LeadViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Agent mapping not found'}, status=status.HTTP_404_NOT_FOUND)
         
         # Check if lead already exists by dialer_lead_id or phone
-        lead_id = request.data.get('lead_id')
-        phone = request.data.get('phone') or request.data.get('phone_number')
+        lead_id = incoming_data.get('lead_id')
+        phone = incoming_data.get('phone') or incoming_data.get('phone_number')
         existing_lead = None
         
         if lead_id:
@@ -167,7 +235,7 @@ class LeadViewSet(viewsets.ModelViewSet):
                 logger.info(f"No existing lead found with phone: {phone}")
         
         # Prepare comprehensive lead data
-        lead_data = request.data.copy()
+        lead_data = incoming_data.copy()
         lead_data['assigned_agent'] = agent.id
         lead_data['status'] = lead_data.get('status', 'interested')
         
@@ -246,7 +314,7 @@ class LeadListCreateView(generics.ListCreateAPIView):
         # Qualifiers can see leads they've processed (sent_to_kelly and beyond)
         if user.is_qualifier:
             return Lead.objects.filter(
-                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent']
+                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']
             )
         
         # SalesReps can see leads with appointments
@@ -281,7 +349,7 @@ class LeadDetailView(generics.RetrieveUpdateDestroyAPIView):
         # Qualifiers can see leads they've processed (sent_to_kelly and beyond)
         if user.is_qualifier:
             return Lead.objects.filter(
-                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent']
+                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']
             )
         
         # SalesReps can see leads with appointments
@@ -408,6 +476,16 @@ def qualify_lead(request, lead_id):
         # Create notification for the agent
         from .models import LeadNotification
         notification_message = f"Lead {lead.full_name} status updated to: {updated_lead.get_status_display()}"
+        
+        # Handle special status transitions
+        if updated_lead.status == 'blow_out':
+            # Blow out should return to agent as not interested
+            updated_lead.status = 'not_interested'
+            updated_lead.save()
+            notification_message = f"Lead {lead.full_name} marked as Blow Out - returned to agent as Not Interested"
+        elif updated_lead.status == 'pass_back_to_agent':
+            # Pass back to agent should be recognized as a callback (no new callback created)
+            notification_message = f"Lead {lead.full_name} passed back to agent - recognized as callback"
         
         # Check Google Calendar status only when setting an appointment
         if updated_lead.status == 'appointment_set':

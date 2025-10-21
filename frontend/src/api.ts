@@ -3,8 +3,8 @@ import { AuthResponse, User, Lead, Dialer, ApiResponse, LoginForm, LeadForm, Lea
 
 // Base API configuration
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://crm.margav.energy' 
-  : 'http://localhost:8000';
+  ? 'https://crm.margav.energy/api' 
+  : 'http://localhost:8000/api';
 
 // Create axios instance
 const api = axios.create({
@@ -61,12 +61,12 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: async (credentials: LoginForm): Promise<AuthResponse> => {
-    const response: AxiosResponse<AuthResponse> = await api.post('/api/api-token-auth/', credentials);
+    const response: AxiosResponse<AuthResponse> = await api.post('/api-token-auth/', credentials);
     return response.data;
   },
 
   getCurrentUser: async (): Promise<User> => {
-    const response: AxiosResponse<User> = await api.get('/api/users/me/');
+    const response: AxiosResponse<User> = await api.get('/users/me/');
     return response.data;
   },
 
@@ -78,17 +78,17 @@ export const authAPI = {
 // Users API
 export const usersAPI = {
   getUsers: async (): Promise<ApiResponse<User>> => {
-    const response: AxiosResponse<ApiResponse<User>> = await api.get('/api/users/');
+    const response: AxiosResponse<ApiResponse<User>> = await api.get('/users/');
     return response.data;
   },
 
   getUser: async (id: number): Promise<User> => {
-    const response: AxiosResponse<User> = await api.get(`/api/users/${id}/`);
+    const response: AxiosResponse<User> = await api.get(`/users/${id}/`);
     return response.data;
   },
 
   changePassword: async (oldPassword: string, newPassword: string): Promise<{ message: string }> => {
-    const response: AxiosResponse<{ message: string }> = await api.post('/api/users/change-password/', {
+    const response: AxiosResponse<{ message: string }> = await api.post('/users/change-password/', {
       old_password: oldPassword,
       new_password: newPassword,
     });
@@ -96,7 +96,7 @@ export const usersAPI = {
   },
 
   changePasswordForUser: async (username: string, oldPassword: string, newPassword: string): Promise<{ message: string }> => {
-    const response: AxiosResponse<{ message: string }> = await api.post('/api/users/change-password-for-user/', {
+    const response: AxiosResponse<{ message: string }> = await api.post('/users/change-password-for-user/', {
       username: username,
       old_password: oldPassword,
       new_password: newPassword,
@@ -113,18 +113,18 @@ export const leadsAPI = {
     search?: string;
     ordering?: string;
   }): Promise<ApiResponse<Lead>> => {
-    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/api/leads/', { params });
+    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/leads/', { params });
     return response.data;
   },
 
   getLead: async (id: number): Promise<Lead> => {
-    const response: AxiosResponse<Lead> = await api.get(`/api/leads/${id}/`);
+    const response: AxiosResponse<Lead> = await api.get(`/leads/${id}/`);
     return response.data;
   },
 
   createLead: async (leadData: LeadForm): Promise<Lead> => {
     try {
-      const response: AxiosResponse<Lead> = await api.post('/api/leads/', leadData);
+      const response: AxiosResponse<Lead> = await api.post('/leads/', leadData);
       return response.data;
     } catch (error: any) {
       throw error;
@@ -132,46 +132,46 @@ export const leadsAPI = {
   },
 
   updateLead: async (id: number, leadData: LeadUpdateForm): Promise<Lead> => {
-    const response: AxiosResponse<Lead> = await api.patch(`/api/leads/${id}/`, leadData);
+    const response: AxiosResponse<Lead> = await api.patch(`/leads/${id}/`, leadData);
     return response.data;
   },
 
   deleteLead: async (id: number): Promise<void> => {
-    await api.delete(`/api/leads/${id}/`);
+    await api.delete(`/leads/${id}/`);
   },
 
   getMyLeads: async (): Promise<ApiResponse<Lead>> => {
-    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/api/leads/my/');
+    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/leads/my/');
     return response.data;
   },
 
   getColdCallLeads: async (): Promise<ApiResponse<Lead>> => {
-    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/api/leads/cold-call/');
+    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/leads/cold-call/');
     return response.data;
   },
 
   updateLeadDisposition: async (id: number, disposition: LeadDispositionForm): Promise<Lead> => {
-    const response: AxiosResponse<Lead> = await api.post(`/api/leads/${id}/disposition/`, disposition);
+    const response: AxiosResponse<Lead> = await api.post(`/leads/${id}/disposition/`, disposition);
     return response.data;
   },
 
   sendToKelly: async (id: number): Promise<{ message: string }> => {
-    const response: AxiosResponse<{ message: string }> = await api.post(`/api/leads/${id}/send-to-kelly/`);
+    const response: AxiosResponse<{ message: string }> = await api.post(`/leads/${id}/send-to-kelly/`);
     return response.data;
   },
 
   qualifyLead: async (id: number, data: LeadUpdateForm): Promise<{ lead: Lead; notification: any; calendar_synced: boolean }> => {
-    const response: AxiosResponse<{ lead: Lead; notification: any; calendar_synced: boolean }> = await api.post(`/api/leads/${id}/qualify/`, data);
+    const response: AxiosResponse<{ lead: Lead; notification: any; calendar_synced: boolean }> = await api.post(`/leads/${id}/qualify/`, data);
     return response.data;
   },
 
   completeAppointment: async (id: number, data: LeadUpdateForm): Promise<Lead> => {
-    const response: AxiosResponse<Lead> = await api.post(`/api/leads/${id}/complete-appointment/`, data);
+    const response: AxiosResponse<Lead> = await api.post(`/leads/${id}/complete-appointment/`, data);
     return response.data;
   },
 
   bulkDeleteLeadsForever: async (leadIds: number[]): Promise<{ message: string; deleted_count: number }> => {
-    const response: AxiosResponse<{ message: string; deleted_count: number }> = await api.post('/api/leads/bulk-delete-forever/', { lead_ids: leadIds });
+    const response: AxiosResponse<{ message: string; deleted_count: number }> = await api.post('/leads/bulk-delete-forever/', { lead_ids: leadIds });
     return response.data;
   },
 };
@@ -192,7 +192,7 @@ export const dialerAPI = {
 // Notifications API
 export const notificationsAPI = {
   getNotifications: async (): Promise<ApiResponse<LeadNotification>> => {
-    const response: AxiosResponse<ApiResponse<LeadNotification>> = await api.get('/api/notifications/');
+    const response: AxiosResponse<ApiResponse<LeadNotification>> = await api.get('/notifications/');
     return response.data;
   },
 
@@ -216,7 +216,7 @@ export const notificationsAPI = {
 export const callbacksAPI = {
   getCallbacks: async (): Promise<Callback[]> => {
     try {
-      const response: AxiosResponse<Callback[]> = await api.get('/api/callbacks/');
+      const response: AxiosResponse<Callback[]> = await api.get('/callbacks/');
       return response.data;
     } catch (error: any) {
       throw error;
@@ -225,7 +225,7 @@ export const callbacksAPI = {
 
   createCallback: async (callbackData: CallbackForm): Promise<Callback> => {
     try {
-      const response: AxiosResponse<Callback> = await api.post('/api/callbacks/create/', callbackData);
+      const response: AxiosResponse<Callback> = await api.post('/callbacks/create/', callbackData);
       return response.data;
     } catch (error: any) {
       throw error;
@@ -233,12 +233,12 @@ export const callbacksAPI = {
   },
 
   updateCallback: async (callbackId: number, callbackData: Partial<Callback>): Promise<Callback> => {
-    const response: AxiosResponse<Callback> = await api.patch(`/api/callbacks/${callbackId}/update/`, callbackData);
+    const response: AxiosResponse<Callback> = await api.patch(`/callbacks/${callbackId}/update/`, callbackData);
     return response.data;
   },
 
   getDueCallbacks: async (): Promise<Callback[]> => {
-    const response: AxiosResponse<Callback[]> = await api.get('/api/callbacks/due-reminders/');
+    const response: AxiosResponse<Callback[]> = await api.get('/callbacks/due-reminders/');
     return response.data;
   },
 };

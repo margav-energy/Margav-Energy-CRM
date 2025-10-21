@@ -7,6 +7,7 @@ import LeadCard from './LeadCard';
 import LeadForm from './LeadForm';
 import NotificationPanel from './NotificationPanel';
 import CallbackCompletionModal from './CallbackCompletionModal';
+import { useLocalStorageEvents } from '../hooks/useLocalStorageEvents';
 
 const AgentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -27,6 +28,9 @@ const AgentDashboard: React.FC = () => {
   const lastLeadCreationTimeRef = useRef<number>(0);
   const cardsPerPage = 4;
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  
+  // LocalStorage events for real-time communication
+  const { sendMessage } = useLocalStorageEvents('lead_updates', () => {});
   const [prepopulatedData, setPrepopulatedData] = useState<{
     full_name?: string;
     phone?: string;
@@ -90,16 +94,16 @@ const AgentDashboard: React.FC = () => {
     fetchCallbacks();
     checkForDialerLead();
     
-    // Set up auto-refresh every 30 seconds (reduced frequency)
+    // Set up auto-refresh every 60 seconds (increased frequency to prevent interference)
     const refreshInterval = setInterval(() => {
-      // Only refresh if no lead was created in the last 60 seconds
+      // Only refresh if no lead was created in the last 90 seconds (increased buffer)
       const timeSinceLastLeadCreation = Date.now() - lastLeadCreationTimeRef.current;
-      if (timeSinceLastLeadCreation > 60000) {
+      if (timeSinceLastLeadCreation > 90000) {
         fetchLeads(false); // Don't show loading during auto-refresh
       }
       fetchNotificationCount();
       // fetchCallbacks(); // Disabled to prevent spam notifications
-    }, 30000);
+    }, 60000);
     
     // Cleanup interval on unmount
     return () => clearInterval(refreshInterval);
@@ -107,7 +111,22 @@ const AgentDashboard: React.FC = () => {
 
   // Check for URL parameters indicating a lead from dialer
   // Filtering and pagination logic
-  const filteredLeads = statusFilter ? leads.filter(lead => lead.status === statusFilter) : leads;
+  const getFilteredLeads = () => {
+    if (!statusFilter) return leads;
+    
+    // Group related statuses for filtering
+    const statusGroups: { [key: string]: string[] } = {
+      'interested': ['interested', 'sent_to_kelly'],
+      'appointment_set': ['appointment_set'],
+      'not_interested': ['not_interested', 'blow_out'],
+      'callback': ['callback', 'pass_back_to_agent', 'on_hold']
+    };
+    
+    const statusesToInclude = statusGroups[statusFilter] || [statusFilter];
+    return leads.filter(lead => statusesToInclude.includes(lead.status));
+  };
+  
+  const filteredLeads = getFilteredLeads();
   const totalPages = Math.ceil(filteredLeads.length / cardsPerPage);
   const startIndex = (currentPage - 1) * cardsPerPage;
   const endIndex = startIndex + cardsPerPage;
@@ -293,6 +312,10 @@ const AgentDashboard: React.FC = () => {
         
         toast.success('Lead updated successfully and sent to qualifier!');
       } else {
+        // Set the lead creation time before making the API call to prevent auto-refresh interference
+        const now = Date.now();
+        lastLeadCreationTimeRef.current = now;
+        
         // Create new lead - check if it's a callback lead by looking for callback status in the data
         const isCallbackLead = (leadData as any).status === 'callback';
         const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
@@ -301,8 +324,11 @@ const AgentDashboard: React.FC = () => {
         };
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
-        const now = Date.now();
-        lastLeadCreationTimeRef.current = now;
+        
+        // Broadcast new lead to qualifier dashboard if status is sent_to_kelly
+        if (newLead.status === 'sent_to_kelly') {
+          sendMessage({ type: 'NEW_LEAD', lead: newLead });
+        }
         
         if (isCallbackLead) {
           toast.success('Lead created successfully with callback status!');
@@ -394,6 +420,10 @@ const AgentDashboard: React.FC = () => {
         };
         const updatedLead = await leadsAPI.updateLead(editingLead.id, leadDataWithStatus);
         setLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
+        
+        // Broadcast updated lead to qualifier dashboard
+        sendMessage({ type: 'LEAD_UPDATED', lead: updatedLead });
+        
         toast.success('Lead updated and sent to qualifier!');
       } else if (prepopulatedData?.lead_id) {
         // Update existing lead from dialer and send to qualifier
@@ -404,8 +434,16 @@ const AgentDashboard: React.FC = () => {
         };
         const updatedLead = await leadsAPI.updateLead(parseInt(prepopulatedData.lead_id), leadDataWithStatus);
         setLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
+        
+        // Broadcast updated lead to qualifier dashboard
+        sendMessage({ type: 'LEAD_UPDATED', lead: updatedLead });
+        
         toast.success('Lead updated and sent to qualifier!');
       } else {
+        // Set the lead creation time before making the API call to prevent auto-refresh interference
+        const now = Date.now();
+        lastLeadCreationTimeRef.current = now;
+        
         // Create new lead and send to qualifier
         const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
           ...leadData,
@@ -414,8 +452,10 @@ const AgentDashboard: React.FC = () => {
         };
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
-        const now = Date.now();
-        lastLeadCreationTimeRef.current = now;
+        
+        // Broadcast new lead to qualifier dashboard
+        sendMessage({ type: 'NEW_LEAD', lead: newLead });
+        
         toast.success('Lead created and sent to qualifier!');
       }
       
@@ -505,14 +545,20 @@ const AgentDashboard: React.FC = () => {
       }
     });
 
-    // Update callback count from actual callbacks data
-    counts.callbacks = callbacks.filter(callback => callback.status === 'scheduled').length;
+    // Update callback count from actual callbacks data and pass_back_to_agent leads only
+    // Note: on_hold status is for qualifiers only - agents should not call these back
+    const scheduledCallbacks = callbacks.filter(callback => callback.status === 'scheduled').length;
+    const passBackLeads = leads.filter(lead => lead.status === 'pass_back_to_agent').length;
+    counts.callbacks = scheduledCallbacks + passBackLeads;
 
     return counts;
   };
 
   const getCallbackCount = () => {
-    return callbacks.filter(callback => callback.status === 'scheduled').length;
+    // Note: on_hold status is for qualifiers only - agents should not call these back
+    const scheduledCallbacks = callbacks.filter(callback => callback.status === 'scheduled').length;
+    const passBackLeads = leads.filter(lead => lead.status === 'pass_back_to_agent').length;
+    return scheduledCallbacks + passBackLeads;
   };
 
   const statusCounts = getStatusCounts();

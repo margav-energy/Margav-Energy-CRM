@@ -1,12 +1,21 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import AgentDashboard from './AgentDashboard';
 import QualifierDashboard from './QualifierDashboard';
 import AdminDialerControl from './AdminDialerControl';
 import KanbanBoard from './KanbanBoard';
+import { Lead } from '../types';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const qualifierLeadUpdateRef = useRef<((lead: Lead) => void) | null>(null);
+
+  const handleKanbanLeadUpdate = useCallback((updatedLead?: Lead) => {
+    // Pass the lead update to QualifierDashboard if it's a qualifier
+    if (user?.role === 'qualifier' && qualifierLeadUpdateRef.current && updatedLead) {
+      qualifierLeadUpdateRef.current(updatedLead);
+    }
+  }, [user?.role]);
 
   if (!user) {
     return (
@@ -23,8 +32,8 @@ const Dashboard: React.FC = () => {
     case 'qualifier':
       return (
         <div className="space-y-6">
-          <QualifierDashboard />
-          <KanbanBoard userRole={user.role} />
+          <QualifierDashboard onKanbanLeadUpdate={qualifierLeadUpdateRef} />
+          <KanbanBoard userRole={user.role} onLeadUpdate={handleKanbanLeadUpdate} />
         </div>
       );
     case 'salesrep':

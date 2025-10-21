@@ -89,7 +89,10 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
         toast.success('Lead qualified successfully!');
       }
       
-      onSuccess();
+      // Call onSuccess after a short delay to allow toast to be visible
+      setTimeout(() => {
+        onSuccess();
+      }, 100);
     } catch (error) {
       toast.error('Failed to qualify lead');
     } finally {
@@ -146,6 +149,12 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               <div>
                 <span className="font-medium text-gray-700">Agent:</span> {lead.assigned_agent_name}
               </div>
+              <div>
+                <span className="font-medium text-gray-700">Address:</span> {lead.address1 || 'N/A'}
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Postcode:</span> {lead.postal_code || 'N/A'}
+              </div>
             </div>
             {lead.notes && (
               <div className="mt-3">
@@ -179,6 +188,8 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                   <option value="appointment_set">📅 Appointment Set</option>
                   <option value="not_interested">❌ Not Interested</option>
                   <option value="pass_back_to_agent">↩️ Pass Back to Agent</option>
+                  <option value="on_hold">⏸️ On Hold</option>
+        <option value="qualifier_callback">📞 Qualifier Callback</option>
                 </select>
               </div>
 

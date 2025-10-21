@@ -123,6 +123,7 @@ const QualifyLeadModal: React.FC<QualifyLeadModalProps> = ({
     { value: 'not_interested', label: 'Not Interested', color: 'text-red-600' },
     { value: 'blow_out', label: 'Blow Out', color: 'text-red-600' },
     { value: 'pass_back_to_agent', label: 'Pass Back to Agent', color: 'text-blue-600' },
+    { value: 'on_hold', label: 'On Hold', color: 'text-orange-600' },
   ];
 
   return (

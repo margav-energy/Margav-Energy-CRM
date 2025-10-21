@@ -35,7 +35,7 @@ export interface Lead {
   city?: string;
   state?: string;
   postal_code?: string;
-  status: 'cold_call' | 'interested' | 'not_interested' | 'tenant' | 'other_disposition' | 'sent_to_kelly' | 'qualified' | 'appointment_set' | 'appointment_completed' | 'sale_made' | 'sale_lost' | 'no_contact' | 'blow_out' | 'callback' | 'pass_back_to_agent';
+  status: 'cold_call' | 'interested' | 'not_interested' | 'tenant' | 'other_disposition' | 'sent_to_kelly' | 'qualified' | 'appointment_set' | 'appointment_completed' | 'sale_made' | 'sale_lost' | 'no_contact' | 'blow_out' | 'callback' | 'pass_back_to_agent' | 'on_hold' | 'qualifier_callback';
   disposition?: 'not_interested' | 'tenant' | 'wrong_number' | 'no_answer' | 'callback_requested' | 'do_not_call' | 'other';
   assigned_agent: number;
   assigned_agent_name: string;

@@ -54,6 +54,7 @@ class Lead(SoftDeleteModel):
         ('pass_back', 'Pass Back'),
         ('desk_top_survey', 'Desk Top Survey'),
         ('on_hold', 'On Hold'),
+        ('qualifier_callback', 'Qualifier Callback'),
         ('sold', 'Sold'),
     ]
     
@@ -380,6 +381,14 @@ class Lead(SoftDeleteModel):
                     log_lead_updated(self)
             except Exception as e:
                 logger.error(f"Failed to log audit trail for lead {self.id}: {e}")
+        
+        # Auto-sync to Google Sheets
+        if not skip_audit:
+            try:
+                from .google_sheets_service import google_sheets_service
+                google_sheets_service.sync_lead_to_sheets(self)
+            except Exception as e:
+                logger.error(f"Failed to sync lead {self.id} to Google Sheets: {e}")
     
     def delete(self, *args, **kwargs):
         """Override delete to log audit trail"""
