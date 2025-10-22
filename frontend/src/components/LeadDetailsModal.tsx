@@ -38,6 +38,7 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
       'blow_out': 'bg-red-100 text-red-800',
       'callback': 'bg-yellow-100 text-yellow-800',
       'pass_back_to_agent': 'bg-blue-100 text-blue-800',
+      'on_hold': 'bg-orange-100 text-orange-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -59,6 +60,7 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
       'blow_out': 'Blow Out',
       'callback': 'Call Back',
       'pass_back_to_agent': 'Pass Back',
+      'on_hold': 'On Hold',
     };
     return names[status] || status;
   };
@@ -115,6 +117,18 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                   <p className="text-gray-900">{lead.email}</p>
+                </div>
+              )}
+              {lead.address1 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                  <p className="text-gray-900">{lead.address1}</p>
+                </div>
+              )}
+              {lead.postal_code && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
+                  <p className="text-gray-900">{lead.postal_code}</p>
                 </div>
               )}
             </div>
