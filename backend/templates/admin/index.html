@@ -1,6 +1,26 @@
 {% extends "admin/base_site.html" %}
 {% load i18n admin_urls static admin_modify %}
-{% block title %}{{ title }} | {{ site_title|default:_('Margav Energy CRM Administration') }}{% endblock %} {% block extrahead %} {{ block.super }}
+{% block title %}{{ title }} | {{ site_title|default:_('Margav Energy CRM Administration') }}{% endblock %}
+
+{% block nav-global %}
+<div id="user-tools">
+    {% if user.is_authenticated %}
+        <p class="welcome">
+            Welcome, <strong>{% if user.first_name %}{{ user.first_name }}{% else %}{{ user.username }}{% endif %}</strong>.
+            <a href="/">View site</a> /
+            <a href="{% url 'admin:password_change' %}">Change password</a> /
+            <a href="{% url 'admin:logout' %}">Log out</a>
+        </p>
+    {% endif %}
+    <div class="theme-toggle">
+        <button type="button" class="theme-toggle-button" aria-label="Toggle theme">
+            <span class="theme-icon">🌙</span>
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrahead %} {{ block.super }}
 <style>
   /* Dark mode styles */
   .dark-theme .admin-dashboard {

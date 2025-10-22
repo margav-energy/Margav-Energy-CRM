@@ -67,28 +67,45 @@ document.addEventListener('DOMContentLoaded', function() {
             themeToggle.querySelector('.theme-icon').textContent = '☀️';
         }
     }
+    
+    // Add theme toggle to existing user tools
+    const userTools = document.querySelector('#user-tools');
+    if (userTools && !userTools.querySelector('.theme-toggle')) {
+        const themeToggleDiv = document.createElement('div');
+        themeToggleDiv.className = 'theme-toggle';
+        themeToggleDiv.innerHTML = '<button type="button" class="theme-toggle-button" aria-label="Toggle theme"><span class="theme-icon">🌙</span></button>';
+        userTools.appendChild(themeToggleDiv);
+        
+        // Re-attach event listener to new button
+        const newThemeToggle = themeToggleDiv.querySelector('.theme-toggle-button');
+        if (newThemeToggle) {
+            newThemeToggle.addEventListener('click', function() {
+                const body = document.body;
+                const isDark = body.classList.contains('dark-theme');
+                
+                if (isDark) {
+                    body.classList.remove('dark-theme');
+                    localStorage.setItem('admin-theme', 'light');
+                    newThemeToggle.querySelector('.theme-icon').textContent = '🌙';
+                } else {
+                    body.classList.add('dark-theme');
+                    localStorage.setItem('admin-theme', 'dark');
+                    newThemeToggle.querySelector('.theme-icon').textContent = '☀️';
+                }
+            });
+            
+            // Load saved theme
+            const savedTheme = localStorage.getItem('admin-theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+                newThemeToggle.querySelector('.theme-icon').textContent = '☀️';
+            }
+        }
+    }
 });
 </script>
 {% endblock %}
 
 {% block branding %}
 <h1 id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Margav Energy CRM Administration') }}</a></h1>
-{% endblock %}
-
-{% block nav-global %}
-<div id="user-tools">
-    {% if user.is_authenticated %}
-        <p class="welcome">
-            Welcome, <strong>{% if user.first_name %}{{ user.first_name }}{% else %}{{ user.username }}{% endif %}</strong>.
-            <a href="/">View site</a> /
-            <a href="{% url 'admin:password_change' %}">Change password</a> /
-            <a href="{% url 'admin:logout' %}">Log out</a>
-        </p>
-    {% endif %}
-    <div class="theme-toggle">
-        <button type="button" class="theme-toggle-button" aria-label="Toggle theme">
-            <span class="theme-icon">🌙</span>
-        </button>
-    </div>
-</div>
 {% endblock %}

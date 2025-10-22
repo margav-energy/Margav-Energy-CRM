@@ -141,13 +141,17 @@ class LeadViewSet(viewsets.ModelViewSet):
             api_key = incoming_data.get('api_key') or incoming_data.get('dialer_api_key')
         
         expected_key = getattr(settings, 'DIALER_API_KEY', None)
-        if expected_key:
+        
+        # If no API key is configured, allow dialer to authenticate using user credentials
+        if not expected_key:
+            logger.info('No DIALER_API_KEY configured - allowing dialer authentication via user credentials')
+        else:
             if not api_key or api_key != expected_key:
                 logger.warning('Dialer API key missing or invalid')
                 return Response({'error': 'Invalid API key'}, status=status.HTTP_401_UNAUTHORIZED)
         
-        # HMAC signature validation for production security
-        if not settings.DEBUG:
+        # HMAC signature validation for production security (only if API key is configured)
+        if not settings.DEBUG and expected_key:
             signature = request.headers.get('X-Dialer-Signature')
             timestamp = request.headers.get('X-Dialer-Timestamp')
             

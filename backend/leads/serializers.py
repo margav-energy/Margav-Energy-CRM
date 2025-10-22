@@ -70,11 +70,24 @@ class LeadSerializer(serializers.ModelSerializer):
 class LeadCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating new leads.
+    Only full_name, phone, and postal_code are required.
     """
     class Meta:
         model = Lead
         fields = ['id', 'full_name', 'phone', 'email', 'address1', 'city', 'postal_code', 'status', 'notes', 'appointment_date', 'assigned_agent', 'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 'has_previous_quotes', 'previous_quotes_details', 'lead_number']
         read_only_fields = ['id', 'is_deleted', 'deleted_at', 'deleted_by', 'deletion_reason', 'assigned_agent', 'lead_number']
+        extra_kwargs = {
+            'email': {'required': False, 'allow_blank': True},
+            'address1': {'required': False, 'allow_blank': True},
+            'city': {'required': False, 'allow_blank': True},
+            'notes': {'required': False, 'allow_blank': True},
+            'appointment_date': {'required': False},
+            'energy_bill_amount': {'required': False, 'allow_null': True},
+            'has_ev_charger': {'required': False, 'allow_null': True},
+            'day_night_rate': {'required': False, 'allow_null': True},
+            'has_previous_quotes': {'required': False, 'allow_null': True},
+            'previous_quotes_details': {'required': False, 'allow_blank': True},
+        }
     
     def validate(self, data):
         return super().validate(data)
@@ -150,6 +163,8 @@ class LeadUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'full_name', 'phone', 'email', 'status', 'disposition', 
             'notes', 'appointment_date', 'field_sales_rep', 'sale_amount',
+            # Address fields
+            'address1', 'city', 'postal_code',
             # Energy section fields
             'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 
             'has_previous_quotes', 'previous_quotes_details'

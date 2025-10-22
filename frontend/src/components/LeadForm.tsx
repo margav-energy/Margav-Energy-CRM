@@ -219,12 +219,12 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
   
   const [formData, setFormData] = useState<ExtendedLeadFormData>({
     // Contact Information - prioritize prepopulated data
-    full_name: buildFullName(),
-    phone: getPhoneNumber(),
+    full_name: buildFullName() || '',
+    phone: getPhoneNumber() || '',
     email: prepopulatedData?.email || lead?.email || '',
-    address: buildAddress(),
+    address: buildAddress() || '',
     city: prepopulatedData?.city || lead?.city || parsedData.city || '',
-    postcode: getPostcode(),
+    postcode: getPostcode() || '',
     preferred_contact_time: parsedData.preferred_contact_time || '',
     
     // Property Information
@@ -247,8 +247,8 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
     timeframe: parsedData.timeframe || '',
     moving_properties_next_five_years: parsedData.moving_properties_next_five_years || '',
     timeframe_details: parsedData.timeframe_details || '',
-    has_previous_quotes: parsedData.has_previous_quotes || '',
-    previous_quotes_details: parsedData.previous_quotes_details || '',
+    has_previous_quotes: lead?.has_previous_quotes !== null && lead?.has_previous_quotes !== undefined ? lead.has_previous_quotes.toString() : (parsedData.has_previous_quotes || ''),
+    previous_quotes_details: lead?.previous_quotes_details || parsedData.previous_quotes_details || '',
     
     // Notes - combine dialer comments with existing notes
     notes: (() => {
@@ -288,70 +288,29 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
 
-    // Required fields
-    if (!formData.full_name.trim()) {
-      newErrors.full_name = 'Full name is required';
+    // Only required fields: full_name, phone, and postcode (only validate if we're creating a new lead)
+    if (!lead) {
+      if (!formData.full_name?.trim()) {
+        newErrors.full_name = 'Full name is required';
+      }
+
+      if (!formData.phone?.trim()) {
+        newErrors.phone = 'Phone number is required';
+      } else if (!/^[+]?[0-9\s\-()]{10,}$/.test(formData.phone.trim())) {
+        newErrors.phone = 'Please enter a valid phone number';
+      }
+
+      if (!formData.postcode?.trim()) {
+        newErrors.postcode = 'Postcode is required';
+      }
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^[+]?[0-9\s\-()]{10,}$/.test(formData.phone.trim())) {
-      newErrors.phone = 'Please enter a valid phone number';
-    }
-
-    if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email)) {
+    // Optional fields - only validate format if provided
+    if (formData.email?.trim() && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
-    }
-
-    if (!formData.postcode.trim()) {
-      newErrors.postcode = 'Postcode is required';
-    }
-
-    if (!formData.property_ownership) {
-      newErrors.property_ownership = 'Property ownership is required';
-    }
-
-    if (!formData.property_type) {
-      newErrors.property_type = 'Property type is required';
-    }
-
-    if (!formData.number_of_bedrooms) {
-      newErrors.number_of_bedrooms = 'Number of bedrooms is required';
-    }
-
-    if (!formData.roof_type) {
-      newErrors.roof_type = 'Roof type is required';
-    }
-
-    if (!formData.roof_material) {
-      newErrors.roof_material = 'Roof material is required';
-    }
-
-    if (!formData.average_monthly_electricity_bill) {
-      newErrors.average_monthly_electricity_bill = 'Average monthly electricity bill is required';
-    }
-
-    if (!formData.current_energy_supplier) {
-      newErrors.current_energy_supplier = 'Current energy supplier is required';
-    }
-
-    if (!formData.electric_heating_appliances) {
-      newErrors.electric_heating_appliances = 'Electric heating/appliances is required';
-    }
-
-    if (!formData.timeframe) {
-      newErrors.timeframe = 'Timeframe is required';
-    }
-
-    if (!formData.moving_properties_next_five_years) {
-      newErrors.moving_properties_next_five_years = 'Moving properties next 5 years is required';
-    }
-
-    // Notes are optional - no validation needed
+    // All other fields are optional - no validation needed
 
     // Energy bill amount validation (if provided)
     if (formData.energy_bill_amount && isNaN(Number(formData.energy_bill_amount))) {
@@ -598,7 +557,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
-                Full Name *
+                Full Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -619,7 +578,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
 
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Phone Number *
+                Phone Number <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
@@ -693,7 +652,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
 
             <div>
               <label htmlFor="postcode" className="block text-sm font-medium text-gray-700">
-                Postcode
+                Postcode <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"

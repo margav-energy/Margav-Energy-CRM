@@ -131,7 +131,7 @@ export const leadsAPI = {
     }
   },
 
-  updateLead: async (id: number, leadData: LeadUpdateForm): Promise<Lead> => {
+  updateLead: async (id: number, leadData: LeadForm): Promise<Lead> => {
     const response: AxiosResponse<Lead> = await api.patch(`/leads/${id}/`, leadData);
     return response.data;
   },

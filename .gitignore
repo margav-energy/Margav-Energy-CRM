@@ -115,6 +115,7 @@ backend/test_*.py
 backend/debug_*.py
 backend/create_*.py
 backend/setup_*.py
+backend/setup_dialer_user.py
 backend/diagnose_*.py
 backend/fix_*.py
 backend/check_*.py

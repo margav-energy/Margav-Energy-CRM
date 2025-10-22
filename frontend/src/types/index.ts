@@ -85,8 +85,8 @@ export interface LoginForm {
 }
 
 export interface LeadForm {
-  full_name: string;
-  phone: string;
+  full_name?: string;
+  phone?: string;
   email?: string;
   address1?: string;
   city?: string;
@@ -97,6 +97,9 @@ export interface LeadForm {
   day_night_rate?: 'yes' | 'no';
   has_previous_quotes?: boolean;
   previous_quotes_details?: string;
+  // Add fields needed for updates
+  status?: Lead['status'];
+  appointment_date?: string;
 }
 
 export interface LeadUpdateForm {
@@ -111,6 +114,13 @@ export interface LeadUpdateForm {
   day_night_rate?: 'yes' | 'no';
   has_previous_quotes?: boolean;
   previous_quotes_details?: string;
+  // Add missing fields for complete lead updates
+  full_name?: string;
+  phone?: string;
+  email?: string;
+  address1?: string;
+  city?: string;
+  postal_code?: string;
 }
 
 export interface LeadDispositionForm {
