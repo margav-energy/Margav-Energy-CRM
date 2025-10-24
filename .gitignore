@@ -57,7 +57,7 @@ lerna-debug.log*
 .pnpm-debug.log*
 
 # React build
-frontend/build/
+# frontend/build/
 frontend/dist/
 
 # IDE and Editor files
