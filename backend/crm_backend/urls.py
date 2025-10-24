@@ -89,6 +89,7 @@ def serve_data_upload(request):
 
 def serve_static_file(request, path):
     """Serve static files with proper MIME types"""
+    # Try to serve from STATIC_ROOT first
     file_path = os.path.join(settings.STATIC_ROOT, path)
     if os.path.exists(file_path):
         # Determine MIME type based on file extension
@@ -106,11 +107,34 @@ def serve_static_file(request, path):
             content_type = 'application/octet-stream'
         
         return FileResponse(open(file_path, 'rb'), content_type=content_type)
+    
+    # Fallback: try to serve from STATICFILES_DIRS
+    for static_dir in settings.STATICFILES_DIRS:
+        fallback_path = os.path.join(static_dir, path)
+        if os.path.exists(fallback_path):
+            if path.endswith('.css'):
+                content_type = 'text/css'
+            elif path.endswith('.js'):
+                content_type = 'application/javascript'
+            elif path.endswith('.png'):
+                content_type = 'image/png'
+            elif path.endswith('.jpg') or path.endswith('.jpeg'):
+                content_type = 'image/jpeg'
+            elif path.endswith('.ico'):
+                content_type = 'image/x-icon'
+            else:
+                content_type = 'application/octet-stream'
+            
+            return FileResponse(open(fallback_path, 'rb'), content_type=content_type)
+    
     return HttpResponse(status=404)
 
 urlpatterns = [
     path('favicon.ico', serve_favicon, name='favicon'),
     path('debug/static/', debug_static_files, name='debug_static'),
+    
+    # Custom static file serving
+    re_path(r'^static/(?P<path>.*)$', serve_static_file, name='static_files'),
 
     # Custom admin views
     path('admin/accounts/user/bulk-creation/', admin.site.admin_view(admin_views.bulk_user_creation), name='admin_accounts_user_bulk_creation'),
