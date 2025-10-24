@@ -6,10 +6,15 @@ services:
     buildCommand: |
       pip install -r backend/requirements.txt
       cd frontend
-      npm install --production
+      npm ci
       npm run build
+      echo "Frontend build completed"
+      ls -la build/static/css/
+      ls -la build/static/js/
       cd ../backend
       python manage.py collectstatic --noinput
+      echo "Static files collected"
+      ls -la staticfiles/static/css/
       python manage.py migrate
     startCommand: cd backend && gunicorn crm_backend.wsgi:application
     envVars:
