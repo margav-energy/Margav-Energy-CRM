@@ -163,6 +163,13 @@ if frontend_static_dir.exists():
 if frontend_build_dir.exists():
     STATICFILES_DIRS.append(frontend_build_dir)
 
+# In production, also try to serve from the build directory directly
+if not DEBUG:
+    # Add the build directory to static files dirs for production
+    build_static_dir = BASE_DIR.parent / 'frontend' / 'build' / 'static'
+    if build_static_dir.exists():
+        STATICFILES_DIRS.append(build_static_dir)
+
 # WhiteNoise settings for proper MIME types and static file serving
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 WHITENOISE_USE_FINDERS = True
