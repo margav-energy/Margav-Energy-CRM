@@ -39,3 +39,31 @@ class Migration(migrations.Migration):
             field=models.CharField(max_length=20, help_text='Postal code of the lead'),
         ),
     ]
+
+def reverse_set_default_postal_code(apps, schema_editor):
+    """
+    Reverse migration - set postal_code back to null for leads with 'Unknown'.
+    """
+    Lead = apps.get_model('leads', 'Lead')
+    Lead.objects.filter(postal_code='Unknown').update(postal_code=None)
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('leads', '0016_add_qualifier_callback_status'),
+    ]
+
+    operations = [
+        # First, set default values for existing null postal_code fields
+        migrations.RunPython(
+            set_default_postal_code,
+            reverse_set_default_postal_code,
+        ),
+        # Then, make the field non-nullable
+        migrations.AlterField(
+            model_name='lead',
+            name='postal_code',
+            field=models.CharField(max_length=20, help_text='Postal code of the lead'),
+        ),
+    ]

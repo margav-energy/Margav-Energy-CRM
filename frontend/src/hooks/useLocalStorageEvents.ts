@@ -30,7 +30,6 @@ export const useLocalStorageEvents = (
         storageArea: localStorage
       }));
       
-      console.log(`LocalStorage event ${eventName} sent:`, messageWithTimestamp);
       
       // Clean up the message after a short delay
       setTimeout(() => {
@@ -38,7 +37,6 @@ export const useLocalStorageEvents = (
       }, 1000);
       
     } catch (error) {
-      console.error('Failed to send localStorage message:', error);
     }
   }, [eventName]);
 
@@ -48,10 +46,8 @@ export const useLocalStorageEvents = (
       if (event.key && event.key.startsWith(eventName) && event.newValue) {
         try {
           const message: LeadUpdateMessage = JSON.parse(event.newValue);
-          console.log(`LocalStorage event ${eventName} received:`, message);
           onMessage(message);
         } catch (error) {
-          console.error('Error parsing localStorage message:', error);
         }
       }
     };
@@ -61,7 +57,6 @@ export const useLocalStorageEvents = (
     
     // Also listen for custom events (for same-tab communication)
     const handleCustomEvent = (event: CustomEvent) => {
-      console.log(`Custom event ${eventName} received:`, event.detail);
       onMessage(event.detail);
     };
     
@@ -77,4 +72,11 @@ export const useLocalStorageEvents = (
 };
 
 
+
+
+interface LeadUpdateMessage {
+  type: 'NEW_LEAD' | 'LEAD_UPDATED';
+  lead: any;
+  timestamp: number;
+}
 

@@ -2,10 +2,13 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from . import calendar_views
+from .field_views import FieldSubmissionViewSet, field_submission_stats, bulk_sync_field_submissions
+from .email_views import send_appointment_email, send_appointment_reminder
 
 # Create a router for the ViewSet
 router = DefaultRouter()
 router.register(r'leads', views.LeadViewSet, basename='lead')
+router.register(r'field-submissions', FieldSubmissionViewSet, basename='fieldsubmission')
 
 urlpatterns = [
     # Specific routes (must come before router to avoid conflicts)
@@ -38,6 +41,14 @@ urlpatterns = [
     path('calendar/test/', calendar_views.google_calendar_test, name='google-calendar-test'),
     path('calendar/events/', calendar_views.create_calendar_event, name='create-calendar-event'),
     path('calendar/setup/', calendar_views.google_calendar_setup_page, name='google-calendar-setup'),
+    
+    # Field submission routes
+    path('field-submissions/stats/', field_submission_stats, name='field-submission-stats'),
+    path('field-submissions/bulk-sync/', bulk_sync_field_submissions, name='bulk-sync-field-submissions'),
+    
+    # Email routes
+    path('leads/send-appointment-email/', send_appointment_email, name='send-appointment-email'),
+    path('leads/send-appointment-reminder/', send_appointment_reminder, name='send-appointment-reminder'),
     
     # Include ViewSet routes (must come after specific routes)
     path('', include(router.urls)),

@@ -12,6 +12,8 @@ interface AppointmentFormProps {
 const AppointmentForm: React.FC<AppointmentFormProps> = ({ lead, onClose, onSuccess }) => {
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentTime, setAppointmentTime] = useState('');
+  const [notes, setNotes] = useState('');
+  const [sendEmail, setSendEmail] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,7 +36,25 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ lead, onClose, onSucc
         status: 'appointment_set'
       });
       
-      toast.success('Appointment scheduled successfully!');
+      // Send email if requested and lead has email
+      if (sendEmail && lead.email) {
+        try {
+          await leadsAPI.sendAppointmentEmail(
+            lead.id,
+            appointmentDateTime,
+            appointmentTime,
+            notes
+          );
+          toast.success('Appointment scheduled and confirmation email sent!');
+        } catch (emailError) {
+          toast.warning('Appointment scheduled but failed to send email');
+        }
+      } else if (sendEmail && !lead.email) {
+        toast.warning('Appointment scheduled but no email address available');
+      } else {
+        toast.success('Appointment scheduled successfully!');
+      }
+      
       onSuccess();
       onClose();
       
@@ -77,6 +97,33 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ lead, onClose, onSucc
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
               required
             />
+          </div>
+
+          <div>
+            <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+              Notes (Optional)
+            </label>
+            <textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+              placeholder="Any additional notes for the appointment..."
+            />
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="sendEmail"
+              checked={sendEmail}
+              onChange={(e) => setSendEmail(e.target.checked)}
+              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+            />
+            <label htmlFor="sendEmail" className="ml-2 block text-sm text-gray-700">
+              Send confirmation email to {lead.email || 'customer'}
+            </label>
           </div>
           
           <div className="flex justify-end space-x-3">

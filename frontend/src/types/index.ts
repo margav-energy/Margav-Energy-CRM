@@ -20,7 +20,7 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'agent' | 'qualifier' | 'salesrep' | 'admin';
+  role: 'agent' | 'qualifier' | 'salesrep' | 'admin' | 'canvasser';
   phone?: string;
   date_joined: string;
 }
@@ -52,6 +52,20 @@ export interface Lead {
   day_night_rate?: 'yes' | 'no';
   has_previous_quotes?: boolean;
   previous_quotes_details?: string;
+  field_submission_data?: {
+    id: number;
+    canvasser_name: string;
+    assessment_date: string;
+    assessment_time: string;
+    photos: {
+      roof: string;
+      frontRear: string;
+      energyBill: string;
+    };
+    signature: string;
+    formatted_notes: string;
+    timestamp: string;
+  };
   created_at: string;
   updated_at: string;
 }
@@ -139,6 +153,28 @@ export interface CallData {
   isActive: boolean;
   lead?: Lead;
   duration: number;
+}
+
+// Callback types
+export interface Callback {
+  id: number;
+  lead: number;
+  lead_name: string;
+  lead_phone: string;
+  scheduled_time: string;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_answer' | 'sent_to_qualifier';
+  notes?: string;
+  created_by: number;
+  created_by_name: string;
+  completed_at?: string;
+  is_due: boolean;
+  is_overdue: boolean;
+}
+
+export interface CallbackForm {
+  lead?: number;
+  scheduled_time: string;
+  notes?: string;
 }
 
 // Callback types

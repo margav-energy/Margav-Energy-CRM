@@ -16,9 +16,7 @@ export const useBroadcastChannel = (
     if (!channelRef.current) {
       try {
         channelRef.current = new BroadcastChannel(channelName);
-        console.log(`BroadcastChannel created: ${channelName}`);
       } catch (error) {
-        console.error('Failed to create BroadcastChannel:', error);
         return;
       }
     }
@@ -27,11 +25,9 @@ export const useBroadcastChannel = (
 
     // Set up message listener
     const handleMessage = (event: MessageEvent) => {
-      console.log(`BroadcastChannel ${channelName} received:`, event.data);
       try {
         onMessage(event.data);
       } catch (error) {
-        console.error(`Error handling BroadcastChannel message:`, error);
       }
     };
 
@@ -49,9 +45,7 @@ export const useBroadcastChannel = (
     if (channelRef.current) {
       try {
         channelRef.current.postMessage(message);
-        console.log(`BroadcastChannel ${channelName} sent:`, message);
       } catch (error) {
-        console.error('Failed to send BroadcastChannel message:', error);
       }
     }
   };
@@ -61,9 +55,14 @@ export const useBroadcastChannel = (
     if (channelRef.current) {
       channelRef.current.close();
       channelRef.current = null;
-      console.log(`BroadcastChannel ${channelName} closed`);
     }
   };
 
   return { sendMessage, closeChannel };
 };
+
+interface BroadcastMessage {
+  type: 'NEW_LEAD' | 'LEAD_UPDATED';
+  lead: any;
+}
+

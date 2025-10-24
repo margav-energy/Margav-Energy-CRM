@@ -8,6 +8,7 @@ import Login from './components/Login';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import AgentDashboard from './components/AgentDashboard';
+import CanvasserPortal from './components/CanvasserPortal';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -72,6 +73,10 @@ const AppContent: React.FC = () => {
                 </Layout>
               </ProtectedRoute>
             } 
+          />
+          <Route 
+            path="/canvasser" 
+            element={<CanvasserPortal />} 
           />
           <Route 
             path="/" 

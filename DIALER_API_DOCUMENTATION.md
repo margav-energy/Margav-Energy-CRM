@@ -21,18 +21,20 @@ In production, the endpoint requires an API key.
 
 ### Create Lead from Dialer
 
-**POST** `/leads/from-dialer/`
+Preferred: **POST** `/leads/from-dialer/`
 
-Creates a new lead or updates an existing one when an agent clicks "Interested" on the dialer.
+Compatibility: **GET** `/leads/from-dialer/?...`
 
-#### Request Headers
+Creates a new lead or updates an existing one when an agent clicks "Interested" on the dialer. For systems that can only perform GET requests, the endpoint now accepts query parameters and validates the API key via either the `X-Dialer-Api-Key` header or `api_key` query parameter.
+
+#### Request Headers (POST)
 
 ```
 Content-Type: application/json
 X-Dialer-Api-Key: margav-dialer-2024-secure-key-12345
 ```
 
-#### Request Body
+#### Request Body (POST)
 
 The API accepts comprehensive dialer data. Preferred identity fields are shown first.
 
@@ -110,6 +112,15 @@ The API accepts comprehensive dialer data. Preferred identity fields are shown f
   "previous_quotes_details": "string (optional - details about previous quotes)"
 }
 ```
+
+#### Query Parameters (GET compatibility)
+
+- api_key: Dialer API key if header cannot be set
+- user or dialer_user_id: Agent identifier (at least one required)
+- fullname or full_name: Lead full name
+- phone_number or phone: Lead phone number
+- recording_filename or recording_file: Call recording filename
+- All other fields listed in the POST body are accepted as query parameters (optional)
 
 #### Field Descriptions
 
@@ -202,7 +213,7 @@ The API accepts comprehensive dialer data. Preferred identity fields are shown f
 
 ## Integration Examples
 
-### JavaScript/Node.js
+### JavaScript/Node.js (POST)
 
 ```javascript
 async function createLeadFromDialer(leadData) {
@@ -250,7 +261,13 @@ const leadData = {
 createLeadFromDialer(leadData);
 ```
 
-### Python
+### GET Compatibility Example
+
+```bash
+curl "https://crm.margav.energy/api/leads/from-dialer/?api_key=margav-dialer-2024-secure-key-12345&user=CalebG&fullname=John%20Smith&phone_number=%2B44123456789&recording_filename=rec_123.wav&lead_id=67770"
+```
+
+### Python (POST)
 
 ```python
 import requests
@@ -394,16 +411,48 @@ Use these test agent usernames:
 
 ## Security Considerations
 
-### For Production
+### Production Security (Implemented)
 
-1. **API Key Authentication**: Implement API key authentication
-2. **Rate Limiting**: Implement rate limiting to prevent abuse
-3. **IP Whitelisting**: Restrict access to known IP addresses
-4. **HTTPS Only**: Ensure all communication is over HTTPS
+1. **API Key Authentication**: Required in headers (X-Dialer-Api-Key)
+2. **IP Allowlisting**: Restrict access to known dialer IP addresses
+3. **HMAC Signature Validation**: Prevent request tampering and replay attacks
+4. **Timestamp Validation**: 5-minute window to prevent replay attacks
+5. **HTTPS Only**: All communication must be over HTTPS
 
-### Example with API Key
+### Environment Variables for Security
+
+```bash
+# Required
+DIALER_API_KEY=margav-dialer-2024-secure-key-12345
+
+# Production security (recommended)
+DIALER_SECRET_KEY=your-hmac-secret-key-for-signatures
+DIALER_ALLOWED_IPS=77.68.78.43,192.168.1.100
+```
+
+### Secure Request Example (Production)
 
 ```javascript
+// Generate HMAC signature for production
+function generateSignature(data, secretKey) {
+  const canonicalParams = [];
+  for (const key of Object.keys(data).sort()) {
+    if (!['api_key', 'signature'].includes(key)) {
+      canonicalParams.push(`${key}=${data[key]}`);
+    }
+  }
+  const canonicalString = canonicalParams.join('&');
+  
+  return require('crypto')
+    .createHmac('sha256', secretKey)
+    .update(canonicalString)
+    .digest('hex');
+}
+
+// Make secure request
+const timestamp = Math.floor(Date.now() / 1000);
+const signature = generateSignature(leadData, 'your-hmac-secret-key');
+
 const response = await fetch(
   "https://crm.margav.energy/api/leads/from-dialer/",
   {
@@ -411,11 +460,19 @@ const response = await fetch(
     headers: {
       "Content-Type": "application/json",
       "X-Dialer-Api-Key": "margav-dialer-2024-secure-key-12345",
+      "X-Dialer-Signature": signature,
+      "X-Dialer-Timestamp": timestamp.toString(),
     },
     body: JSON.stringify(leadData),
   }
 );
 ```
+
+### Development vs Production
+
+- **Development**: Query param `api_key` allowed for testing
+- **Production**: Only header-based authentication with HMAC signatures
+- **IP Allowlisting**: Configure `DIALER_ALLOWED_IPS` in production
 
 ## Support
 

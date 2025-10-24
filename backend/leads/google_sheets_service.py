@@ -24,7 +24,8 @@ class GoogleSheetsService:
         self.client_secret = getattr(settings, 'GOOGLE_CLIENT_SECRET', '')
         self.refresh_token = getattr(settings, 'GOOGLE_REFRESH_TOKEN', '')
         self.spreadsheet_id = getattr(settings, 'GOOGLE_SHEETS_SPREADSHEET_ID', '')
-        self.worksheet_name = getattr(settings, 'GOOGLE_SHEETS_WORKSHEET_NAME', 'Leads')
+        # Force worksheet name to 'Leads' to match the actual spreadsheet
+        self.worksheet_name = 'Leads'
         
     def get_credentials(self) -> Optional[Credentials]:
         """Get Google API credentials"""

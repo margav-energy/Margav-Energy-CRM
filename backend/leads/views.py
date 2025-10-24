@@ -835,6 +835,10 @@ def upload_json_leads(request):
             # Parse JSON file
             import json
             from io import TextIOWrapper
+            from django.contrib.auth import get_user_model
+            
+            # Get User model at the top level
+            User = get_user_model()
             
             # Read JSON file
             json_data = json.load(TextIOWrapper(json_file, encoding='utf-8'))
@@ -883,7 +887,7 @@ def upload_json_leads(request):
                     }
                     
                     # Find agent by ID or username
-                    if 'assigned_agent' in lead_data:
+                    if 'assigned_agent' in lead_data and lead_data['assigned_agent']:
                         try:
                             agent_id = lead_data['assigned_agent']
                             if isinstance(agent_id, int):
@@ -892,12 +896,10 @@ def upload_json_leads(request):
                                 agent = User.objects.get(username=agent_id)
                             lead_obj_data['assigned_agent'] = agent
                         except User.DoesNotExist:
-                            failed_leads.append({
-                                'data': lead_data,
-                                'error': f"Agent not found: {agent_id}"
-                            })
-                            failed_count += 1
-                            continue
+                            # If agent doesn't exist, create the lead without assigned agent
+                            logger.warning(f"Agent not found: {agent_id}, creating lead without assigned agent")
+                            # Remove assigned_agent from lead_obj_data so it uses the default
+                            lead_obj_data.pop('assigned_agent', None)
                     
                     # Parse appointment date if provided
                     if 'appointment_date' in lead_data and lead_data['appointment_date']:

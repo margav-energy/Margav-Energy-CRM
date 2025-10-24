@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Lead } from '../types';
 import { formatDateSafe, formatDateShortSafe } from '../utils/dateUtils';
 import QualifyLeadModal from './QualifyLeadModal';
+import { leadsAPI } from '../api';
+import { toast } from 'react-toastify';
 
 interface LeadDetailsModalProps {
   lead: Lead | null;
@@ -19,7 +21,50 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
   onLeadUpdated 
 }) => {
   const [showQualifyModal, setShowQualifyModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<{type: string, src: string} | null>(null);
+  const [emailLoading, setEmailLoading] = useState(false);
+  
   if (!isOpen || !lead) return null;
+
+  const openPhotoModal = (type: string, src: string) => {
+    setSelectedPhoto({ type, src });
+    setShowPhotoModal(true);
+  };
+
+  const handleSendAppointmentEmail = async () => {
+    if (!lead.email) {
+      toast.error('No email address available for this lead');
+      return;
+    }
+
+    if (!lead.appointment_date) {
+      toast.error('No appointment date set for this lead');
+      return;
+    }
+
+    try {
+      setEmailLoading(true);
+      
+      // Extract time from appointment_date if it exists
+      const appointmentDateTime = new Date(lead.appointment_date);
+      const appointmentTime = appointmentDateTime.toTimeString().slice(0, 5); // HH:MM format
+      
+      await leadsAPI.sendAppointmentEmail(
+        lead.id,
+        lead.appointment_date,
+        appointmentTime,
+        lead.notes || ''
+      );
+      
+      toast.success('Appointment confirmation email sent successfully!');
+      
+    } catch (error: any) {
+      toast.error('Failed to send appointment email');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
 
   const getStatusBadgeColor = (status: string) => {
     const colors: { [key: string]: string } = {
@@ -125,6 +170,12 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
                   <p className="text-gray-900">{lead.address1}</p>
                 </div>
               )}
+              {lead.city && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                  <p className="text-gray-900">{lead.city}</p>
+                </div>
+              )}
               {lead.postal_code && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
@@ -164,8 +215,8 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
             </div>
           </div>
 
-          {/* Notes */}
-          {lead.notes && (
+          {/* Notes - only show if no canvasser data */}
+          {lead.notes && !lead.field_submission_data && (
             <div className="bg-yellow-50 rounded-lg p-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,6 +250,86 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
             </div>
           </div>
 
+          {/* Canvasser Photos Section */}
+          {lead.field_submission_data && (
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
+                <span className="mr-2">📸</span>
+                Canvasser Assessment Photos
+              </h3>
+              <div className="mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Canvasser:</strong> {lead.field_submission_data?.canvasser_name || 'Unknown'}
+                </p>
+                <p className="text-sm text-blue-800">
+                  <strong>Assessment Date:</strong> {lead.field_submission_data?.assessment_date || 'Unknown'} at {lead.field_submission_data?.assessment_time || 'Unknown'}
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Roof Photo */}
+                {lead.field_submission_data?.photos?.roof && (
+                  <div className="bg-white rounded-lg p-3 border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">🏠 Roof Photo</h4>
+                    <img
+                      src={lead.field_submission_data.photos.roof}
+                      alt="Roof"
+                      className="w-full h-32 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => openPhotoModal('Roof', lead.field_submission_data!.photos.roof)}
+                    />
+                  </div>
+                )}
+                
+                {/* Front/Rear Photo */}
+                {lead.field_submission_data?.photos?.frontRear && (
+                  <div className="bg-white rounded-lg p-3 border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">🏡 Front/Rear Photo</h4>
+                    <img
+                      src={lead.field_submission_data.photos.frontRear}
+                      alt="Front/Rear"
+                      className="w-full h-32 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => openPhotoModal('Front/Rear', lead.field_submission_data!.photos.frontRear)}
+                    />
+                  </div>
+                )}
+                
+                {/* Energy Bill Photo */}
+                {lead.field_submission_data?.photos?.energyBill && (
+                  <div className="bg-white rounded-lg p-3 border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">⚡ Energy Bill Photo</h4>
+                    <img
+                      src={lead.field_submission_data.photos.energyBill}
+                      alt="Energy Bill"
+                      className="w-full h-32 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => openPhotoModal('Energy Bill', lead.field_submission_data!.photos.energyBill)}
+                    />
+                  </div>
+                )}
+              </div>
+              
+              {/* Signature */}
+              {lead.field_submission_data?.signature && (
+                <div className="mt-4 bg-white rounded-lg p-3 border border-blue-200">
+                  <h4 className="font-medium text-blue-900 mb-2">✍️ Customer Signature</h4>
+                  <img
+                    src={lead.field_submission_data.signature}
+                    alt="Customer Signature"
+                    className="w-full h-20 object-contain rounded cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => openPhotoModal('Signature', lead.field_submission_data!.signature)}
+                  />
+                </div>
+              )}
+              
+              {/* Detailed Notes */}
+              <div className="mt-4 bg-white rounded-lg p-3 border border-blue-200">
+                <h4 className="font-medium text-blue-900 mb-2">📝 Assessment Details</h4>
+                <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
+                  {lead.field_submission_data?.formatted_notes || 'No assessment details available'}
+                </pre>
+              </div>
+            </div>
+          )}
+
           {/* Timestamps */}
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -231,6 +362,15 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
             >
               Close
             </button>
+            {lead.appointment_date && lead.email && (
+              <button
+                onClick={handleSendAppointmentEmail}
+                disabled={emailLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {emailLoading ? 'Sending...' : '📧 Send Email'}
+              </button>
+            )}
             {userRole === 'qualifier' && (
             <button
               onClick={() => setShowQualifyModal(true)}
@@ -255,6 +395,32 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
           setShowQualifyModal(false);
         }}
       />
+
+      {/* Photo Modal */}
+      {showPhotoModal && selectedPhoto && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl max-h-full overflow-auto">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">
+                📸 {selectedPhoto.type} - {lead.full_name}
+              </h3>
+              <button
+                onClick={() => setShowPhotoModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4">
+              <img
+                src={selectedPhoto.src}
+                alt={selectedPhoto.type}
+                className="w-full h-auto max-h-96 object-contain rounded"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

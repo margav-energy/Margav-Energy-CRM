@@ -237,6 +237,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
       }
 
       const validLeads = leads.filter(lead => lead && lead.id);
+      
       const populatedColumns = columnDefinitions.map(column => ({
         ...column,
         leads: validLeads.filter(lead => column.statuses.includes(lead.status)),
@@ -493,5 +494,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
     </div>
   );
 };
+
 
 export default KanbanBoard;

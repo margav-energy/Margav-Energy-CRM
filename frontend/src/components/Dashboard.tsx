@@ -1,14 +1,24 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AgentDashboard from './AgentDashboard';
 import QualifierDashboard from './QualifierDashboard';
 import AdminDialerControl from './AdminDialerControl';
+import CanvasserCreation from './CanvasserCreation';
 import KanbanBoard from './KanbanBoard';
 import { Lead } from '../types';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const qualifierLeadUpdateRef = useRef<((lead: Lead) => void) | null>(null);
+
+  // Redirect canvassers to the canvasser form
+  useEffect(() => {
+    if (user?.role === 'canvasser') {
+      navigate('/canvasser');
+    }
+  }, [user, navigate]);
 
   const handleKanbanLeadUpdate = useCallback((updatedLead?: Lead) => {
     // Pass the lead update to QualifierDashboard if it's a qualifier
@@ -62,6 +72,7 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
           <AdminDialerControl />
+          <CanvasserCreation />
           <KanbanBoard userRole={user.role} />
         </div>
       );
@@ -85,3 +96,4 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+

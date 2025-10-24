@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Margav Energy CRM - Complete System Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: white;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0;
+            padding: 20px;
+            background: white;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        
+        .header {
+            text-align: center;
+            background: #667eea;
+            color: white;
+            padding: 30px 20px;
+            border-radius: 0;
+            margin-bottom: 30px;
+            page-break-after: avoid;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        ul {
+            list-style: none;
+        }
+        
+        .toc {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .toc h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .toc ul {
+            list-style: none;
+        }
+        
+        .toc li {
+            margin: 8px 0;
+        }
+        
+        .toc a {
+            color: #333;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .toc a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 0;
+            background: #f8f9fa;
+            border-left: 4px solid #28a745;
+            page-break-inside: avoid;
+        }
+        
+        .section h2 {
+            color: #28a745;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 10px;
+        }
+        
+        .section h3 {
+            color: #495057;
+            margin: 20px 0 10px 0;
+            font-size: 1.3em;
+        }
+        
+        .workflow-step {
+            background: white;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 0;
+            border-left: 4px solid #007bff;
+            box-shadow: none;
+            border: 1px solid #e9ecef;
+            page-break-inside: avoid;
+        }
+        
+        .workflow-step h4 {
+            color: #007bff;
+            margin-bottom: 8px;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            color: #333;
+            padding: 10px;
+            border-radius: 0;
+            margin: 8px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #e9ecef;
+            page-break-inside: avoid;
+            font-size: 0.9em;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 0;
+            border-left: 4px solid #ffc107;
+            margin: 8px 0;
+            page-break-inside: avoid;
+        }
+        
+        .warning {
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 0;
+            border-left: 4px solid #dc3545;
+            margin: 8px 0;
+            page-break-inside: avoid;
+        }
+        
+        .success {
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 0;
+            border-left: 4px solid #28a745;
+            margin: 8px 0;
+            page-break-inside: avoid;
+        }
+        
+        .user-role {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .user-role h3 {
+            color: white;
+            margin-bottom: 15px;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 12px;
+            border-radius: 0;
+            box-shadow: none;
+            border: 1px solid #e9ecef;
+            border-top: 4px solid #667eea;
+            page-break-inside: avoid;
+        }
+        
+        .feature-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .admin-section {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .admin-section h3 {
+            color: white;
+            margin-bottom: 15px;
+        }
+        
+        .api-endpoint {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            margin: 5px 0;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin: 2px;
+        }
+        
+        .status-cold-call { background: #6c757d; color: white; }
+        .status-interested { background: #ffc107; color: black; }
+        .status-appointment-set { background: #17a2b8; color: white; }
+        .status-completed { background: #28a745; color: white; }
+        .status-not-interested { background: #dc3545; color: white; }
+        
+        .navigation {
+            display: none;
+        }
+        
+        .navigation a {
+            display: block;
+            padding: 5px 10px;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 2px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .navigation a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+                font-size: 12px !important;
+                line-height: 1.4 !important;
+            }
+            
+            .container {
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 15px !important;
+                box-shadow: none !important;
+            }
+            
+            .header {
+                background: #667eea !important;
+                color: white !important;
+                page-break-after: avoid;
+                padding: 20px !important;
+                margin-bottom: 20px !important;
+            }
+            
+            .header h1 {
+                font-size: 24px !important;
+                margin-bottom: 5px !important;
+            }
+            
+            .header p {
+                font-size: 14px !important;
+                margin: 5px 0 !important;
+            }
+            
+            .section {
+                page-break-inside: avoid;
+                margin-bottom: 15px !important;
+                padding: 15px !important;
+            }
+            
+            .section h2 {
+                font-size: 18px !important;
+                margin-bottom: 10px !important;
+                page-break-after: avoid;
+            }
+            
+            .section h3 {
+                font-size: 14px !important;
+                margin: 10px 0 5px 0 !important;
+            }
+            
+            .workflow-step {
+                page-break-inside: avoid;
+                border: 1px solid #ccc !important;
+                margin: 8px 0 !important;
+                padding: 10px !important;
+            }
+            
+            .workflow-step h4 {
+                font-size: 13px !important;
+                margin-bottom: 5px !important;
+            }
+            
+            .feature-card {
+                page-break-inside: avoid;
+                border: 1px solid #ccc !important;
+                margin: 5px 0 !important;
+                padding: 10px !important;
+            }
+            
+            .feature-card h4 {
+                font-size: 13px !important;
+                margin-bottom: 5px !important;
+            }
+            
+            .code-block {
+                page-break-inside: avoid;
+                font-size: 10px !important;
+                padding: 8px !important;
+                margin: 5px 0 !important;
+            }
+            
+            .highlight, .warning, .success {
+                page-break-inside: avoid;
+                margin: 8px 0 !important;
+                padding: 10px !important;
+            }
+            
+            .user-role, .admin-section {
+                page-break-inside: avoid;
+                margin: 8px 0 !important;
+                padding: 10px !important;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr !important;
+                gap: 5px !important;
+            }
+            
+            .toc {
+                page-break-after: avoid;
+                margin-bottom: 15px !important;
+                padding: 10px !important;
+            }
+            
+            .toc h2 {
+                font-size: 16px !important;
+                margin-bottom: 8px !important;
+            }
+            
+            .status-badge {
+                font-size: 10px !important;
+                padding: 2px 4px !important;
+                margin: 1px !important;
+            }
+            
+            p {
+                margin: 3px 0 !important;
+                font-size: 11px !important;
+            }
+            
+            strong {
+                font-weight: bold !important;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .navigation {
+                position: static;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation hidden for PDF -->
+    <div class="navigation" style="display: none;">
+        <h4>Quick Navigation</h4>
+        <a href="#overview">System Overview</a>
+        <a href="#agent-workflow">Agent Workflow</a>
+        <a href="#qualifier-workflow">Qualifier Workflow</a>
+        <a href="#admin-backend">Admin Backend</a>
+        <a href="#technical-details">Technical Details</a>
+        <a href="#troubleshooting">Troubleshooting</a>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🏢 Margav Energy CRM</h1>
+            <p>Complete System Documentation & User Guide</p>
+            <p><strong>Version 2.0</strong> | Last Updated: October 17th, 2025</p>
+        </div>
+
+        <div class="toc">
+            <h2>📋 Table of Contents</h2>
+            <ul>
+                <li><a href="#overview">1. System Overview</a></li>
+                <li><a href="#agent-workflow">2. Agent Workflow & Features</a></li>
+                <li><a href="#qualifier-workflow">3. Qualifier Workflow & Features</a></li>
+                <li><a href="#admin-backend">4. Admin Backend & Management</a></li>
+                <li><a href="#technical-details">5. Technical Implementation</a></li>
+                <li><a href="#api-documentation">6. API Documentation</a></li>
+                <li><a href="#deployment">7. Deployment & Environment</a></li>
+                <li><a href="#troubleshooting">8. Troubleshooting Guide</a></li>
+            </ul>
+        </div>
+
+        <section id="overview" class="section">
+            <h2>🎯 System Overview</h2>
+            
+            <div class="highlight">
+                <h3>What is Margav Energy CRM?</h3>
+                <p>The Margav Energy CRM is a comprehensive customer relationship management system designed specifically for energy sales teams. It manages the entire lead lifecycle from incoming calls through the dialer system to final appointments and conversions.</p>
+            </div>
+
+            <div class="success">
+                <h3>🚀 Getting Started - Login Process</h3>
+                <p><strong>For Agents & Qualifiers:</strong></p>
+                <p>Step 1: Navigate to <code>https://crm.margav.energy/login</code></p>
+                <p>Step 2: Enter your assigned username and password</p>
+                <p>Step 3: After login, you'll be redirected to <code>https://crm.margav.energy/dashboard</code></p>
+                <p><strong>For Administrators:</strong></p>
+                <p>Navigate directly to <code>https://crm.margav.energy/admin/</code> and use admin credentials</p>
+            </div>
+
+            <h3>System Architecture</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>🎯 Frontend (React)</h4>
+                    <p>Modern React-based user interface with real-time updates, notifications, and responsive design for all user roles.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>⚙️ Backend (Django)</h4>
+                    <p>Robust Django REST API with PostgreSQL database, Google integrations, and comprehensive admin interface.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>☁️ Cloud (Render)</h4>
+                    <p>Fully managed deployment on Render with automatic scaling, SSL certificates, and database backups.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📊 Integrations</h4>
+                    <p>Google Sheets for data sync, Google Calendar for appointments, and external dialer API integration.</p>
+                </div>
+            </div>
+
+            <h3>User Roles & Permissions</h3>
+            <div class="user-role">
+                <h3>👨‍💼 Sales Agents</h3>
+                <p><strong>Primary Function:</strong> Receive calls from dialer system, create/edit lead forms, and manage customer interactions</p>
+                <p><strong>Access:</strong> Agent Dashboard, Lead Form Creation/Editing, Callback Scheduling, Notification System</p>
+            </div>
+
+            <div class="user-role">
+                <h3>🎯 Qualifiers</h3>
+                <p><strong>Primary Function:</strong> Review and qualify leads, set appointments, manage lead progression</p>
+                <p><strong>Access:</strong> Qualifier Dashboard, Lead Qualification, Appointment Setting, Google Calendar Integration</p>
+            </div>
+
+            <div class="user-role">
+                <h3>👑 Administrators</h3>
+                <p><strong>Primary Function:</strong> System management, user administration, data oversight, integrations</p>
+                <p><strong>Access:</strong> Admin Dashboard, User Management, System Settings, Data Import/Export, Google Services Management</p>
+            </div>
+        </section>
+
+        <section id="agent-workflow" class="section">
+            <h2>👨‍💼 Agent Workflow & Features</h2>
+            
+            <h3>Agent Dashboard Overview</h3>
+            <p>The Agent Dashboard is the central hub for sales agents to manage their daily activities and lead interactions.</p>
+
+            <div class="workflow-step">
+                <h4>1. Login & Dashboard Access</h4>
+                <p><strong>Login URL:</strong> <code>https://crm.margav.energy/login</code></p>
+                <p><strong>Dashboard URL:</strong> <code>https://crm.margav.energy/dashboard</code></p>
+                <p><strong>Login:</strong> Use your assigned agent credentials</p>
+                <p><strong>Features:</strong> Real-time lead updates, notification panel, quick actions</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>2. Lead Management</h4>
+                <p><strong>View Leads:</strong> See all assigned leads with status indicators</p>
+                <p><strong>Lead Statuses:</strong></p>
+                <ul>
+                    <span class="status-badge status-interested">Interested</span> - Customer showed interest
+                    <span class="status-badge status-appointment-set">Appointment Set</span> - Meeting scheduled
+                    <span class="status-badge status-completed">Completed</span> - Deal closed
+                    <span class="status-badge status-not-interested">Not Interested</span> - No further action
+                </ul>
+            </div>
+
+            <div class="workflow-step">
+                <h4>3. Incoming Call Process</h4>
+                <p><strong>Step 1:</strong> Receive call notification from dialer system</p>
+                <p><strong>Step 2:</strong> Answer the call and engage with customer</p>
+                <p><strong>Step 3:</strong> Create new lead form or edit existing lead</p>
+                <p><strong>Step 4:</strong> Record customer information and conversation details</p>
+                <p><strong>Step 5:</strong> Update lead status based on customer interest</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>4. Lead Form Management</h4>
+                <p><strong>Creating New Leads:</strong></p>
+                <ul>
+                    <li>Fill out comprehensive lead form with customer details</li>
+                    <li>Record energy usage information (bill amount, EV charger, day/night rate)</li>
+                    <li>Add detailed notes about customer conversation</li>
+                    <li>Set appropriate lead status based on customer interest</li>
+                </ul>
+                <p><strong>Editing Existing Leads:</strong></p>
+                <ul>
+                    <li>Update customer information as needed</li>
+                    <li>Modify energy usage details</li>
+                    <li>Add follow-up notes and conversation updates</li>
+                    <li>Schedule callbacks for future contact</li>
+                </ul>
+            </div>
+
+            <div class="workflow-step">
+                <h4>5. Callback Management</h4>
+                <p><strong>Schedule Callbacks:</strong> Set specific times to follow up with customers</p>
+                <p><strong>Callback Reminders:</strong> System automatically reminds agents of scheduled callbacks</p>
+                <p><strong>Callback Completion:</strong> Mark callbacks as completed and update lead status</p>
+            </div>
+
+            <h3>Key Features for Agents</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>📞 Dialer Integration</h4>
+                    <p>Receive incoming calls from dialer system with automatic lead information display and call logging.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔔 Real-time Notifications</h4>
+                    <p>Instant notifications for new leads, callbacks, and system updates.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📊 Performance Tracking</h4>
+                    <p>View call statistics, conversion rates, and personal performance metrics.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📝 Lead Form Management</h4>
+                    <p>Comprehensive lead form creation and editing system for customer interactions and preferences.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="qualifier-workflow" class="section">
+            <h2>🎯 Qualifier Workflow & Features</h2>
+            
+            <h3>Qualifier Dashboard Overview</h3>
+            <p>Qualifiers review and process leads that have been marked as "Interested" by agents, with the goal of setting appointments and converting leads to customers.</p>
+
+            <div class="workflow-step">
+                <h4>1. Login & Lead Review Process</h4>
+                <p><strong>Login URL:</strong> <code>https://crm.margav.energy/login</code></p>
+                <p><strong>Dashboard URL:</strong> <code>https://crm.margav.energy/dashboard</code></p>
+                <p><strong>Review Queue:</strong> See all leads marked as "Interested" by agents</p>
+                <p><strong>Lead Information:</strong> View complete customer details, energy usage, and agent notes</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>2. Lead Qualification</h4>
+                <p><strong>Assessment:</strong> Review customer information and energy needs</p>
+                <p><strong>Verification:</strong> Confirm customer details and requirements</p>
+                <p><strong>Decision:</strong> Determine if customer is qualified for appointment</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>3. Appointment Setting</h4>
+                <p><strong>Calendar Integration:</strong> Access to Google Calendar for scheduling</p>
+                <p><strong>Time Selection:</strong> Choose appropriate appointment times</p>
+                <p><strong>Customer Confirmation:</strong> Confirm appointment details with customer</p>
+                <p><strong>Status Update:</strong> Change lead status to "Appointment Set"</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>4. Google Calendar Integration</h4>
+                <p><strong>Automatic Sync:</strong> Appointments automatically sync to Google Calendar</p>
+                <p><strong>Calendar Events:</strong> Detailed event information with customer details</p>
+                <p><strong>Notifications:</strong> Alerts if Google Calendar is unavailable</p>
+            </div>
+
+            <h3>Qualifier Features</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>📅 Appointment Management</h4>
+                    <p>Schedule, modify, and track customer appointments with full calendar integration.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔍 Lead Filtering</h4>
+                    <p>Filter leads by status, agent, date, and other criteria for efficient processing.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📊 Performance Metrics</h4>
+                    <p>Track qualification rates, appointment success rates, and conversion metrics.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔔 Smart Notifications</h4>
+                    <p>Real-time notifications for new leads, appointment confirmations, and system alerts.</p>
+                </div>
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ Important: Google Calendar Integration</h4>
+                <p>If Google Calendar is unavailable when setting appointments, the system will show a warning message. The appointment will still be recorded in the CRM, but may not sync to Google Calendar until the service is restored.</p>
+            </div>
+        </section>
+
+        <section id="admin-backend" class="section">
+            <h2>👑 Admin Backend & Management</h2>
+            
+            <div class="admin-section">
+                <h3>Admin Dashboard Access</h3>
+                <p><strong>Admin Login URL:</strong> <code>https://crm.margav.energy/admin/</code></p>
+                <p><strong>Login:</strong> Use admin credentials with full system access</p>
+                <p><strong>Features:</strong> Complete system oversight, user management, data administration</p>
+            </div>
+
+            <h3>User Management</h3>
+            <div class="workflow-step">
+                <h4>1. User Administration</h4>
+                <p><strong>Create Users:</strong> Add new agents, qualifiers, and administrators</p>
+                <p><strong>Role Assignment:</strong> Assign appropriate roles and permissions</p>
+                <p><strong>User Statistics:</strong> View user performance and activity metrics</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>2. Lead Management</h4>
+                <p><strong>Bulk Operations:</strong> Import/export leads, bulk status updates</p>
+                <p><strong>Data Import:</strong> JSON file upload for bulk lead creation</p>
+                <p><strong>Lead Analytics:</strong> Comprehensive reporting and analytics</p>
+            </div>
+
+            <h3>System Administration</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>📊 Dashboard Analytics</h4>
+                    <p>Real-time system metrics, user activity, lead conversion rates, and performance indicators.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>👥 User Management</h4>
+                    <p>Create, edit, and manage user accounts with role-based permissions and access control.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📁 Data Management</h4>
+                    <p>Import/export leads, manage data integrity, and perform bulk operations.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔧 System Settings</h4>
+                    <p>Configure system parameters, integrations, and administrative settings.</p>
+                </div>
+            </div>
+
+            <h3>Data Import/Export</h3>
+            <div class="workflow-step">
+                <h4>JSON Lead Import</h4>
+                <p><strong>Access:</strong> Admin → Leads → Upload JSON Leads</p>
+                <p><strong>Format:</strong> JSON array with lead objects</p>
+                <p><strong>Required Fields:</strong> full_name, phone</p>
+                <p><strong>Optional Fields:</strong> email, address, energy_bill_amount, has_ev_charger, etc.</p>
+            </div>
+
+            <div class="code-block">
+{
+  "full_name": "John Doe",
+  "phone": "1234567890",
+  "email": "john@example.com",
+  "address1": "123 Main St",
+  "city": "London",
+  "postal_code": "SW1A 1AA",
+  "energy_bill_amount": 150.50,
+  "has_ev_charger": true,
+  "day_night_rate": false,
+  "assigned_agent": "agent_username"
+}
+            </div>
+
+            <h3>Google Services Management</h3>
+            <div class="workflow-step">
+                <h4>Google Sheets Integration</h4>
+                <p><strong>Automatic Sync:</strong> Leads automatically sync to Google Sheets</p>
+                <p><strong>Manual Sync:</strong> Force sync all leads to sheets</p>
+                <p><strong>Worksheet:</strong> Data stored in "Leads" worksheet</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>Google Calendar Integration</h4>
+                <p><strong>OAuth Setup:</strong> Configure Google Calendar authentication</p>
+                <p><strong>Appointment Sync:</strong> Automatic calendar event creation</p>
+                <p><strong>Status Monitoring:</strong> Monitor integration health</p>
+            </div>
+        </section>
+
+        <section id="technical-details" class="section">
+            <h2>⚙️ Technical Implementation</h2>
+            
+            <h3>System Architecture</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Frontend Stack</h4>
+                    <ul>
+                        <li><strong>React 18:</strong> Modern UI framework</li>
+                        <li><strong>TypeScript:</strong> Type-safe development</li>
+                        <li><strong>Tailwind CSS:</strong> Utility-first styling</li>
+                        <li><strong>Axios:</strong> HTTP client for API calls</li>
+                        <li><strong>React Router:</strong> Client-side routing</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <h4>Backend Stack</h4>
+                    <ul>
+                        <li><strong>Django 4.2:</strong> Python web framework</li>
+                        <li><strong>Django REST Framework:</strong> API development</li>
+                        <li><strong>PostgreSQL:</strong> Primary database</li>
+                        <li><strong>Redis:</strong> Caching and sessions</li>
+                        <li><strong>Celery:</strong> Background tasks</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <h4>Deployment</h4>
+                    <ul>
+                        <li><strong>Render:</strong> Cloud hosting platform</li>
+                        <li><strong>Docker:</strong> Containerization</li>
+                        <li><strong>SSL:</strong> Automatic HTTPS</li>
+                        <li><strong>CDN:</strong> Static file delivery</li>
+                        <li><strong>Monitoring:</strong> Application health checks</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <h4>Integrations</h4>
+                    <ul>
+                        <li><strong>Google Sheets API:</strong> Data synchronization</li>
+                        <li><strong>Google Calendar API:</strong> Appointment management</li>
+                        <li><strong>External Dialer API:</strong> Call management</li>
+                        <li><strong>Email Services:</strong> Notification delivery</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>Database Schema</h3>
+            <div class="workflow-step">
+                <h4>Core Models</h4>
+                <p><strong>User:</strong> System users (agents, qualifiers, admins)</p>
+                <p><strong>Lead:</strong> Customer information and status tracking</p>
+                <p><strong>Callback:</strong> Scheduled follow-up calls</p>
+                <p><strong>Notification:</strong> System alerts and messages</p>
+            </div>
+
+            <h3>API Endpoints</h3>
+            <div class="code-block">
+                <ul>
+                    <li># Authentication</li>
+                    <li>POST /api/auth/login/</li>
+                    <li>POST /api/auth/logout/</li>
+                    <li>GET  /api/auth/user/</li>
+                    <li># Leads</li>
+                    <li>GET    /api/leads/</li>
+                    <li>POST   /api/leads/</li>
+                    <li>GET    /api/leads/{id}/</li>
+                    <li>PUT    /api/leads/{id}/</li>
+                    <li>DELETE /api/leads/{id}/</li>
+                    <li>POST   /api/leads/{id}/qualify/</li>
+                    # Callbacks
+                    <li>GET    /api/callbacks/</li>
+                    <li>POST   /api/callbacks/create/</li>
+                    <li>PUT    /api/callbacks/{id}/update/</li>
+                    # Notifications
+                    <li>GET    /api/notifications/</li>
+                    <li>POST   /api/notifications/mark-read/</li>
+                </ul>
+
+
+            </div>
+        </section>
+
+        <section id="api-documentation" class="section">
+            <h2>📡 API Documentation</h2>
+            
+            <h3>Authentication</h3>
+            <div class="workflow-step">
+                <h4>Login Endpoint</h4>
+                <div class="api-endpoint">POST /api/auth/login/</div>
+                <div class="code-block">
+{
+  "username": "agent_username",
+  "password": "user_password"
+}
+                </div>
+            </div>
+
+            <h3>Lead Management</h3>
+            <div class="workflow-step">
+                <h4>Create Lead</h4>
+                <div class="api-endpoint">POST /api/leads/</div>
+                <div class="code-block">
+{
+  "full_name": "John Doe",
+  "phone": "1234567890",
+  "email": "john@example.com",
+  "address1": "123 Main St",
+  "city": "London",
+  "postal_code": "SW1A 1AA",
+  "notes": "Customer interested in solar panels",
+  "energy_bill_amount": 150.50,
+  "has_ev_charger": true,
+  "day_night_rate": false,
+  "has_previous_quotes": false
+}
+                </div>
+            </div>
+
+            <div class="workflow-step">
+                <h4>Qualify Lead</h4>
+                <div class="api-endpoint">POST /api/leads/{id}/qualify/</div>
+                <div class="code-block">
+{
+  "status": "appointment_set",
+  "appointment_date": "2024-01-15T10:00:00Z",
+  "notes": "Appointment scheduled for next week",
+  "field_sales_rep": 1
+}
+                </div>
+            </div>
+
+            <h3>Callback Management</h3>
+            <div class="workflow-step">
+                <h4>Create Callback</h4>
+                <div class="api-endpoint">POST /api/callbacks/create/</div>
+                <div class="code-block">
+{
+  "lead": 123,
+  "scheduled_time": "2024-01-15T14:00:00Z",
+  "notes": "Follow up on solar panel quote"
+}
+                </div>
+            </div>
+        </section>
+
+        <section id="deployment" class="section">
+            <h2>🚀 Deployment & Environment</h2>
+            
+            <h3>Production Environment</h3>
+            <div class="workflow-step">
+                <h4>Render Deployment</h4>
+                <p><strong>Platform:</strong> Render.com</p>
+                <p><strong>URL:</strong> https://crm.margav.energy</p>
+                <p><strong>SSL:</strong> Automatic HTTPS with Let's Encrypt</p>
+                <p><strong>Database:</strong> PostgreSQL on Render</p>
+            </div>
+
+            <h3>Environment Variables & Database Configuration</h3>
+            <div class="workflow-step">
+                <h4>Production Environment Variables</h4>
+                <p><strong>Django Settings:</strong></p>
+                <p><strong>SECRET_KEY</strong>= [REDACTED - Use environment variable]</p>
+                <p><strong>DEBUG</strong>=False</p>
+                <p><strong>ALLOWED_HOSTS</strong>=crm.margav.energy,www.crm.margav.energy</p>
+                
+                <p><strong>Database Configuration:</strong></p>
+                <p><strong>DATABASE_URL</strong>=postgresql://margav_crm_user:[PASSWORD]@dpg-d3nmlkk9c44c73edksag-a/margav_crm_db_dvu3</p>
+                <p><strong>Database Name:</strong> margav_crm_db_dvu3</p>
+                <p><strong>Username:</strong> margav_crm_user</p>
+                <p><strong>Password:</strong> [REDACTED - Use environment variable]</p>
+                <p><strong>External URL:</strong> postgresql://margav_crm_user:[PASSWORD]@dpg-d3nmlkk9c44c73edksag-a.frankfurt-postgres.render.com/margav_crm_db_dvu3</p>
+                <p><strong>PSQL Command:</strong> PGPASSWORD=[PASSWORD] psql -h dpg-d3nmlkk9c44c73edksag-a.frankfurt-postgres.render.com -U margav_crm_user margav_crm_db_dvu3</p>
+                
+                <p><strong>Google OAuth Configuration:</strong></p>
+                <p><strong>GOOGLE_CLIENT_ID</strong>= [REDACTED - Use environment variable]</p>
+                <p><strong>GOOGLE_CLIENT_SECRET</strong>= [REDACTED - Use environment variable]</p>
+                <p><strong>GOOGLE_REDIRECT_URI</strong>=https://crm.margav.energy/api/auth/google/callback</p>
+                <p><strong>GOOGLE_REFRESH_TOKEN</strong>= [REDACTED - Use environment variable]</p>
+                
+                <p><strong>Google Sheets Configuration:</strong></p>
+                <p><strong>GOOGLE_SHEETS_SPREADSHEET_ID</strong>=1SDOlyv8uEl3vq7JsyqOWt_x99bbBR85gNfQRs_jCnbo</p>
+                <p><strong>GOOGLE_SHEETS_WORKSHEET_NAME</strong>=Leads</p>
+                
+                <p><strong>Dialer API Configuration:</strong></p>
+                <p><strong>DIALER_API_KEY</strong>=margav-dialer-2024-secure-key-12345</p>
+                <p><strong>DIALER_SECRET_KEY</strong>=your-hmac-secret-key-for-signatures</p>
+                <p><strong>DIALER_ALLOWED_IPS</strong>=77.68.78.43,192.168.1.100 (comma-separated IP addresses)</p>
+            </div>
+
+            <h3>Deployment Process</h3>
+            <div class="workflow-step">
+                <h4>Automatic Deployment</h4>
+                <p><strong>Git Integration:</strong> Automatic deployment on git push</p>
+                <p><strong>Build Process:</strong> Frontend build + Backend deployment</p>
+                <p><strong>Database Migrations:</strong> Automatic migration execution</p>
+                <p><strong>Health Checks:</strong> Automatic service monitoring</p>
+            </div>
+
+        </section>
+
+        <section id="troubleshooting" class="section">
+            <h2>🔧 Troubleshooting Guide</h2>
+            
+            <h3>Common Issues & Solutions</h3>
+            
+            <div class="warning">
+                <h4>🚨 Google Calendar Integration Issues</h4>
+                <p><strong>Problem:</strong> "Google Calendar service unavailable" error</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Check Google OAuth credentials in environment variables</li>
+                    <li>Verify redirect URI matches Google Cloud Console settings</li>
+                    <li>Ensure refresh token is valid and not expired</li>
+                    <li>Check Google Calendar API quotas and limits</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>🚨 Database Connection Issues</h4>
+                <p><strong>Problem:</strong> Database connection errors</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Verify DATABASE_URL environment variable</li>
+                    <li>Check database credentials and permissions</li>
+                    <li>Ensure database service is running on Render</li>
+                    <li>Check network connectivity between services</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>🚨 Lead Data Not Persisting</h4>
+                <p><strong>Problem:</strong> Form data not saving correctly</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Check browser console for JavaScript errors</li>
+                    <li>Verify API endpoints are responding correctly</li>
+                    <li>Check database constraints and validation rules</li>
+                    <li>Ensure all required fields are provided</li>
+                </ul>
+            </div>
+
+            <h3>Performance Optimization</h3>
+            <div class="success">
+                <h4>✅ System Performance Tips</h4>
+                <ul>
+                    <li><strong>Database Indexing:</strong> Ensure proper indexes on frequently queried fields</li>
+                    <li><strong>Caching:</strong> Use Redis for session and data caching</li>
+                    <li><strong>Static Files:</strong> Use CDN for static asset delivery</li>
+                    <li><strong>API Optimization:</strong> Implement pagination for large datasets</li>
+                </ul>
+            </div>
+
+            <h3>Monitoring & Logs</h3>
+            <div class="workflow-step">
+                <h4>System Monitoring</h4>
+                <p><strong>Render Dashboard:</strong> Monitor service health and performance</p>
+                <p><strong>Application Logs:</strong> Check logs for errors and warnings</p>
+                <p><strong>Database Monitoring:</strong> Track database performance and queries</p>
+                <p><strong>User Activity:</strong> Monitor user sessions and activity patterns</p>
+            </div>
+
+            <h3>Backup & Recovery</h3>
+            <div class="workflow-step">
+                <h4>Data Backup</h4>
+                <p><strong>Database Backups:</strong> Automatic daily backups on Render</p>
+                <p><strong>Manual Exports:</strong> Export leads and user data via admin interface</p>
+                <p><strong>Google Sheets Sync:</strong> Data automatically synced to Google Sheets</p>
+                <p><strong>Recovery Process:</strong> Restore from backups if needed</p>
+            </div>
+        </section>
+
+        <div class="section">
+            <h2>📞 Support & Contact</h2>
+            <div class="highlight">
+                <h3>Need Help?</h3>
+                <p><strong>Technical Support:</strong> Emmanuella</p>
+                <p><strong>Email:</strong> elarhadu@gmail.com</p>
+                <p><strong>User Training:</strong> Refer to this documentation for detailed workflows</p>
+                <p><strong>System Updates:</strong> Check for regular system updates and improvements</p>
+                <p><strong>Feature Requests:</strong> Submit enhancement requests through proper channels</p>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

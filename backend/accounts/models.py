@@ -11,6 +11,7 @@ class User(AbstractUser):
         ('qualifier', 'Qualifier'),
         ('salesrep', 'SalesRep'),
         ('admin', 'Admin'),
+        ('canvasser', 'Canvasser'),
     ]
     
     role = models.CharField(
@@ -48,3 +49,12 @@ class User(AbstractUser):
     @property
     def is_admin(self):
         return self.role == 'admin' or self.is_superuser
+    
+    @property
+    def is_canvasser(self):
+        return self.role == 'canvasser'
+
+    
+    @property
+    def is_canvasser(self):
+        return self.role == 'canvasser'

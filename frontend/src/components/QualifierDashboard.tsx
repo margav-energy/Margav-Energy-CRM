@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 // import LeadCard from './LeadCard';
 import QualifierLeadModal from './QualifierLeadModal';
 import AppointmentForm from './AppointmentForm';
+import LeadDetailsModal from './LeadDetailsModal';
 import { useLocalStorageEvents } from '../hooks/useLocalStorageEvents';
 
 interface QualifierDashboardProps {
@@ -18,13 +19,15 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
   const [loading, setLoading] = useState(true);
   const [updatingLead, setUpdatingLead] = useState<Lead | null>(null);
   const [appointmentLead, setAppointmentLead] = useState<Lead | null>(null);
-  const [statusFilter] = useState<string | null>(null);
-  const [agentFilter] = useState<string | null>(null);
+  const [modalFilteredLeads, setModalFilteredLeads] = useState<Lead[]>([]);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [currentFilterType, setCurrentFilterType] = useState<string | null>(null);
+  const [selectedLeadFromFilter, setSelectedLeadFromFilter] = useState<Lead | null>(null);
+  const [isLeadDetailsModalOpen, setIsLeadDetailsModalOpen] = useState(false);
   const previousLeadCount = useRef<number>(0);
 
   // Handle lead updates from KanbanBoard
   const handleKanbanLeadUpdate = useCallback((updatedLead: Lead) => {
-    console.log('QualifierDashboard: Received lead update from KanbanBoard:', updatedLead);
     
     // Update the leads state immediately for instant counter updates
     setLeads(prev => {
@@ -43,6 +46,41 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
     // Show immediate toast notification
     toast.success(`Lead ${updatedLead.full_name} updated successfully`);
   }, []);
+
+  // Handle clicking on a lead in the filter modal
+  const handleFilterLeadClick = (lead: Lead) => {
+    setSelectedLeadFromFilter(lead);
+    setIsLeadDetailsModalOpen(true);
+  };
+
+  // Handle closing the lead details modal
+  const handleCloseLeadDetailsModal = () => {
+    setIsLeadDetailsModalOpen(false);
+    setSelectedLeadFromFilter(null);
+  };
+
+  // Handle filter clicks - open modal with filtered leads
+  const handleFilterClick = (filterType: string) => {
+    let filtered: Lead[] = [];
+    
+    if (filterType === 'blow_out') {
+      // Blow Out includes multiple statuses
+      filtered = leads.filter(lead => 
+        ['blow_out', 'not_interested', 'pass_back_to_agent'].includes(lead.status)
+      );
+    } else if (filterType === 'on_hold') {
+      // On Hold includes both on_hold and qualifier_callback
+      filtered = leads.filter(lead => 
+        ['on_hold', 'qualifier_callback'].includes(lead.status)
+      );
+    } else {
+      filtered = leads.filter(lead => lead.status === filterType);
+    }
+    
+    setModalFilteredLeads(filtered);
+    setCurrentFilterType(filterType);
+    setFilterModalOpen(true);
+  };
 
   // Set up the ref for KanbanBoard to call back to this component
   useEffect(() => {
@@ -88,6 +126,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       const response = await leadsAPI.getLeads();
       const newLeads = response.results;
       
+      
       // Check if there are new leads (increase in count) - only for non-silent updates
       if (!silent && previousLeadCount.current > 0 && newLeads.length > previousLeadCount.current) {
         // Play notification sound for new leads
@@ -126,11 +165,9 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
 
   // Listen for lead updates from AgentDashboard via localStorage events
   const handleLeadUpdateMessage = useCallback((message: { type: string; lead: Lead; timestamp: number }) => {
-    console.log('QualifierDashboard: handleLeadUpdateMessage called with:', message);
     const { type, lead } = message;
     
     if (type === 'NEW_LEAD' && lead.status === 'sent_to_kelly') {
-      console.log('QualifierDashboard: Processing NEW_LEAD:', lead);
       
       // Play notification sound
       playNotificationSound();
@@ -144,7 +181,6 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       // Trigger a refresh to get the latest data
       fetchLeads(true);
     } else if (type === 'LEAD_UPDATED' && lead.status === 'sent_to_kelly') {
-      console.log('QualifierDashboard: Processing LEAD_UPDATED:', lead);
       
       // Play notification sound for updated leads sent to qualifier
       playNotificationSound();
@@ -155,7 +191,6 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       // Trigger a refresh to get the latest data
       fetchLeads(true);
     } else {
-      console.log('QualifierDashboard: Message type not handled:', type, 'Lead status:', lead?.status);
     }
   }, [playNotificationSound, fetchLeads]);
 
@@ -209,21 +244,6 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
     setAppointmentLead(null);
   };
 
-  // Filter leads based on current filters
-  const getFilteredLeads = () => {
-    let filtered = leads;
-    
-    if (statusFilter) {
-      filtered = filtered.filter(lead => lead.status === statusFilter);
-    }
-    
-    if (agentFilter) {
-      filtered = filtered.filter(lead => lead.assigned_agent === parseInt(agentFilter));
-    }
-    
-    return filtered;
-  };
-
   const getStatusCounts = (leadsToCount: Lead[]) => {
     const counts = {
       cold_call: 0,
@@ -254,8 +274,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
   };
 
 
-  const filteredLeads = getFilteredLeads();
-  const statusCounts = getStatusCounts(filteredLeads);
+  const statusCounts = getStatusCounts(leads);
 
   if (loading) {
     return (
@@ -306,7 +325,10 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div 
+          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg"
+          onClick={() => handleFilterClick('sent_to_kelly')}
+        >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -324,7 +346,10 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div 
+          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg"
+          onClick={() => handleFilterClick('no_contact')}
+        >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -342,7 +367,10 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div 
+          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg"
+          onClick={() => handleFilterClick('blow_out')}
+        >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -360,7 +388,10 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div 
+          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg"
+          onClick={() => handleFilterClick('appointment_set')}
+        >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -378,7 +409,10 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div 
+          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg"
+          onClick={() => handleFilterClick('on_hold')}
+        >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -398,8 +432,6 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
 
       </div>
 
-
-
       {/* Qualification Modal */}
       {updatingLead && (
         <QualifierLeadModal
@@ -415,6 +447,82 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
           lead={appointmentLead}
           onClose={() => setAppointmentLead(null)}
           onSuccess={handleAppointmentSuccess}
+        />
+      )}
+
+      {/* Filter Modal */}
+      {filterModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Leads - {currentFilterType?.replace('_', ' ').toUpperCase()}
+              </h3>
+              <button
+                onClick={() => setFilterModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto max-h-[60vh]">
+              {modalFilteredLeads.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <div className="text-4xl mb-2">📋</div>
+                  <p>No leads found for this filter</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {modalFilteredLeads.map(lead => (
+                    <div 
+                      key={lead.id} 
+                      className="bg-gray-50 rounded-lg p-4 border border-gray-200 cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-colors"
+                      onClick={() => handleFilterLeadClick(lead)}
+                    >
+                      <div className="mb-2">
+                        <h4 className="font-medium text-gray-900">{lead.full_name}</h4>
+                        <p className="text-sm text-gray-600">📞 {lead.phone}</p>
+                        {lead.address1 && <p className="text-sm text-gray-600">📍 {lead.address1}</p>}
+                        {lead.city && <p className="text-sm text-gray-600">🏙️ {lead.city}</p>}
+                        {lead.postal_code && <p className="text-sm text-gray-600">📮 {lead.postal_code}</p>}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        <p>Assigned to: {lead.assigned_agent_name || lead.assigned_agent_username}</p>
+                        <p>Created: {new Date(lead.created_at).toLocaleDateString()}</p>
+                        <p className="text-blue-600 mt-1">Click to view details</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setFilterModalOpen(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lead Details Modal for Filter Modal */}
+      {selectedLeadFromFilter && (
+        <LeadDetailsModal
+          lead={selectedLeadFromFilter}
+          isOpen={isLeadDetailsModalOpen}
+          onClose={handleCloseLeadDetailsModal}
+          userRole="qualifier"
+          onLeadUpdated={() => {
+            // Refresh leads when a lead is updated
+            fetchLeads(true);
+          }}
         />
       )}
     </div>

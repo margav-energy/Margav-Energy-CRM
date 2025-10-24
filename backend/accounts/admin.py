@@ -9,7 +9,7 @@ from django.http import HttpResponseRedirect
 from .models import User
 
 # Set custom admin site template
-admin.site.index_template = 'admin/index.html'
+# admin.site.index_template = 'admin/index.html'
 
 
 @admin.register(User)

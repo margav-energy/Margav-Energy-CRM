@@ -117,6 +117,14 @@ class Lead(SoftDeleteModel):
         related_name='field_appointments',
         help_text='Field sales rep assigned to the appointment'
     )
+    field_submission = models.OneToOneField(
+        'FieldSubmission',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lead',
+        help_text='Field submission that created this lead'
+    )
     sale_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -481,6 +489,218 @@ class DialerUserLink(models.Model):
         return f"{self.dialer_user_id} -> {self.crm_user.username}"
 
 
+class FieldSubmission(SoftDeleteModel):
+    """
+    Model for field agent property assessments.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('under_review', 'Under Review'),
+        ('completed', 'Completed'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    PROPERTY_TYPE_CHOICES = [
+        ('detached', 'Detached House'),
+        ('semi-detached', 'Semi-Detached House'),
+        ('terraced', 'Terraced House'),
+        ('flat', 'Flat/Apartment'),
+        ('bungalow', 'Bungalow'),
+    ]
+    
+    ROOF_TYPE_CHOICES = [
+        ('pitched', 'Pitched'),
+        ('flat', 'Flat'),
+        ('mixed', 'Mixed'),
+    ]
+    
+    ROOF_MATERIAL_CHOICES = [
+        ('tiled', 'Tiled'),
+        ('slate', 'Slate'),
+        ('metal', 'Metal'),
+        ('felt', 'Felt'),
+        ('other', 'Other'),
+    ]
+    
+    ROOF_CONDITION_CHOICES = [
+        ('excellent', 'Excellent'),
+        ('good', 'Good'),
+        ('fair', 'Fair'),
+        ('poor', 'Poor'),
+    ]
+    
+    ENERGY_TYPE_CHOICES = [
+        ('gas', 'Gas Only'),
+        ('electric', 'Electric Only'),
+        ('dual', 'Dual (Gas & Electric)'),
+    ]
+    
+    # Field agent who conducted the assessment
+    field_agent = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='field_submissions',
+        help_text='Field agent who conducted the assessment'
+    )
+    
+    # Canvasser Info
+    canvasser_name = models.CharField(max_length=255, blank=True, default='', help_text='Canvasser full name')
+    assessment_date = models.CharField(max_length=50, blank=True, default='', help_text='Date of assessment')
+    assessment_time = models.CharField(max_length=50, blank=True, default='', help_text='Time of assessment')
+    
+    # Customer information
+    customer_name = models.CharField(max_length=255, help_text='Customer full name')
+    phone = models.CharField(max_length=20, help_text='Customer phone number')
+    email = models.EmailField(blank=True, null=True, help_text='Customer email address')
+    address = models.TextField(help_text='Property address')
+    postal_code = models.CharField(max_length=20, help_text='Postal code')
+    preferred_contact_time = models.CharField(max_length=50, blank=True, help_text='Preferred contact time')
+    
+    # Property Information
+    owns_property = models.CharField(max_length=10, blank=True, help_text='Does customer own property? (yes/no)')
+    property_type = models.CharField(
+        max_length=20,
+        choices=PROPERTY_TYPE_CHOICES,
+        blank=True,
+        help_text='Type of property'
+    )
+    number_of_bedrooms = models.CharField(max_length=10, blank=True, help_text='Number of bedrooms')
+    roof_type = models.CharField(
+        max_length=20,
+        choices=ROOF_TYPE_CHOICES,
+        blank=True,
+        help_text='Type of roof'
+    )
+    roof_material = models.CharField(
+        max_length=20,
+        choices=ROOF_MATERIAL_CHOICES,
+        blank=True,
+        help_text='Material of roof'
+    )
+    roof_condition = models.CharField(
+        max_length=20,
+        choices=ROOF_CONDITION_CHOICES,
+        blank=True,
+        help_text='Condition of roof'
+    )
+    roof_age = models.CharField(max_length=20, blank=True, help_text='Age of roof')
+    
+    # Energy Usage
+    average_monthly_bill = models.CharField(max_length=50, blank=True, help_text='Average monthly energy bill')
+    energy_type = models.CharField(
+        max_length=20,
+        choices=ENERGY_TYPE_CHOICES,
+        blank=True,
+        help_text='Type of energy (gas/electric/dual)'
+    )
+    current_energy_supplier = models.CharField(max_length=100, blank=True, help_text='Current energy supplier')
+    uses_electric_heating = models.CharField(max_length=10, blank=True, help_text='Uses electric heating? (yes/no)')
+    electric_heating_details = models.TextField(blank=True, help_text='Electric heating details')
+    
+    # Timeframe and Interest
+    has_received_other_quotes = models.CharField(max_length=10, blank=True, help_text='Has received other quotes? (yes/no)')
+    is_decision_maker = models.CharField(max_length=10, blank=True, help_text='Is decision maker? (yes/no)')
+    moving_in_5_years = models.CharField(max_length=10, blank=True, help_text='Moving in 5 years? (yes/no)')
+    
+    # Additional information
+    notes = models.TextField(blank=True, help_text='Additional notes and observations')
+    
+    # Media files (stored as JSON)
+    photos = models.JSONField(
+        default=dict, 
+        help_text='Base64 encoded photos (dict with keys: roof, frontRear, energyBill)'
+    )
+    signature = models.TextField(blank=True, help_text='Base64 encoded customer signature')
+    
+    # Status and timestamps
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        help_text='Current status of the submission'
+    )
+    timestamp = models.DateTimeField(
+        default=timezone.now,
+        help_text='When the assessment was conducted'
+    )
+    
+    # Review information
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_submissions',
+        help_text='Qualifier who reviewed the submission'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True, help_text='When the submission was reviewed')
+    review_notes = models.TextField(blank=True, help_text='Qualifier review notes')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Field Submission'
+        verbose_name_plural = 'Field Submissions'
+    
+    def __str__(self):
+        return f"{self.customer_name} - {self.address} ({self.get_status_display()})"
+    
+    def get_photo_count(self):
+        """Get the number of photos in this submission."""
+        if isinstance(self.photos, list):
+            return len(self.photos)
+        elif isinstance(self.photos, dict):
+            # New format: count non-empty photo values
+            return sum(1 for photo in self.photos.values() if photo)
+        return 0
+    
+    def has_signature(self):
+        """Check if the submission has a customer signature."""
+        return bool(self.signature)
+    
+    def get_formatted_notes(self):
+        """Get formatted notes for display."""
+        notes = f"Canvas Assessment by {self.canvasser_name or 'Unknown'}\n"
+        notes += f"Date: {self.assessment_date} at {self.assessment_time}\n\n"
+        
+        # Property Information
+        notes += "Property Information:\n"
+        notes += f"- Owns Property: {self.owns_property or 'Not specified'}\n"
+        notes += f"- Type: {self.get_property_type_display() or 'Not specified'}\n"
+        notes += f"- Bedrooms: {self.number_of_bedrooms or 'Not specified'}\n"
+        notes += f"- Roof Type: {self.get_roof_type_display() or 'Not specified'}\n"
+        notes += f"- Roof Material: {self.get_roof_material_display() or 'Not specified'}\n"
+        notes += f"- Roof Condition: {self.get_roof_condition_display() or 'Not specified'}\n"
+        notes += f"- Roof Age: {self.roof_age or 'Not specified'}\n\n"
+        
+        # Energy Information
+        notes += "Energy Information:\n"
+        notes += f"- Supplier: {self.current_energy_supplier or 'Not specified'}\n"
+        notes += f"- Monthly Bill: £{self.average_monthly_bill or 'Not specified'}\n"
+        notes += f"- Energy Type: {self.get_energy_type_display() or 'Not specified'}\n"
+        notes += f"- Electric Heating: {self.uses_electric_heating or 'Not specified'}\n"
+        if self.electric_heating_details:
+            notes += f"- Heating Details: {self.electric_heating_details}\n"
+        notes += "\n"
+        
+        # Customer Interest
+        notes += "Customer Interest:\n"
+        notes += f"- Other Quotes: {self.has_received_other_quotes or 'Not specified'}\n"
+        notes += f"- Decision Maker: {self.is_decision_maker or 'Not specified'}\n"
+        notes += f"- Moving in 5 Years: {self.moving_in_5_years or 'Not specified'}\n"
+        notes += f"- Preferred Contact: {self.preferred_contact_time or 'Not specified'}\n\n"
+        
+        if self.notes:
+            notes += f"Additional Notes:\n{self.notes}\n\n"
+        
+        notes += f"Photos: {self.get_photo_count()} captured\n"
+        notes += f"Signature: {'Captured' if self.has_signature() else 'Not captured'}\n"
+        
+        return notes
+
+
 class Callback(SoftDeleteModel):
     """
     Model for managing callbacks requested by leads.
@@ -547,4 +767,3 @@ class Callback(SoftDeleteModel):
         from django.utils import timezone
         now = timezone.now()
         return now > self.scheduled_time
-

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lead, LeadForm as LeadFormType, CallbackForm } from '../types';
 import CallbackScheduler from './CallbackScheduler';
 import { callbacksAPI } from '../api';
+import { formatUKPostcode, formatName, formatAddress } from '../utils/formatting';
 
 interface LeadFormProps {
   lead?: Lead;
@@ -269,11 +270,44 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
   const [showCallbackScheduler, setShowCallbackScheduler] = useState(false);
   const [pendingCallback, setPendingCallback] = useState<CallbackForm | null>(null);
 
+  // Update form data when lead prop changes (for editing)
+  useEffect(() => {
+    if (lead) {
+      setFormData(prev => ({
+        ...prev,
+        full_name: lead.full_name || '',
+        phone: lead.phone || '',
+        email: lead.email || '',
+        address: lead.address1 || '',
+        city: lead.city || '',
+        postcode: lead.postal_code || '',
+        notes: lead.notes || '',
+        appointment_date: lead.appointment_date || '',
+        energy_bill_amount: lead.energy_bill_amount !== null && lead.energy_bill_amount !== undefined ? lead.energy_bill_amount.toString() : '',
+        has_ev_charger: lead.has_ev_charger !== null && lead.has_ev_charger !== undefined ? lead.has_ev_charger.toString() : '',
+        day_night_rate: lead.day_night_rate || '',
+        has_previous_quotes: lead.has_previous_quotes !== null && lead.has_previous_quotes !== undefined ? lead.has_previous_quotes.toString() : '',
+        previous_quotes_details: lead.previous_quotes_details || '',
+      }));
+    }
+  }, [lead]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    // Apply formatting based on field type
+    let formattedValue = value;
+    if (name === 'full_name') {
+      formattedValue = formatName(value);
+    } else if (name === 'address1') {
+      formattedValue = formatAddress(value);
+    } else if (name === 'postal_code') {
+      formattedValue = formatUKPostcode(value);
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: formattedValue,
     }));
     
     // Clear error when user starts typing

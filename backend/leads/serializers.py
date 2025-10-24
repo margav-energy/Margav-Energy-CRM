@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Lead, Dialer, LeadNotification, DialerUserLink, Callback
+from .models import Lead, Dialer, LeadNotification, DialerUserLink, Callback, FieldSubmission
 
 
 class DialerSerializer(serializers.ModelSerializer):
@@ -37,6 +37,22 @@ class LeadSerializer(serializers.ModelSerializer):
     assigned_agent_username = serializers.CharField(source='assigned_agent.username', read_only=True)
     field_sales_rep_name = serializers.CharField(source='field_sales_rep.get_full_name', read_only=True)
     field_sales_rep_username = serializers.CharField(source='field_sales_rep.username', read_only=True)
+    field_submission_data = serializers.SerializerMethodField()
+    
+    def get_field_submission_data(self, obj):
+        """Get field submission data if it exists."""
+        if obj.field_submission:
+            return {
+                'id': obj.field_submission.id,
+                'canvasser_name': obj.field_submission.canvasser_name,
+                'assessment_date': obj.field_submission.assessment_date,
+                'assessment_time': obj.field_submission.assessment_time,
+                'photos': obj.field_submission.photos,
+                'signature': obj.field_submission.signature,
+                'formatted_notes': obj.field_submission.get_formatted_notes(),
+                'timestamp': obj.field_submission.timestamp
+            }
+        return None
     
     class Meta:
         model = Lead
@@ -45,10 +61,11 @@ class LeadSerializer(serializers.ModelSerializer):
             'assigned_agent', 'assigned_agent_name', 'assigned_agent_username',
             'field_sales_rep', 'field_sales_rep_name', 'field_sales_rep_username',
             'notes', 'appointment_date', 'google_calendar_event_id', 'sale_amount',
+            # Address fields
+            'address1', 'city',
             # Dialer-specific fields
             'dialer_lead_id', 'vendor_id', 'list_id', 'gmt_offset_now', 'phone_code',
             'phone_number', 'title', 'first_name', 'middle_initial', 'last_name',
-            'address1', 'address2', 'address3', 'city', 'state', 'province',
             'postal_code', 'country_code', 'gender', 'date_of_birth', 'alt_phone',
             'security_phrase', 'comments', 'user', 'campaign', 'phone_login',
             'fronter', 'closer', 'group', 'channel_group', 'SQLdate', 'epoch',
@@ -58,6 +75,8 @@ class LeadSerializer(serializers.ModelSerializer):
             # Energy section fields
             'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 
             'has_previous_quotes', 'previous_quotes_details',
+            # Field submission data
+            'field_submission_data',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -164,7 +183,6 @@ class LeadUpdateSerializer(serializers.ModelSerializer):
             'full_name', 'phone', 'email', 'status', 'disposition', 
             'notes', 'appointment_date', 'field_sales_rep', 'sale_amount',
             # Address fields
-            'address1', 'city', 'postal_code',
             # Energy section fields
             'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 
             'has_previous_quotes', 'previous_quotes_details'
@@ -195,7 +213,6 @@ class DialerLeadSerializer(serializers.ModelSerializer):
             # Dialer-specific fields
             'dialer_lead_id', 'vendor_id', 'list_id', 'gmt_offset_now', 'phone_code',
             'phone_number', 'title', 'first_name', 'middle_initial', 'last_name',
-            'address1', 'address2', 'address3', 'city', 'state', 'province',
             'postal_code', 'country_code', 'gender', 'date_of_birth', 'alt_phone',
             'security_phrase', 'comments', 'user', 'campaign', 'phone_login',
             'fronter', 'closer', 'group', 'channel_group', 'SQLdate', 'epoch',
@@ -331,6 +348,131 @@ class CallbackSerializer(serializers.ModelSerializer):
         return Callback.objects.create(**validated_data)
 
 
+class FieldSubmissionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for field submissions (read operations).
+    """
+    field_agent_name = serializers.CharField(source='field_agent.get_full_name', read_only=True)
+    reviewed_by_name = serializers.CharField(source='reviewed_by.get_full_name', read_only=True)
+    photo_count = serializers.SerializerMethodField()
+    has_signature = serializers.SerializerMethodField()
+    formatted_notes = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = FieldSubmission
+        fields = [
+            'id',
+            'field_agent',
+            'field_agent_name',
+            'customer_name',
+            'phone',
+            'email',
+            'address',
+            'postal_code',
+            'property_type',
+            'roof_type',
+            'roof_condition',
+            'roof_age',
+            'current_energy_supplier',
+            'average_monthly_bill',
+            'energy_type',
+            'notes',
+            'photos',
+            'signature',
+            'status',
+            'timestamp',
+            'reviewed_by',
+            'reviewed_by_name',
+            'reviewed_at',
+            'review_notes',
+            'photo_count',
+            'has_signature',
+            'formatted_notes',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = [
+            'id',
+            'field_agent',
+            'field_agent_name',
+            'reviewed_by',
+            'reviewed_by_name',
+            'reviewed_at',
+            'photo_count',
+            'has_signature',
+            'formatted_notes',
+            'created_at',
+            'updated_at'
+        ]
+    
+    def get_photo_count(self, obj):
+        return obj.get_photo_count()
+    
+    def get_has_signature(self, obj):
+        return obj.has_signature()
+    
+    def get_formatted_notes(self, obj):
+        return obj.get_formatted_notes()
+
+
+class FieldSubmissionCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating field submissions.
+    """
+    class Meta:
+        model = FieldSubmission
+        fields = [
+            'customer_name',
+            'phone',
+            'email',
+            'address',
+            'postal_code',
+            'property_type',
+            'roof_type',
+            'roof_condition',
+            'roof_age',
+            'current_energy_supplier',
+            'average_monthly_bill',
+            'energy_type',
+            'notes',
+            'photos',
+            'signature',
+            'timestamp'
+        ]
+    
+    def validate_customer_name(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Customer name is required.")
+        return value.strip()
+    
+    def validate_phone(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Phone number is required.")
+        return value.strip()
+    
+    def validate_address(self, value):
+        # Address is required for field submissions, but provide default for legacy offline submissions
+        if not value or not value.strip():
+            return "Address not provided"  # Provide default instead of raising error
+        return value.strip()
+    
+    def validate_photos(self, value):
+        # Photos are optional - accept dict or list format
+        if not value:
+            return {}  # Return empty dict if no photos
+        # Accept both dict {roof, frontRear, energyBill} or list format
+        return value
+    
+    def validate_signature(self, value):
+        # Signature is optional
+        return value if value else ""
+    
+    def validate_timestamp(self, value):
+        if not value:
+            raise serializers.ValidationError("Timestamp is required.")
+        return value
+
+
 class CallbackCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating new callbacks.
@@ -343,4 +485,6 @@ class CallbackCreateSerializer(serializers.ModelSerializer):
         # Always assign the callback to the current user
         validated_data['created_by'] = self.context['request'].user
         return Callback.objects.create(**validated_data)
+
+        return value
 

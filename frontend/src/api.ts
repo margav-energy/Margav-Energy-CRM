@@ -174,6 +174,25 @@ export const leadsAPI = {
     const response: AxiosResponse<{ message: string; deleted_count: number }> = await api.post('/leads/bulk-delete-forever/', { lead_ids: leadIds });
     return response.data;
   },
+
+  sendAppointmentEmail: async (leadId: number, appointmentDate: string, appointmentTime?: string, notes?: string): Promise<{ message: string; lead_name: string; email: string; appointment_date: string; appointment_time?: string }> => {
+    const response: AxiosResponse<{ message: string; lead_name: string; email: string; appointment_date: string; appointment_time?: string }> = await api.post('/leads/send-appointment-email/', {
+      lead_id: leadId,
+      appointment_date: appointmentDate,
+      appointment_time: appointmentTime,
+      notes: notes
+    });
+    return response.data;
+  },
+
+  sendAppointmentReminder: async (leadId: number, appointmentDate: string, appointmentTime?: string): Promise<{ message: string; lead_name: string; email: string; appointment_date: string; appointment_time?: string }> => {
+    const response: AxiosResponse<{ message: string; lead_name: string; email: string; appointment_date: string; appointment_time?: string }> = await api.post('/leads/send-appointment-reminder/', {
+      lead_id: leadId,
+      appointment_date: appointmentDate,
+      appointment_time: appointmentTime
+    });
+    return response.data;
+  },
 };
 
 // Dialer API

@@ -22,6 +22,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       'qualifier': 'Qualifier',
       'salesrep': 'Sales Rep',
       'admin': 'Admin',
+      'canvasser': 'Canvasser',
     };
     return roleMap[role] || role;
   };
@@ -45,6 +46,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   {getRoleDisplayName(user?.role || '')}
                 </span>
               </div>
+              {user?.role === 'canvasser' && (
+                <button
+                  onClick={() => navigate('/canvasser')}
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-md"
+                >
+                  canvasser
+                </button>
+              )}
               <button
                 onClick={handleLogout}
                 className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-md"

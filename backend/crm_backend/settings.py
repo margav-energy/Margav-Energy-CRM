@@ -31,10 +31,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'crm_backend.csrf_exempt_middleware.CSRFExemptAPIMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -45,6 +43,13 @@ MIDDLEWARE = [
 CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_HTTPONLY = False
 CSRF_USE_SESSIONS = False
+
+# Session configuration
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = False
 
 # Disable CSRF for API endpoints
 CSRF_TRUSTED_ORIGINS = [
@@ -202,6 +207,18 @@ CORS_ALLOW_CREDENTIALS = True
 GOOGLE_CREDENTIALS_PATH = config('GOOGLE_CREDENTIALS_PATH', default=None)
 GOOGLE_CALENDAR_EMAIL = config('GOOGLE_CALENDAR_EMAIL', default='sales@margav.energy')
 DIALER_API_KEY = config('DIALER_API_KEY', default=None)
+
+# --------------------
+# Email Configuration
+# --------------------
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='sales@margav.energy')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='sales@margav.energy')
+SERVER_EMAIL = config('SERVER_EMAIL', default='sales@margav.energy')
 
 # --------------------
 # Logging
