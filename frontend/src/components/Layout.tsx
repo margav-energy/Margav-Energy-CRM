@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Logo from './Logo';
+import OfflineModeIndicator from './OfflineModeIndicator';
 
 interface LayoutProps {
   children: ReactNode;
@@ -64,6 +65,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
       </nav>
+
+      {/* Offline Mode Indicator */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <OfflineModeIndicator showDetails={true} className="mb-4" />
+      </div>
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">

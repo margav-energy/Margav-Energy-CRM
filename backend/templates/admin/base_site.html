@@ -3,109 +3,96 @@
 
 {% block title %}{{ title }} | {{ site_title|default:_('Margav Energy CRM Administration') }}{% endblock %}
 
-{% block extrahead %}
+{% block extrastyle %}
 {{ block.super }}
 <style>
-    #user-tools {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    #user-tools .welcome {
-        margin: 0;
-        display: inline;
-    }
-    
-    .theme-toggle {
-        display: inline-block;
-        margin-left: 10px;
-    }
-    
-    .theme-toggle-button {
-        background: none;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        padding: 4px 8px;
-        cursor: pointer;
-        font-size: 14px;
-    }
-    
-    .theme-toggle-button:hover {
-        background-color: #f0f0f0;
-    }
-    
-    .theme-icon {
-        display: inline-block;
-        transition: transform 0.3s ease;
-    }
+/* Hide navigation bar */
+#header {
+    display: none !important;
+}
+
+/* Hide breadcrumbs navigation */
+.breadcrumbs {
+    display: none !important;
+}
+
+/* Hide all user-tools divs */
+#user-tools {
+    display: none !important;
+}
+
+/* Hide nav-global block if it exists */
+.nav-global {
+    display: none !important;
+}
 </style>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const themeToggle = document.querySelector('.theme-toggle-button');
-    if (themeToggle) {
-        themeToggle.addEventListener('click', function() {
-            // Toggle theme logic here
-            const body = document.body;
-            const isDark = body.classList.contains('dark-theme');
-            
-            if (isDark) {
-                body.classList.remove('dark-theme');
-                localStorage.setItem('admin-theme', 'light');
-                themeToggle.querySelector('.theme-icon').textContent = '🌙';
-            } else {
-                body.classList.add('dark-theme');
-                localStorage.setItem('admin-theme', 'dark');
-                themeToggle.querySelector('.theme-icon').textContent = '☀️';
-            }
-        });
-        
-        // Load saved theme
-        const savedTheme = localStorage.getItem('admin-theme');
-        if (savedTheme === 'dark') {
-            document.body.classList.add('dark-theme');
-            themeToggle.querySelector('.theme-icon').textContent = '☀️';
-        }
-    }
-    
-    // Add theme toggle to existing user tools
-    const userTools = document.querySelector('#user-tools');
-    if (userTools && !userTools.querySelector('.theme-toggle')) {
-        const themeToggleDiv = document.createElement('div');
-        themeToggleDiv.className = 'theme-toggle';
-        themeToggleDiv.innerHTML = '<button type="button" class="theme-toggle-button" aria-label="Toggle theme"><span class="theme-icon">🌙</span></button>';
-        userTools.appendChild(themeToggleDiv);
-        
-        // Re-attach event listener to new button
-        const newThemeToggle = themeToggleDiv.querySelector('.theme-toggle-button');
-        if (newThemeToggle) {
-            newThemeToggle.addEventListener('click', function() {
-                const body = document.body;
-                const isDark = body.classList.contains('dark-theme');
-                
-                if (isDark) {
-                    body.classList.remove('dark-theme');
-                    localStorage.setItem('admin-theme', 'light');
-                    newThemeToggle.querySelector('.theme-icon').textContent = '🌙';
-                } else {
-                    body.classList.add('dark-theme');
-                    localStorage.setItem('admin-theme', 'dark');
-                    newThemeToggle.querySelector('.theme-icon').textContent = '☀️';
-                }
-            });
-            
-            // Load saved theme
-            const savedTheme = localStorage.getItem('admin-theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-theme');
-                newThemeToggle.querySelector('.theme-icon').textContent = '☀️';
-            }
-        }
-    }
-});
-</script>
 {% endblock %}
 
 {% block branding %}
 <h1 id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Margav Energy CRM Administration') }}</a></h1>
+{% endblock %}
+
+{% block usertools %}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+/* Force hide all navigation elements */
+#header {
+    display: none !important;
+}
+
+.breadcrumbs {
+    display: none !important;
+}
+
+#user-tools {
+    display: none !important;
+}
+
+.nav-global {
+    display: none !important;
+}
+</style>
+<script>
+(function() {
+    // Hide header immediately
+    function hideNavigationElements() {
+        const header = document.getElementById('header');
+        if (header) {
+            header.style.display = 'none';
+        }
+        
+        const breadcrumbs = document.querySelector('.breadcrumbs');
+        if (breadcrumbs) {
+            breadcrumbs.style.display = 'none';
+        }
+        
+        const userTools = document.getElementById('user-tools');
+        if (userTools) {
+            userTools.style.display = 'none';
+        }
+        
+        const navGlobal = document.querySelector('.nav-global');
+        if (navGlobal) {
+            navGlobal.style.display = 'none';
+        }
+    }
+    
+    // Run immediately
+    hideNavigationElements();
+    
+    // Run on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', hideNavigationElements);
+    } else {
+        hideNavigationElements();
+    }
+    
+    // Also run after a short delay to catch late-loading elements
+    setTimeout(hideNavigationElements, 100);
+    setTimeout(hideNavigationElements, 500);
+})();
+</script>
 {% endblock %}

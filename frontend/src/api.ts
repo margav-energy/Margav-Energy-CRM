@@ -61,7 +61,7 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: async (credentials: LoginForm): Promise<AuthResponse> => {
-    const response: AxiosResponse<AuthResponse> = await api.post('/api-token-auth/', credentials);
+    const response: AxiosResponse<AuthResponse> = await api.post('api-token-auth/', credentials);
     return response.data;
   },
 
@@ -72,6 +72,17 @@ export const authAPI = {
 
   logout: () => {
     setAuthToken(null);
+  },
+
+  // Offline authentication support
+  verifyToken: async (): Promise<{ valid: boolean; user: User }> => {
+    const response: AxiosResponse<{ valid: boolean; user: User }> = await api.get('/auth/verify/');
+    return response.data;
+  },
+
+  refreshToken: async (): Promise<AuthResponse> => {
+    const response: AxiosResponse<AuthResponse> = await api.post('/auth/refresh/');
+    return response.data;
   },
 };
 

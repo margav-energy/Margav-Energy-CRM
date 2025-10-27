@@ -136,7 +136,6 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
             photo_count = len(submission.photos)
         
         notes += f"Photos: {photo_count} captured\n"
-        notes += f"Signature: {'Captured' if submission.signature else 'Not captured'}\n"
         
         return notes
 
@@ -232,7 +231,7 @@ def bulk_sync_field_submissions(request):
                 'address1': submission.address,
                 'city': submission.city,
                 'postal_code': submission.postal_code,
-                'notes': f"Field Assessment - {submission.timestamp.strftime('%Y-%m-%d %H:%M')}\n\nProperty Type: {submission.property_type or 'Not specified'}\nRoof Type: {submission.roof_type or 'Not specified'}\nRoof Condition: {submission.roof_condition or 'Not specified'}\nRoof Age: {submission.roof_age or 'Not specified'}\nCurrent Energy Supplier: {submission.current_energy_supplier or 'Not specified'}\nMonthly Bill: {submission.monthly_bill or 'Not specified'}\nHeating Type: {submission.heating_type or 'Not specified'}\nHot Water Type: {submission.hot_water_type or 'Not specified'}\nInsulation Type: {submission.insulation_type or 'Not specified'}\nWindows Type: {submission.windows_type or 'Not specified'}\nProperty Age: {submission.property_age or 'Not specified'}\nOccupancy: {submission.occupancy or 'Not specified'}\n\nAdditional Notes:\n{submission.notes or 'None'}\n\nPhotos: {len(submission.photos)} taken\nSignature: {'Captured' if submission.signature else 'Not captured'}",
+                'notes': f"Field Assessment - {submission.timestamp.strftime('%Y-%m-%d %H:%M')}\n\nProperty Type: {submission.property_type or 'Not specified'}\nRoof Type: {submission.roof_type or 'Not specified'}\nRoof Condition: {submission.roof_condition or 'Not specified'}\nRoof Age: {submission.roof_age or 'Not specified'}\nCurrent Energy Supplier: {submission.current_energy_supplier or 'Not specified'}\nMonthly Bill: {submission.monthly_bill or 'Not specified'}\nHeating Type: {submission.heating_type or 'Not specified'}\nHot Water Type: {submission.hot_water_type or 'Not specified'}\nInsulation Type: {submission.insulation_type or 'Not specified'}\nWindows Type: {submission.windows_type or 'Not specified'}\nProperty Age: {submission.property_age or 'Not specified'}\nOccupancy: {submission.occupancy or 'Not specified'}\n\nAdditional Notes:\n{submission.notes or 'None'}\n\nPhotos: {len(submission.photos)} taken\n",
                 'status': 'sent_to_kelly',
                 'assigned_agent': None,
                 'field_submission': submission,
@@ -393,7 +392,6 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
             photo_count = len(submission.photos)
         
         notes += f"Photos: {photo_count} captured\n"
-        notes += f"Signature: {'Captured' if submission.signature else 'Not captured'}\n"
         
         return notes
 
@@ -489,7 +487,7 @@ def bulk_sync_field_submissions(request):
                 'address1': submission.address,
                 'city': submission.city,
                 'postal_code': submission.postal_code,
-                'notes': f"Field Assessment - {submission.timestamp.strftime('%Y-%m-%d %H:%M')}\n\nProperty Type: {submission.property_type or 'Not specified'}\nRoof Type: {submission.roof_type or 'Not specified'}\nRoof Condition: {submission.roof_condition or 'Not specified'}\nRoof Age: {submission.roof_age or 'Not specified'}\nCurrent Energy Supplier: {submission.current_energy_supplier or 'Not specified'}\nMonthly Bill: {submission.monthly_bill or 'Not specified'}\nHeating Type: {submission.heating_type or 'Not specified'}\nHot Water Type: {submission.hot_water_type or 'Not specified'}\nInsulation Type: {submission.insulation_type or 'Not specified'}\nWindows Type: {submission.windows_type or 'Not specified'}\nProperty Age: {submission.property_age or 'Not specified'}\nOccupancy: {submission.occupancy or 'Not specified'}\n\nAdditional Notes:\n{submission.notes or 'None'}\n\nPhotos: {len(submission.photos)} taken\nSignature: {'Captured' if submission.signature else 'Not captured'}",
+                'notes': f"Field Assessment - {submission.timestamp.strftime('%Y-%m-%d %H:%M')}\n\nProperty Type: {submission.property_type or 'Not specified'}\nRoof Type: {submission.roof_type or 'Not specified'}\nRoof Condition: {submission.roof_condition or 'Not specified'}\nRoof Age: {submission.roof_age or 'Not specified'}\nCurrent Energy Supplier: {submission.current_energy_supplier or 'Not specified'}\nMonthly Bill: {submission.monthly_bill or 'Not specified'}\nHeating Type: {submission.heating_type or 'Not specified'}\nHot Water Type: {submission.hot_water_type or 'Not specified'}\nInsulation Type: {submission.insulation_type or 'Not specified'}\nWindows Type: {submission.windows_type or 'Not specified'}\nProperty Age: {submission.property_age or 'Not specified'}\nOccupancy: {submission.occupancy or 'Not specified'}\n\nAdditional Notes:\n{submission.notes or 'None'}\n\nPhotos: {len(submission.photos)} taken\n",
                 'status': 'sent_to_kelly',
                 'assigned_agent': None,
                 'field_submission': submission,

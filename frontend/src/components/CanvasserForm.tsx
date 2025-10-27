@@ -46,7 +46,6 @@ interface FieldFormData {
   };
   
   // Optional
-  signature: string;
   notes: string;
   
   // System fields
@@ -55,7 +54,7 @@ interface FieldFormData {
   synced: boolean;
 }
 
-type FormStep = 'contact' | 'property' | 'energy' | 'photos' | 'interest' | 'signature' | 'review';
+type FormStep = 'contact' | 'property' | 'energy' | 'photos' | 'interest' | 'review';
 
 const CanvasserForm: React.FC = () => {
   const { user, logout } = useAuth();
@@ -114,7 +113,6 @@ const CanvasserForm: React.FC = () => {
     },
     
     // Optional
-    signature: '',
     notes: '',
     
     // System
@@ -125,7 +123,6 @@ const CanvasserForm: React.FC = () => {
 
   const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
   const [currentPhotoType, setCurrentPhotoType] = useState<'roof' | 'frontRear' | 'energyBill' | null>(null);
-  const [isCapturingSignature, setIsCapturingSignature] = useState(false);
   const [pendingSubmissions, setPendingSubmissions] = useState<FieldFormData[]>([]);
   const [syncedSubmissions, setSyncedSubmissions] = useState<FieldFormData[]>([]);
   const [actualSyncedCount, setActualSyncedCount] = useState<number>(0);
@@ -139,7 +136,6 @@ const CanvasserForm: React.FC = () => {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Check online status
   useEffect(() => {
@@ -172,6 +168,7 @@ const CanvasserForm: React.FC = () => {
           formData.address && 
           formData.postalCode && 
           formData.phone && 
+          formData.email &&
           formData.preferredContactTime
         );
       case 'property':
@@ -198,9 +195,12 @@ const CanvasserForm: React.FC = () => {
           formData.movingIn5Years
         );
       case 'photos':
-        return true; // Photos are optional - can proceed without them
-      case 'signature':
-        return true; // Signature is optional
+        // Photos are now required - check all three photos
+        return !!(
+          formData.photos.roof && 
+          formData.photos.frontRear && 
+          formData.photos.energyBill
+        );
       case 'review':
         return true;
       default:
@@ -209,7 +209,7 @@ const CanvasserForm: React.FC = () => {
   };
 
   const canProceedToStep = (step: FormStep): boolean => {
-    const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'signature', 'review'];
+    const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'review'];
     const currentIndex = stepOrder.indexOf(currentStep);
     const targetIndex = stepOrder.indexOf(step);
     
@@ -312,7 +312,6 @@ const CanvasserForm: React.FC = () => {
           isDecisionMaker: submission.is_decision_maker || '',
           movingIn5Years: submission.moving_in_5_years || '',
           photos: submission.photos || { roof: '', frontRear: '', energyBill: '' },
-          signature: submission.signature || '',
           notes: submission.notes || '',
           synced: true,
           timestamp: submission.created_at,
@@ -547,72 +546,6 @@ const CanvasserForm: React.FC = () => {
     }));
   };
 
-  const startSignatureCapture = () => {
-    setIsCapturingSignature(true);
-    
-    if (signatureCanvasRef.current) {
-      const canvas = signatureCanvasRef.current;
-      const context = canvas.getContext('2d');
-      
-      if (context) {
-        context.strokeStyle = '#000';
-        context.lineWidth = 2;
-        context.lineCap = 'round';
-        context.lineJoin = 'round';
-        
-        let isDrawing = false;
-        
-        const startDrawing = (e: MouseEvent | TouchEvent) => {
-          isDrawing = true;
-          const rect = canvas.getBoundingClientRect();
-          const x = (e as MouseEvent).clientX - rect.left || (e as TouchEvent).touches[0].clientX - rect.left;
-          const y = (e as MouseEvent).clientY - rect.top || (e as TouchEvent).touches[0].clientY - rect.top;
-          context.beginPath();
-          context.moveTo(x, y);
-        };
-        
-        const draw = (e: MouseEvent | TouchEvent) => {
-          if (!isDrawing) return;
-          const rect = canvas.getBoundingClientRect();
-          const x = (e as MouseEvent).clientX - rect.left || (e as TouchEvent).touches[0].clientX - rect.left;
-          const y = (e as MouseEvent).clientY - rect.top || (e as TouchEvent).touches[0].clientY - rect.top;
-          context.lineTo(x, y);
-          context.stroke();
-        };
-        
-        const stopDrawing = () => {
-          isDrawing = false;
-        };
-        
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', stopDrawing);
-      }
-    }
-  };
-
-  const saveSignature = () => {
-    if (signatureCanvasRef.current) {
-      const signatureData = signatureCanvasRef.current.toDataURL('image/png');
-      setFormData(prev => ({
-        ...prev,
-        signature: signatureData
-      }));
-    }
-    setIsCapturingSignature(false);
-  };
-
-  const clearSignature = () => {
-    if (signatureCanvasRef.current) {
-      const context = signatureCanvasRef.current.getContext('2d');
-      if (context) {
-        context.clearRect(0, 0, signatureCanvasRef.current.width, signatureCanvasRef.current.height);
-      }
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -633,6 +566,7 @@ const CanvasserForm: React.FC = () => {
     if (!formData.address) missingFields.push('Address');
     if (!formData.postalCode) missingFields.push('Postcode');
     if (!formData.phone) missingFields.push('Phone Number');
+    if (!formData.email) missingFields.push('Email Address');
     if (!formData.preferredContactTime) missingFields.push('Preferred Contact Time');
     
     // Property information
@@ -727,7 +661,6 @@ const CanvasserForm: React.FC = () => {
         },
         
         // Optional
-        signature: '',
         notes: '',
         
         // System
@@ -808,7 +741,6 @@ const CanvasserForm: React.FC = () => {
         },
         
         // Optional
-        signature: '',
         notes: '',
         
         // System
@@ -870,7 +802,6 @@ const CanvasserForm: React.FC = () => {
       moving_in_5_years: data.movingIn5Years,
       notes: data.notes,
       photos: data.photos,
-      signature: data.signature,
       timestamp: data.timestamp
     };
     
@@ -988,7 +919,6 @@ const CanvasserForm: React.FC = () => {
     { key: 'energy', title: 'Energy Usage', description: 'Energy consumption' },
     { key: 'photos', title: 'Photos', description: 'Property photos' },
     { key: 'interest', title: 'Timeframe & Interest', description: 'Decision-making info' },
-    { key: 'signature', title: 'Signature', description: 'Optional signature' },
     { key: 'review', title: 'Review', description: 'Final review' }
   ];
 
@@ -1076,12 +1006,13 @@ const CanvasserForm: React.FC = () => {
               </div>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address (Optional)
+                  Email Address <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
                   id="email"
                   name="email"
+                  required
                   value={formData.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1363,6 +1294,9 @@ const CanvasserForm: React.FC = () => {
             <h2 className="text-xl font-semibold text-gray-900">
               Required Photos <span className="text-red-500">*</span>
             </h2>
+            <p className="text-sm text-red-600 mb-4">
+              All three photos must be captured before proceeding.
+            </p>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Roof Photo */}
@@ -1525,32 +1459,6 @@ const CanvasserForm: React.FC = () => {
           </div>
         );
 
-      case 'signature':
-        return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Customer Signature (Optional)</h2>
-            
-            {formData.signature && (
-              <div className="mb-4">
-                <img
-                  src={formData.signature}
-                  alt="Customer signature"
-                  className="border border-gray-300 rounded-lg"
-                />
-              </div>
-            )}
-            
-            <button
-              type="button"
-              onClick={startSignatureCapture}
-              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
-            >
-              <span className="text-lg">✍️</span>
-              <span>Capture Signature</span>
-            </button>
-          </div>
-        );
-
       case 'review':
         return (
           <div className="space-y-4">
@@ -1615,14 +1523,6 @@ const CanvasserForm: React.FC = () => {
               <p><strong>Energy Bill Photo:</strong> {formData.photos.energyBill ? '✅ Captured' : '❌ Missing'}</p>
             </div>
             
-            {/* Signature */}
-            {formData.signature && (
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 className="font-semibold mb-2">Signature</h3>
-                <p>✅ Customer signature captured</p>
-              </div>
-            )}
-
             {/* Optional Notes */}
             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
               <h3 className="font-semibold mb-2 text-yellow-900">Additional Notes (Optional)</h3>
@@ -1682,11 +1582,11 @@ const CanvasserForm: React.FC = () => {
                 </button>
                 
                 <button
-                  onClick={() => setCurrentStep('signature')}
+                  onClick={() => setCurrentStep('interest')}
                   className="flex-1 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2"
                 >
                   <span>←</span>
-                  <span>Back to Edit</span>
+                  <span>Back</span>
                 </button>
               </div>
               
@@ -1714,7 +1614,6 @@ const CanvasserForm: React.FC = () => {
               <h1 className="text-2xl font-bold text-gray-900">Canvas Team Lead Sheet</h1>
               <p className="text-lg text-gray-600 mt-1">
                 Welcome, <span className="font-semibold text-[#3333cc]">{user?.first_name || user?.username || 'Canvasser'}</span>! 
-                Ready to collect some leads?
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -1915,7 +1814,7 @@ const CanvasserForm: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'signature', 'review'];
+                const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'review'];
                 const currentIndex = stepOrder.indexOf(currentStep);
                 if (currentIndex > 0) {
                   setCurrentStep(stepOrder[currentIndex - 1]);
@@ -1940,10 +1839,10 @@ const CanvasserForm: React.FC = () => {
               )}
 
               <button
-                type="button"
-                onClick={() => {
-                  markStepCompleted(currentStep);
-                  const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'signature', 'review'];
+                  type="button"
+                  onClick={() => {
+                    markStepCompleted(currentStep);
+                    const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'review'];
                   const currentIndex = stepOrder.indexOf(currentStep);
                   if (currentIndex < stepOrder.length - 1) {
                     setCurrentStep(stepOrder[currentIndex + 1]);
@@ -1990,43 +1889,6 @@ const CanvasserForm: React.FC = () => {
           </div>
         )}
 
-        {/* Signature Modal */}
-        {isCapturingSignature && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-4">Customer Signature</h3>
-              <canvas
-                ref={signatureCanvasRef}
-                width={400}
-                height={200}
-                className="border border-gray-300 rounded-lg mb-4"
-              />
-              <div className="flex space-x-4">
-                <button
-                  type="button"
-                  onClick={saveSignature}
-                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
-                >
-                  Save Signature
-                </button>
-                <button
-                  type="button"
-                  onClick={clearSignature}
-                  className="flex-1 bg-yellow-600 text-white py-2 px-4 rounded-md hover:bg-yellow-700"
-                >
-                  Clear
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCapturingSignature(false)}
-                  className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

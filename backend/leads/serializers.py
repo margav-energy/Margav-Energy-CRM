@@ -48,7 +48,6 @@ class LeadSerializer(serializers.ModelSerializer):
                 'assessment_date': obj.field_submission.assessment_date,
                 'assessment_time': obj.field_submission.assessment_time,
                 'photos': obj.field_submission.photos,
-                'signature': obj.field_submission.signature,
                 'formatted_notes': obj.field_submission.get_formatted_notes(),
                 'timestamp': obj.field_submission.timestamp
             }
@@ -355,7 +354,6 @@ class FieldSubmissionSerializer(serializers.ModelSerializer):
     field_agent_name = serializers.CharField(source='field_agent.get_full_name', read_only=True)
     reviewed_by_name = serializers.CharField(source='reviewed_by.get_full_name', read_only=True)
     photo_count = serializers.SerializerMethodField()
-    has_signature = serializers.SerializerMethodField()
     formatted_notes = serializers.SerializerMethodField()
     
     class Meta:
@@ -378,7 +376,6 @@ class FieldSubmissionSerializer(serializers.ModelSerializer):
             'energy_type',
             'notes',
             'photos',
-            'signature',
             'status',
             'timestamp',
             'reviewed_by',
@@ -386,7 +383,6 @@ class FieldSubmissionSerializer(serializers.ModelSerializer):
             'reviewed_at',
             'review_notes',
             'photo_count',
-            'has_signature',
             'formatted_notes',
             'created_at',
             'updated_at'
@@ -399,7 +395,6 @@ class FieldSubmissionSerializer(serializers.ModelSerializer):
             'reviewed_by_name',
             'reviewed_at',
             'photo_count',
-            'has_signature',
             'formatted_notes',
             'created_at',
             'updated_at'
@@ -407,9 +402,6 @@ class FieldSubmissionSerializer(serializers.ModelSerializer):
     
     def get_photo_count(self, obj):
         return obj.get_photo_count()
-    
-    def get_has_signature(self, obj):
-        return obj.has_signature()
     
     def get_formatted_notes(self, obj):
         return obj.get_formatted_notes()
@@ -436,7 +428,6 @@ class FieldSubmissionCreateSerializer(serializers.ModelSerializer):
             'energy_type',
             'notes',
             'photos',
-            'signature',
             'timestamp'
         ]
     
@@ -462,10 +453,6 @@ class FieldSubmissionCreateSerializer(serializers.ModelSerializer):
             return {}  # Return empty dict if no photos
         # Accept both dict {roof, frontRear, energyBill} or list format
         return value
-    
-    def validate_signature(self, value):
-        # Signature is optional
-        return value if value else ""
     
     def validate_timestamp(self, value):
         if not value:

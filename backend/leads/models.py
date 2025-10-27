@@ -610,7 +610,6 @@ class FieldSubmission(SoftDeleteModel):
         default=dict, 
         help_text='Base64 encoded photos (dict with keys: roof, frontRear, energyBill)'
     )
-    signature = models.TextField(blank=True, help_text='Base64 encoded customer signature')
     
     # Status and timestamps
     status = models.CharField(
@@ -656,10 +655,6 @@ class FieldSubmission(SoftDeleteModel):
             return sum(1 for photo in self.photos.values() if photo)
         return 0
     
-    def has_signature(self):
-        """Check if the submission has a customer signature."""
-        return bool(self.signature)
-    
     def get_formatted_notes(self):
         """Get formatted notes for display."""
         notes = f"Canvas Assessment by {self.canvasser_name or 'Unknown'}\n"
@@ -696,7 +691,6 @@ class FieldSubmission(SoftDeleteModel):
             notes += f"Additional Notes:\n{self.notes}\n\n"
         
         notes += f"Photos: {self.get_photo_count()} captured\n"
-        notes += f"Signature: {'Captured' if self.has_signature() else 'Not captured'}\n"
         
         return notes
 

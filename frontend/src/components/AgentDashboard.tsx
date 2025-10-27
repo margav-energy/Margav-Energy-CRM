@@ -526,30 +526,32 @@ const AgentDashboard: React.FC = () => {
 
   const getStatusCounts = () => {
     const counts = {
-      cold_call: 0,
       interested: 0,
       appointment_set: 0,
       not_interested: 0,
-      tenant: 0,
-      other_disposition: 0,
-      sent_to_kelly: 0,
-      appointment_completed: 0,
-      sale_made: 0,
-      sale_lost: 0,
       callbacks: 0,
     };
 
     leads.forEach(lead => {
-      if (lead.status in counts) {
-        counts[lead.status as keyof typeof counts]++;
+      // Group related statuses for counting
+      if (lead.status === 'interested' || lead.status === 'sent_to_kelly') {
+        counts.interested++;
+      } else if (lead.status === 'appointment_set') {
+        counts.appointment_set++;
+      } else if (lead.status === 'not_interested' || lead.status === 'blow_out') {
+        counts.not_interested++;
       }
     });
 
-    // Update callback count from actual callbacks data and pass_back_to_agent leads only
+    // Update callback count from:
+    // 1. Scheduled callbacks from the callbacks data
+    // 2. Leads with callback status
+    // 3. Leads with pass_back_to_agent status
     // Note: on_hold status is for qualifiers only - agents should not call these back
     const scheduledCallbacks = callbacks.filter(callback => callback.status === 'scheduled').length;
+    const callbackLeads = leads.filter(lead => lead.status === 'callback').length;
     const passBackLeads = leads.filter(lead => lead.status === 'pass_back_to_agent').length;
-    counts.callbacks = scheduledCallbacks + passBackLeads;
+    counts.callbacks = scheduledCallbacks + callbackLeads + passBackLeads;
 
     return counts;
   };
@@ -557,8 +559,9 @@ const AgentDashboard: React.FC = () => {
   const getCallbackCount = () => {
     // Note: on_hold status is for qualifiers only - agents should not call these back
     const scheduledCallbacks = callbacks.filter(callback => callback.status === 'scheduled').length;
+    const callbackLeads = leads.filter(lead => lead.status === 'callback').length;
     const passBackLeads = leads.filter(lead => lead.status === 'pass_back_to_agent').length;
-    return scheduledCallbacks + passBackLeads;
+    return scheduledCallbacks + callbackLeads + passBackLeads;
   };
 
   const statusCounts = getStatusCounts();
@@ -658,7 +661,7 @@ const AgentDashboard: React.FC = () => {
             <div className="ml-4 flex-1">
               <dl>
                 <dt className="text-sm font-medium text-gray-500 truncate">Interested</dt>
-                <dd className="text-2xl font-bold text-gray-900">{statusCounts.interested + statusCounts.sent_to_kelly}</dd>
+                <dd className="text-2xl font-bold text-gray-900">{statusCounts.interested}</dd>
               </dl>
             </div>
           </div>

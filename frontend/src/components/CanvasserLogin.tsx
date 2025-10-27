@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { isOnline } from '../utils/authStorage';
+import { toast } from 'react-toastify';
 
 interface CanvasserLoginProps {
   onLoginSuccess: () => void;
@@ -10,18 +12,81 @@ const CanvasserLogin: React.FC<CanvasserLoginProps> = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [isOffline, setIsOffline] = useState(false);
+  const [offlineCheckAttempted, setOfflineCheckAttempted] = useState(false);
+  const { login, checkOfflineLogin, offlineMode } = useAuth();
+
+  // Check network status and attempt offline login on mount
+  useEffect(() => {
+    const checkNetworkAndLogin = async () => {
+      const online = isOnline();
+      setIsOffline(!online);
+
+      if (!online && !offlineCheckAttempted) {
+        setOfflineCheckAttempted(true);
+        
+        // Attempt offline login with stored token
+        const offlineLoginSuccess = await checkOfflineLogin();
+        
+        if (offlineLoginSuccess) {
+          // Offline login successful - auto-login user
+          toast.info('You are logged in offline mode', {
+            position: 'top-center',
+            autoClose: 3000,
+          });
+          onLoginSuccess();
+        } else {
+          // No valid offline login available - show error message
+          setError('You must be online to log in for the first time or renew your session.');
+        }
+      }
+    };
+
+    checkNetworkAndLogin();
+
+    // Listen for online/offline events to update UI state
+    const handleOnline = () => {
+      setIsOffline(false);
+      if (isOffline && offlineCheckAttempted) {
+        toast.info('Connection restored', { position: 'top-center', autoClose: 2000 });
+      }
+    };
+    
+    const handleOffline = () => {
+      setIsOffline(true);
+      if (offlineCheckAttempted) {
+        toast.warning('Connection lost', { position: 'top-center', autoClose: 2000 });
+      }
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [checkOfflineLogin, onLoginSuccess, offlineCheckAttempted, isOffline]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
+    // Check if offline - block login attempts offline unless they have saved credentials
+    if (!isOnline()) {
+      setError('You must be online to log in. Please check your internet connection.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Attempt online login
     try {
       await login(username, password);
       onLoginSuccess();
-    } catch (err) {
-      setError('Invalid credentials. Please try again.');
+      toast.success('Login successful!');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Invalid credentials. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -47,6 +112,19 @@ const CanvasserLogin: React.FC<CanvasserLoginProps> = ({ onLoginSuccess }) => {
           <h1 className="text-4xl font-bold text-white mb-2">Margav Energy</h1>
           <p className="text-white/80 text-lg">Canvas Team Lead Sheet Portal</p>
         </div>
+
+        {/* Offline Mode Banner */}
+        {isOffline && (
+          <div className="mb-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg">
+            <div className="flex items-center justify-center mb-2">
+              <span className="mr-2">⚠️</span>
+              <span className="font-semibold">Offline Mode</span>
+            </div>
+            <p className="text-xs text-center">
+              {error ? 'No saved login found. Connection required for first login.' : 'Your data will sync when connection is restored.'}
+            </p>
+          </div>
+        )}
 
         {/* Login Form */}
         <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8">

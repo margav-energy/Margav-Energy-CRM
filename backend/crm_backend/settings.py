@@ -179,6 +179,8 @@ WHITENOISE_MANIFEST_STRICT = False
 # Ensure static files are served correctly in production
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    WHITENOISE_USE_FINDERS = False  # Disable finders in production
+    WHITENOISE_AUTOREFRESH = False  # Disable auto-refresh in production
 
 # --------------------
 # REST Framework

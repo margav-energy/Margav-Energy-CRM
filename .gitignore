@@ -123,6 +123,28 @@ backend/simulate_*.py
 backend/verify_*.py
 backend/validate_*.py
 
+# Data migration and production scripts
+export_leads_to_production.py
+import_leads_to_production.py
+upload_to_production.py
+paste_into_render_shell.py
+production_leads_export.json
+
+# Frontend icon generation scripts
+frontend/public/create_icon_placeholders.py
+frontend/public/create_icons.py
+frontend/public/generate-icons.js
+frontend/public/generate_icons.py
+frontend/public/icon-generator.html
+frontend/public/pwa-icon-generator.html
+frontend/public/svg-to-png-converter.html
+frontend/public/icons/
+
+# Pycache files
+**/__pycache__/
+*.pyc
+*.pyo
+
 # Temporary files
 *.tmp
 *.temp

@@ -11,6 +11,11 @@ urlpatterns = [
     path('users/change-password/', views.change_password, name='change-password'),
     path('users/change-password-for-user/', views.change_password_for_user, name='change-password-for-user'),
     path('api-token-auth/', views.obtain_auth_token, name='api-token-auth'),
+    
+    # Offline authentication endpoints
+    path('auth/verify/', views.verify_auth_token, name='verify-auth-token'),
+    path('auth/refresh/', views.refresh_auth_token, name='refresh-auth-token'),
+    
     # Data upload endpoints
     path('upload-data/', data_upload_views.upload_data, name='upload_data'),
     path('upload-status/', data_upload_views.upload_status, name='upload_status'),

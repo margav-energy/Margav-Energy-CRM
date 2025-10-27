@@ -136,18 +136,18 @@ class LeadViewSet(viewsets.ModelViewSet):
             request.headers.get('X-Dialer-Api-Key') or 
             request.headers.get('x-dialer-api-key')
         )
-        # Only allow query param api_key in development
-        if not api_key and settings.DEBUG:
+        # Allow query param api_key in GET requests (dialer sends in URL)
+        if not api_key:
             api_key = incoming_data.get('api_key') or incoming_data.get('dialer_api_key')
         
         expected_key = getattr(settings, 'DIALER_API_KEY', None)
         
-        # If no API key is configured, allow dialer to authenticate using user credentials
+        # If no API key is configured, skip validation (for development/local)
         if not expected_key:
-            logger.info('No DIALER_API_KEY configured - allowing dialer authentication via user credentials')
+            logger.info('No DIALER_API_KEY configured - skipping API key validation')
         else:
             if not api_key or api_key != expected_key:
-                logger.warning('Dialer API key missing or invalid')
+                logger.warning(f'Dialer API key missing or invalid. Expected: {expected_key[:10]}..., Got: {api_key[:10] if api_key else None}...')
                 return Response({'error': 'Invalid API key'}, status=status.HTTP_401_UNAUTHORIZED)
         
         # HMAC signature validation for production security (only if API key is configured)

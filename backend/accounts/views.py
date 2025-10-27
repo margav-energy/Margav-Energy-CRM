@@ -59,6 +59,45 @@ def get_current_user(request):
     return Response(serializer.data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def verify_auth_token(request):
+    """
+    Verify that the authentication token is still valid.
+    This endpoint is used when the client comes back online after offline mode.
+    
+    Returns user data if token is valid, 401 if invalid.
+    """
+    # If we reach here, the token is valid (IsAuthenticated middleware passed)
+    serializer = UserSerializer(request.user)
+    return Response({
+        'valid': True,
+        'user': serializer.data
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def refresh_auth_token(request):
+    """
+    Refresh the authentication token.
+    Creates a new token and returns it along with user data.
+    The old token becomes invalid.
+    """
+    # Delete old token
+    old_token = Token.objects.get(user=request.user)
+    old_token.delete()
+    
+    # Create new token
+    new_token = Token.objects.create(user=request.user)
+    
+    serializer = UserSerializer(request.user)
+    return Response({
+        'token': new_token.key,
+        'user': serializer.data
+    })
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def change_password(request):
