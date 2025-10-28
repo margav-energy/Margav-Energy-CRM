@@ -10,6 +10,11 @@ import os
 import django
 
 # Setup Django environment
+# Change to the backend directory first
+backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
+if os.path.exists(backend_dir):
+    os.chdir(backend_dir)
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'crm_backend.settings')
 django.setup()
 
@@ -22,6 +27,12 @@ User = get_user_model()
 
 def import_leads_from_json(json_file):
     """Import leads from exported JSON file"""
+    
+    # Make path absolute in case we changed directory
+    if not os.path.isabs(json_file):
+        # Look in parent directory (where script is)
+        project_root = os.path.dirname(os.path.abspath(__file__))
+        json_file = os.path.join(project_root, json_file)
     
     print(f"Loading leads from {json_file}...")
     
