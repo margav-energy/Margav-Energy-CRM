@@ -55,15 +55,6 @@ def import_leads_from_json(json_file):
     updated_count = 0
     failed_count = 0
     
-    # Agent username mapping from old to new
-    AGENT_MAPPING = {
-        'Leia': 'LeiaG',
-        'Caleb': 'CalebG',
-        'Jake': 'JakeR',
-        'Elliot': 'Elliott',
-        'Jane': 'Jane',  # Add if needed
-    }
-    
     # Get or create a default agent for leads without assigned agents
     default_agent = None
     try:
@@ -73,22 +64,41 @@ def import_leads_from_json(json_file):
     except Exception as e:
         print(f"Warning: Could not find a default agent: {e}")
     
+    # Map agent names from the export to actual usernames in production
+    # Update this mapping if more aliases are discovered
+    agent_username_map = {
+        'Leia': 'LeiaG',
+        'Caleb': 'CalebG',
+        'Jake': 'JakeR',
+        'Elliot': 'Elliott',  # exported as "Elliot", actual username is "Elliott"
+    }
+
     for index, lead_data in enumerate(leads_data):
         try:
             # Get or create agent if specified
             agent = None
             if lead_data.get('assigned_agent'):
-                original_username = lead_data['assigned_agent']
-                # Map to new username if exists
-                mapped_username = AGENT_MAPPING.get(original_username, original_username)
-                
+                raw_name = (lead_data.get('assigned_agent') or '').strip()
+                # Apply mapping first
+                mapped_username = agent_username_map.get(raw_name, raw_name)
                 try:
                     agent = User.objects.get(username=mapped_username)
                 except User.DoesNotExist:
-                    print(f"Warning: Agent '{original_username}' (mapped to '{mapped_username}') not found, using default agent")
-                    agent = default_agent
+                    # Try a case-insensitive match on username as a fallback
+                    try:
+                        agent = User.objects.get(username__iexact=mapped_username)
+                    except User.DoesNotExist:
+                        # Try matching by first_name when mapping didn't help
+                        agent = User.objects.filter(first_name__iexact=raw_name).first()
+                        if not agent:
+                            print(f"Warning: Agent '{raw_name}' (mapped to '{mapped_username}') not found, using default agent")
+                            if not default_agent:
+                                raise ValueError(f"No default agent available and agent '{raw_name}' not found")
+                            agent = default_agent
             else:
                 # No agent specified, use default
+                if not default_agent:
+                    raise ValueError("No agent specified and no default agent available")
                 agent = default_agent
             
             # Parse dates

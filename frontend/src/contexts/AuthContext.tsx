@@ -42,18 +42,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Attempt offline login using stored token
   const attemptOfflineLogin = async (): Promise<boolean> => {
     try {
+      console.log('🔍 Checking for stored token in IndexedDB...');
       const tokenData = await getStoredAuthToken();
       
       if (!tokenData) {
+        console.log('❌ No token found in IndexedDB');
         return false;
       }
       
+      console.log('✅ Token found! User:', tokenData.user.username);
+      
       // Check if token is expired
       if (tokenData.expiryTimestamp && Date.now() > tokenData.expiryTimestamp) {
-        console.log('Stored token has expired');
+        console.log('⚠️ Stored token has expired');
         await clearAuthToken();
         return false;
       }
+      
+      console.log('✅ Token is valid, setting up offline authentication');
       
       // Set token for offline authentication
       setAuthToken(tokenData.token);
@@ -69,9 +75,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } as User);
       
       setOfflineMode(true);
+      console.log('✅ Offline login successful! User:', tokenData.user.username);
       return true;
     } catch (error) {
-      console.error('Error attempting offline login:', error);
+      console.error('❌ Error attempting offline login:', error);
       return false;
     }
   };
@@ -165,21 +172,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Login function - stores token in IndexedDB for offline use
   const login = async (username: string, password: string) => {
     try {
+      console.log('🔐 Attempting login for:', username);
       const response = await authAPI.login({ username, password });
+      
+      console.log('✅ Login successful! User:', response.user.username, 'Role:', response.user.role);
       
       // Store in localStorage for normal operation
       setAuthToken(response.token);
       setUser(response.user);
       
       // Store in IndexedDB for offline login capability
+      console.log('💾 Storing token in IndexedDB for offline use...');
       await storeAuthToken(response.token, {
         username: response.user.username,
         email: response.user.email,
         role: response.user.role,
       }, 30 * 24); // 30 days expiry
       
+      console.log('✅ Token stored successfully in IndexedDB. You can now login offline for up to 30 days.');
+      
       setOfflineMode(false);
     } catch (error) {
+      console.error('❌ Login failed:', error);
       throw error;
     }
   };
