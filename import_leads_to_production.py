@@ -9,15 +9,17 @@ import sys
 import os
 import django
 
-# Setup Django environment
-# Change to the backend directory first
+# Setup Django environment FIRST
+# Change to the backend directory
 backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
 if os.path.exists(backend_dir):
     os.chdir(backend_dir)
 
+# Configure Django settings BEFORE importing any models
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'crm_backend.settings')
 django.setup()
 
+# NOW import Django models (after setup is complete)
 from django.contrib.auth import get_user_model
 from leads.models import Lead
 from django.utils import timezone
