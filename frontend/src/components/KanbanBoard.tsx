@@ -199,8 +199,30 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
   const fetchLeads = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await leadsAPI.getLeads();
-      const leads = response.results;
+      
+      // Fetch all leads - get first page with large page size
+      let response = await leadsAPI.getLeads({ page_size: 1000 });
+      let allLeads = [...response.results];
+      let nextUrl = response.next;
+      let pageNumber = 2;
+      
+      // If there are more pages, fetch them using the page parameter
+      while (nextUrl) {
+        try {
+          response = await leadsAPI.getLeads({ page_size: 1000, page: pageNumber.toString() });
+          allLeads = [...allLeads, ...response.results];
+          nextUrl = response.next;
+          pageNumber++;
+          
+          // Safety check to prevent infinite loops
+          if (pageNumber > 100) break;
+        } catch (err) {
+          console.error('Error fetching page:', err);
+          break;
+        }
+      }
+      
+      const leads = allLeads;
 
       let columnDefinitions: Omit<KanbanColumn, 'leads'>[] = [];
 

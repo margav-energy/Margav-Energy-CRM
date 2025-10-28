@@ -40,9 +40,11 @@ interface FieldFormData {
   
   // Photos
   photos: {
-    roof: string;
-    frontRear: string;
+    frontRoof: string;
+    rearRoof: string;
+    sideRoof: string;
     energyBill: string;
+    additional: string[];
   };
   
   // Optional
@@ -107,9 +109,11 @@ const CanvasserForm: React.FC = () => {
     
     // Photos
     photos: {
-      roof: '',
-      frontRear: '',
-      energyBill: ''
+      frontRoof: '',
+      rearRoof: '',
+      sideRoof: '',
+      energyBill: '',
+      additional: []
     },
     
     // Optional
@@ -122,7 +126,8 @@ const CanvasserForm: React.FC = () => {
   });
 
   const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
-  const [currentPhotoType, setCurrentPhotoType] = useState<'roof' | 'frontRear' | 'energyBill' | null>(null);
+  const [currentPhotoType, setCurrentPhotoType] = useState<'frontRoof' | 'rearRoof' | 'sideRoof' | 'energyBill' | 'additional' | null>(null);
+  const [capturingAdditionalIndex, setCapturingAdditionalIndex] = useState<number>(0);
   const [pendingSubmissions, setPendingSubmissions] = useState<FieldFormData[]>([]);
   const [syncedSubmissions, setSyncedSubmissions] = useState<FieldFormData[]>([]);
   const [actualSyncedCount, setActualSyncedCount] = useState<number>(0);
@@ -182,12 +187,19 @@ const CanvasserForm: React.FC = () => {
           formData.roofAge
         );
       case 'energy':
-        return !!(
+        const basicEnergyFields = !!(
           formData.averageMonthlyBill &&
           formData.energyType &&
           formData.currentEnergySupplier &&
           formData.usesElectricHeating
         );
+        
+        // If yes, electricHeatingDetails is required
+        if (formData.usesElectricHeating === 'yes') {
+          return basicEnergyFields && !!formData.electricHeatingDetails;
+        }
+        
+        return basicEnergyFields;
       case 'interest':
         return !!(
           formData.hasReceivedOtherQuotes &&
@@ -195,10 +207,11 @@ const CanvasserForm: React.FC = () => {
           formData.movingIn5Years
         );
       case 'photos':
-        // Photos are now required - check all three photos
+        // Photos are now required - check all four compulsory photos
         return !!(
-          formData.photos.roof && 
-          formData.photos.frontRear && 
+          formData.photos.frontRoof && 
+          formData.photos.rearRoof && 
+          formData.photos.sideRoof &&
           formData.photos.energyBill
         );
       case 'review':
@@ -311,7 +324,7 @@ const CanvasserForm: React.FC = () => {
           hasReceivedOtherQuotes: submission.has_received_other_quotes || '',
           isDecisionMaker: submission.is_decision_maker || '',
           movingIn5Years: submission.moving_in_5_years || '',
-          photos: submission.photos || { roof: '', frontRear: '', energyBill: '' },
+          photos: submission.photos || { frontRoof: '', rearRoof: '', sideRoof: '', energyBill: '', additional: [] },
           notes: submission.notes || '',
           synced: true,
           timestamp: submission.created_at,
@@ -475,9 +488,12 @@ const CanvasserForm: React.FC = () => {
     });
   };
 
-  const capturePhoto = async (photoType: 'roof' | 'frontRear' | 'energyBill') => {
+  const capturePhoto = async (photoType: 'frontRoof' | 'rearRoof' | 'sideRoof' | 'energyBill' | 'additional', additionalIndex?: number) => {
     try {
       setCurrentPhotoType(photoType);
+      if (photoType === 'additional' && additionalIndex !== undefined) {
+        setCapturingAdditionalIndex(additionalIndex);
+      }
       setIsCapturingPhoto(true);
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -514,13 +530,27 @@ const CanvasserForm: React.FC = () => {
         
         const photoData = canvas.toDataURL('image/jpeg', 0.8);
         if (currentPhotoType) {
-          setFormData(prev => ({
-            ...prev,
-            photos: {
-              ...prev.photos,
-              [currentPhotoType]: photoData
-            }
-          }));
+          if (currentPhotoType === 'additional') {
+            setFormData(prev => {
+              const newAdditional = [...prev.photos.additional];
+              newAdditional[capturingAdditionalIndex] = photoData;
+              return {
+                ...prev,
+                photos: {
+                  ...prev.photos,
+                  additional: newAdditional
+                }
+              };
+            });
+          } else {
+            setFormData(prev => ({
+              ...prev,
+              photos: {
+                ...prev.photos,
+                [currentPhotoType]: photoData
+              }
+            }));
+          }
         }
         
         // Stop camera
@@ -536,12 +566,36 @@ const CanvasserForm: React.FC = () => {
     setCurrentPhotoType(null);
   };
 
-  const removePhoto = (photoType: 'roof' | 'frontRear' | 'energyBill') => {
+  const removePhoto = (photoType: 'frontRoof' | 'rearRoof' | 'sideRoof' | 'energyBill' | 'additional', additionalIndex?: number) => {
+    if (photoType === 'additional' && additionalIndex !== undefined) {
+      setFormData(prev => {
+        const newAdditional = [...prev.photos.additional];
+        newAdditional.splice(additionalIndex, 1);
+        return {
+          ...prev,
+          photos: {
+            ...prev.photos,
+            additional: newAdditional
+          }
+        };
+      });
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        photos: {
+          ...prev.photos,
+          [photoType]: ''
+        }
+      }));
+    }
+  };
+  
+  const addAdditionalPhotoSlot = () => {
     setFormData(prev => ({
       ...prev,
       photos: {
         ...prev.photos,
-        [photoType]: ''
+        additional: [...prev.photos.additional, '']
       }
     }));
   };
@@ -582,7 +636,7 @@ const CanvasserForm: React.FC = () => {
     if (!formData.averageMonthlyBill) missingFields.push('Average Monthly Bill');
     if (!formData.energyType) missingFields.push('Energy Type');
     if (!formData.currentEnergySupplier) missingFields.push('Current Energy Supplier');
-    if (!formData.usesElectricHeating) missingFields.push('Electric Heating Usage');
+    if (!formData.usesElectricHeating) missingFields.push('High Electric Usage Items');
     
     // Timeframe and interest
     if (!formData.hasReceivedOtherQuotes) missingFields.push('Other Quotes Received');
@@ -655,9 +709,11 @@ const CanvasserForm: React.FC = () => {
         
         // Photos
         photos: {
-          roof: '',
-          frontRear: '',
-          energyBill: ''
+          frontRoof: '',
+          rearRoof: '',
+          sideRoof: '',
+          energyBill: '',
+          additional: []
         },
         
         // Optional
@@ -735,9 +791,11 @@ const CanvasserForm: React.FC = () => {
         
         // Photos
         photos: {
-          roof: '',
-          frontRear: '',
-          energyBill: ''
+          frontRoof: '',
+          rearRoof: '',
+          sideRoof: '',
+          energyBill: '',
+          additional: []
         },
         
         // Optional
@@ -970,8 +1028,12 @@ const CanvasserForm: React.FC = () => {
                   type="tel"
                   required
                   value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    setFormData(prev => ({ ...prev, phone: value }));
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Numbers only"
                 />
               </div>
               <div className="md:col-span-2">
@@ -1138,7 +1200,7 @@ const CanvasserForm: React.FC = () => {
                   <option value="tiled">Tiled</option>
                   <option value="slate">Slate</option>
                   <option value="metal">Metal</option>
-                  <option value="felt">Felt</option>
+                  <option value="rosemary">Rosemary</option>
                   <option value="other">Other</option>
                 </select>
               </div>
@@ -1253,14 +1315,18 @@ const CanvasserForm: React.FC = () => {
               </div>
               <div>
                 <label htmlFor="usesElectricHeating" className="block text-sm font-medium text-gray-700 mb-1">
-                  Do you use electric heating? <span className="text-red-500">*</span>
+                  Do you have high electric usage items? <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="usesElectricHeating"
                   name="usesElectricHeating"
                   required
                   value={formData.usesElectricHeating}
-                  onChange={(e) => setFormData(prev => ({ ...prev, usesElectricHeating: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    usesElectricHeating: e.target.value,
+                    electricHeatingDetails: e.target.value === 'no' ? '' : prev.electricHeatingDetails
+                  }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select option</option>
@@ -1269,20 +1335,44 @@ const CanvasserForm: React.FC = () => {
                 </select>
               </div>
               {formData.usesElectricHeating === 'yes' && (
-                <div className="md:col-span-2">
-                  <label htmlFor="electricHeatingDetails" className="block text-sm font-medium text-gray-700 mb-1">
-                    Electric Heating Details (Optional)
-                  </label>
-                  <textarea
-                    id="electricHeatingDetails"
-                    name="electricHeatingDetails"
-                    value={formData.electricHeatingDetails}
-                    onChange={(e) => setFormData(prev => ({ ...prev, electricHeatingDetails: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., Storage heaters, night storage, heat pump"
-                    rows={2}
-                  />
-                </div>
+                <>
+                  <div>
+                    <label htmlFor="electricHeatingDetails" className="block text-sm font-medium text-gray-700 mb-1">
+                      Please select your high electric usage items <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="electricHeatingDetails"
+                      name="electricHeatingDetails"
+                      required={formData.usesElectricHeating === 'yes'}
+                      value={formData.electricHeatingDetails}
+                      onChange={(e) => setFormData(prev => ({ ...prev, electricHeatingDetails: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select item</option>
+                      <option value="EV Charger">EV Charger</option>
+                      <option value="Hot Tub">Hot Tub</option>
+                      <option value="Electric Storage Heater">Electric Storage Heater</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  {formData.electricHeatingDetails === 'Other' && (
+                    <div>
+                      <label htmlFor="electricHeatingOtherDetails" className="block text-sm font-medium text-gray-700 mb-1">
+                        Please specify <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="electricHeatingOtherDetails"
+                        name="electricHeatingOtherDetails"
+                        required={formData.electricHeatingDetails === 'Other'}
+                        value={formData.electricHeatingDetails}
+                        onChange={(e) => setFormData(prev => ({ ...prev, electricHeatingDetails: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Please specify"
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1295,23 +1385,23 @@ const CanvasserForm: React.FC = () => {
               Required Photos <span className="text-red-500">*</span>
             </h2>
             <p className="text-sm text-red-600 mb-4">
-              All three photos must be captured before proceeding.
+              All four photos must be captured before proceeding.
             </p>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Roof Photo */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Front Roof Photo */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <h3 className="font-semibold mb-2">Roof Photo</h3>
-                {formData.photos.roof ? (
+                <h3 className="font-semibold mb-2">Front Roof Photo <span className="text-red-500">*</span></h3>
+                {formData.photos.frontRoof ? (
                   <div className="relative">
                     <img
-                      src={formData.photos.roof}
-                      alt="Roof"
+                      src={formData.photos.frontRoof}
+                      alt="Front Roof"
                       className="w-full h-32 object-cover rounded-lg mb-2"
                     />
                     <button
                       type="button"
-                      onClick={() => removePhoto('roof')}
+                      onClick={() => removePhoto('frontRoof')}
                       className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
                     >
                       ×
@@ -1324,26 +1414,26 @@ const CanvasserForm: React.FC = () => {
                 )}
                 <button
                   type="button"
-                  onClick={() => capturePhoto('roof')}
+                  onClick={() => capturePhoto('frontRoof')}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
                 >
-                  📷 Take Roof Photo
+                  📷 Take Front Roof Photo
                 </button>
               </div>
 
-              {/* Front/Rear Photo */}
+              {/* Rear Roof Photo */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <h3 className="font-semibold mb-2">Front/Rear Photo</h3>
-                {formData.photos.frontRear ? (
+                <h3 className="font-semibold mb-2">Rear Roof Photo <span className="text-red-500">*</span></h3>
+                {formData.photos.rearRoof ? (
                   <div className="relative">
                     <img
-                      src={formData.photos.frontRear}
-                      alt="Front and Rear"
+                      src={formData.photos.rearRoof}
+                      alt="Rear Roof"
                       className="w-full h-32 object-cover rounded-lg mb-2"
                     />
                     <button
                       type="button"
-                      onClick={() => removePhoto('frontRear')}
+                      onClick={() => removePhoto('rearRoof')}
                       className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
                     >
                       ×
@@ -1356,16 +1446,48 @@ const CanvasserForm: React.FC = () => {
                 )}
                 <button
                   type="button"
-                  onClick={() => capturePhoto('frontRear')}
+                  onClick={() => capturePhoto('rearRoof')}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
                 >
-                  📷 Take Front/Rear Photo
+                  📷 Take Rear Roof Photo
+                </button>
+              </div>
+
+              {/* Side Roof Photo */}
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                <h3 className="font-semibold mb-2">Side Roof Photo <span className="text-red-500">*</span></h3>
+                {formData.photos.sideRoof ? (
+                  <div className="relative">
+                    <img
+                      src={formData.photos.sideRoof}
+                      alt="Side Roof"
+                      className="w-full h-32 object-cover rounded-lg mb-2"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto('sideRoof')}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
+                    <span className="text-gray-400">No photo</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => capturePhoto('sideRoof')}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                >
+                  📷 Take Side Roof Photo
                 </button>
               </div>
 
               {/* Energy Bill Photo */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <h3 className="font-semibold mb-2">Energy Bill Photo</h3>
+                <h3 className="font-semibold mb-2">Energy Bill Photo <span className="text-red-500">*</span></h3>
                 <p className="text-sm text-gray-600 mb-2">Show PPKw and annual usage</p>
                 {formData.photos.energyBill ? (
                   <div className="relative">
@@ -1395,6 +1517,59 @@ const CanvasserForm: React.FC = () => {
                   📷 Take Energy Bill Photo
                 </button>
               </div>
+            </div>
+
+            {/* Additional Photos Section */}
+            <div className="mt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Additional Photos (Optional)</h3>
+                {formData.photos.additional.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={addAdditionalPhotoSlot}
+                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
+                  >
+                    + Add Photo ({formData.photos.additional.length}/5)
+                  </button>
+                )}
+              </div>
+              
+              {formData.photos.additional.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {formData.photos.additional.map((photo, index) => (
+                    <div key={index} className="border-2 border-dashed border-green-300 rounded-lg p-4 text-center">
+                      <h3 className="font-semibold mb-2 text-sm text-gray-600">Additional Photo {index + 1}</h3>
+                      {photo ? (
+                        <div className="relative">
+                          <img
+                            src={photo}
+                            alt={`Additional ${index + 1}`}
+                            className="w-full h-32 object-cover rounded-lg mb-2"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto('additional', index)}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
+                          <span className="text-gray-400">No photo</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => capturePhoto('additional', index)}
+                        className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                      >
+                        📷 Take Photo
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -1501,7 +1676,7 @@ const CanvasserForm: React.FC = () => {
               <p><strong>Current Energy Supplier:</strong> {formData.currentEnergySupplier}</p>
               <p><strong>Average Monthly Bill:</strong> £{formData.averageMonthlyBill}</p>
               <p><strong>Energy Type:</strong> {formData.energyType}</p>
-              <p><strong>Uses Electric Heating:</strong> {formData.usesElectricHeating}</p>
+              <p><strong>High Electric Usage Items:</strong> {formData.usesElectricHeating}</p>
               {formData.electricHeatingDetails && (
                 <p><strong>Electric Heating Details:</strong> {formData.electricHeatingDetails}</p>
               )}
@@ -1518,9 +1693,13 @@ const CanvasserForm: React.FC = () => {
             {/* Photos */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h3 className="font-semibold mb-2">Photos</h3>
-              <p><strong>Roof Photo:</strong> {formData.photos.roof ? '✅ Captured' : '❌ Missing'}</p>
-              <p><strong>Front/Rear Photo:</strong> {formData.photos.frontRear ? '✅ Captured' : '❌ Missing'}</p>
+              <p><strong>Front Roof Photo:</strong> {formData.photos.frontRoof ? '✅ Captured' : '❌ Missing'}</p>
+              <p><strong>Rear Roof Photo:</strong> {formData.photos.rearRoof ? '✅ Captured' : '❌ Missing'}</p>
+              <p><strong>Side Roof Photo:</strong> {formData.photos.sideRoof ? '✅ Captured' : '❌ Missing'}</p>
               <p><strong>Energy Bill Photo:</strong> {formData.photos.energyBill ? '✅ Captured' : '❌ Missing'}</p>
+              {formData.photos.additional && formData.photos.additional.length > 0 && (
+                <p><strong>Additional Photos:</strong> {formData.photos.additional.filter(p => p).length} captured</p>
+              )}
             </div>
             
             {/* Optional Notes */}

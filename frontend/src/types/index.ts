@@ -58,9 +58,11 @@ export interface Lead {
     assessment_date: string;
     assessment_time: string;
     photos: {
-      roof: string;
-      frontRear: string;
+      frontRoof: string;
+      rearRoof: string;
+      sideRoof: string;
       energyBill: string;
+      additional?: string[];
     };
     signature: string;
     formatted_notes: string;

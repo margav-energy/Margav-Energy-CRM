@@ -25,6 +25,112 @@
 .nav-global {
     display: none !important;
 }
+
+/* Custom Navigation Menu */
+.custom-nav-menu {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 15px 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    text-decoration: none;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.nav-brand:hover {
+    color: white;
+    text-decoration: none;
+}
+
+.nav-links {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.nav-link {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    text-decoration: none;
+    transform: translateY(-2px);
+}
+
+.nav-link.active {
+    background: white;
+    color: #667eea;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    font-size: 0.9rem;
+}
+
+.logout-link {
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.logout-link:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    text-decoration: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .nav-container {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .nav-links {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .nav-link {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+}
+
+/* Main content padding adjustment */
+#content {
+    padding: 20px 30px;
+}
 </style>
 {% endblock %}
 
@@ -93,6 +199,40 @@
     // Also run after a short delay to catch late-loading elements
     setTimeout(hideNavigationElements, 100);
     setTimeout(hideNavigationElements, 500);
+    
+    // Add active class to current page link
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentUrl = window.location.href;
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            if (currentUrl.includes(link.getAttribute('href'))) {
+                link.classList.add('active');
+            }
+        });
+    });
 })();
 </script>
+{% endblock %}
+
+{% block pretitle %}
+<!-- Custom Navigation Menu -->
+<div class="custom-nav-menu">
+    <div class="nav-container">
+        <a href="{% url 'admin:index' %}" class="nav-brand">
+            <span>🏠</span>
+            <span>Margav Energy CRM</span>
+        </a>
+        <div class="nav-links">
+            <a href="{% url 'admin:index' %}" class="nav-link">📊 Dashboard</a>
+            <a href="{% url 'admin:accounts_user_changelist' %}" class="nav-link">👥 Users</a>
+            <a href="{% url 'admin:leads_lead_changelist' %}" class="nav-link">📋 Leads</a>
+            <a href="{% url 'admin:leads_dialer_changelist' %}" class="nav-link">☎️ Dialer</a>
+            <a href="{% url 'admin:leads_dialeruserlink_changelist' %}" class="nav-link">🔗 Dialer Links</a>
+        </div>
+        <div class="user-info">
+            <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+            <a href="{% url 'admin:logout' %}" class="logout-link">🚪 Logout</a>
+        </div>
+    </div>
+</div>
 {% endblock %}

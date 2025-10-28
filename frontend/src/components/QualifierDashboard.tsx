@@ -24,6 +24,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
   const [currentFilterType, setCurrentFilterType] = useState<string | null>(null);
   const [selectedLeadFromFilter, setSelectedLeadFromFilter] = useState<Lead | null>(null);
   const [isLeadDetailsModalOpen, setIsLeadDetailsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const previousLeadCount = useRef<number>(0);
 
   // Handle lead updates from KanbanBoard
@@ -122,25 +123,42 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
     try {
       if (!silent) setLoading(true);
       
-      // Fetch all leads that the qualifier has processed (not just sent_to_kelly)
-      const response = await leadsAPI.getLeads();
-      const newLeads = response.results;
+      // Fetch all leads - get first page with large page size
+      let response = await leadsAPI.getLeads({ page_size: 1000 });
+      let allLeads = [...response.results];
+      let nextUrl = response.next;
+      let pageNumber = 2;
       
-      
-      // Check if there are new leads (increase in count) - only for non-silent updates
-      if (!silent && previousLeadCount.current > 0 && newLeads.length > previousLeadCount.current) {
-        // Play notification sound for new leads
-        playNotificationSound();
-        toast.info(`New lead received! Total leads: ${newLeads.length}`);
+      // If there are more pages, fetch them using the page parameter
+      while (nextUrl) {
+        try {
+          response = await leadsAPI.getLeads({ page_size: 1000, page: pageNumber.toString() });
+          allLeads = [...allLeads, ...response.results];
+          nextUrl = response.next;
+          pageNumber++;
+          
+          // Safety check to prevent infinite loops
+          if (pageNumber > 100) break;
+        } catch (err) {
+          console.error('Error fetching page:', err);
+          break;
+        }
       }
       
-      previousLeadCount.current = newLeads.length;
+      // Check if there are new leads (increase in count) - only for non-silent updates
+      if (!silent && previousLeadCount.current > 0 && allLeads.length > previousLeadCount.current) {
+        // Play notification sound for new leads
+        playNotificationSound();
+        toast.info(`New lead received! Total leads: ${allLeads.length}`);
+      }
+      
+      previousLeadCount.current = allLeads.length;
       
       // Always replace leads with fresh data from API
-      setLeads(newLeads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+      setLeads(allLeads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       
       if (!silent) {
-        toast.success('Leads refreshed successfully');
+        toast.success(`Leads refreshed successfully (${allLeads.length} total)`);
       }
     } catch (error) {
       if (!silent) {
@@ -459,7 +477,10 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
                 Leads - {currentFilterType?.replace('_', ' ').toUpperCase()}
               </h3>
               <button
-                onClick={() => setFilterModalOpen(false)}
+                onClick={() => {
+                  setFilterModalOpen(false);
+                  setSearchQuery('');
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -468,15 +489,63 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
               </button>
             </div>
             
+            {/* Search Box */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="🔍 Search by name, phone, or address..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {searchQuery && (
+                <p className="mt-2 text-sm text-gray-600">
+                  Showing {(() => {
+                    const count = modalFilteredLeads.filter(lead => {
+                      const query = searchQuery.toLowerCase();
+                      return (
+                        lead.full_name?.toLowerCase().includes(query) ||
+                        lead.phone?.includes(query) ||
+                        lead.address1?.toLowerCase().includes(query) ||
+                        lead.city?.toLowerCase().includes(query) ||
+                        lead.postal_code?.toLowerCase().includes(query) ||
+                        lead.email?.toLowerCase().includes(query)
+                      );
+                    }).length;
+                    return count;
+                  })()} of {modalFilteredLeads.length} results
+                </p>
+              )}
+            </div>
+            
             <div className="overflow-y-auto max-h-[60vh]">
-              {modalFilteredLeads.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <div className="text-4xl mb-2">📋</div>
-                  <p>No leads found for this filter</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {modalFilteredLeads.map(lead => (
+              {(() => {
+                // Filter leads based on search query
+                const searchedLeads = modalFilteredLeads.filter(lead => {
+                  if (!searchQuery.trim()) return true;
+                  const query = searchQuery.toLowerCase();
+                  return (
+                    lead.full_name?.toLowerCase().includes(query) ||
+                    lead.phone?.includes(query) ||
+                    lead.address1?.toLowerCase().includes(query) ||
+                    lead.city?.toLowerCase().includes(query) ||
+                    lead.postal_code?.toLowerCase().includes(query) ||
+                    lead.email?.toLowerCase().includes(query)
+                  );
+                });
+                
+                if (searchedLeads.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-2">🔍</div>
+                      <p>No leads found matching your search</p>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {searchedLeads.map(lead => (
                     <div 
                       key={lead.id} 
                       className="bg-gray-50 rounded-lg p-4 border border-gray-200 cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-colors"
@@ -497,12 +566,16 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
                     </div>
                   ))}
                 </div>
-              )}
+                );
+              })()}
             </div>
             
             <div className="mt-4 flex justify-end">
               <button
-                onClick={() => setFilterModalOpen(false)}
+                onClick={() => {
+                  setFilterModalOpen(false);
+                  setSearchQuery('');
+                }}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
               >
                 Close

@@ -266,29 +266,42 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
                 </p>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Roof Photo */}
-                {lead.field_submission_data?.photos?.roof && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Front Roof Photo */}
+                {lead.field_submission_data?.photos?.frontRoof && (
                   <div className="bg-white rounded-lg p-3 border border-blue-200">
-                    <h4 className="font-medium text-blue-900 mb-2">🏠 Roof Photo</h4>
+                    <h4 className="font-medium text-blue-900 mb-2">🏠 Front Roof</h4>
                     <img
-                      src={lead.field_submission_data.photos.roof}
-                      alt="Roof"
+                      src={lead.field_submission_data.photos.frontRoof}
+                      alt="Front Roof"
                       className="w-full h-32 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => openPhotoModal('Roof', lead.field_submission_data!.photos.roof)}
+                      onClick={() => openPhotoModal('Front Roof', lead.field_submission_data!.photos.frontRoof)}
                     />
                   </div>
                 )}
                 
-                {/* Front/Rear Photo */}
-                {lead.field_submission_data?.photos?.frontRear && (
+                {/* Rear Roof Photo */}
+                {lead.field_submission_data?.photos?.rearRoof && (
                   <div className="bg-white rounded-lg p-3 border border-blue-200">
-                    <h4 className="font-medium text-blue-900 mb-2">🏡 Front/Rear Photo</h4>
+                    <h4 className="font-medium text-blue-900 mb-2">🏡 Rear Roof</h4>
                     <img
-                      src={lead.field_submission_data.photos.frontRear}
-                      alt="Front/Rear"
+                      src={lead.field_submission_data.photos.rearRoof}
+                      alt="Rear Roof"
                       className="w-full h-32 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => openPhotoModal('Front/Rear', lead.field_submission_data!.photos.frontRear)}
+                      onClick={() => openPhotoModal('Rear Roof', lead.field_submission_data!.photos.rearRoof)}
+                    />
+                  </div>
+                )}
+                
+                {/* Side Roof Photo */}
+                {lead.field_submission_data?.photos?.sideRoof && (
+                  <div className="bg-white rounded-lg p-3 border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">🏘️ Side Roof</h4>
+                    <img
+                      src={lead.field_submission_data.photos.sideRoof}
+                      alt="Side Roof"
+                      className="w-full h-32 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => openPhotoModal('Side Roof', lead.field_submission_data!.photos.sideRoof)}
                     />
                   </div>
                 )}
@@ -296,7 +309,7 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
                 {/* Energy Bill Photo */}
                 {lead.field_submission_data?.photos?.energyBill && (
                   <div className="bg-white rounded-lg p-3 border border-blue-200">
-                    <h4 className="font-medium text-blue-900 mb-2">⚡ Energy Bill Photo</h4>
+                    <h4 className="font-medium text-blue-900 mb-2">⚡ Energy Bill</h4>
                     <img
                       src={lead.field_submission_data.photos.energyBill}
                       alt="Energy Bill"
@@ -306,6 +319,27 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
                   </div>
                 )}
               </div>
+              
+              {/* Additional Photos */}
+              {lead.field_submission_data?.photos?.additional && lead.field_submission_data.photos.additional.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="font-medium text-blue-900 mb-2">📷 Additional Photos</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+                    {lead.field_submission_data.photos.additional.map((photo: string, index: number) => (
+                      photo && (
+                        <div key={index} className="bg-white rounded-lg p-2 border border-green-200">
+                          <img
+                            src={photo}
+                            alt={`Additional ${index + 1}`}
+                            className="w-full h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => openPhotoModal(`Additional ${index + 1}`, photo)}
+                          />
+                        </div>
+                      )
+                    ))}
+                  </div>
+                </div>
+              )}
               
               {/* Signature */}
               {lead.field_submission_data?.signature && (

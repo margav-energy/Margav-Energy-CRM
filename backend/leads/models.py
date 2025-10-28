@@ -518,7 +518,7 @@ class FieldSubmission(SoftDeleteModel):
         ('tiled', 'Tiled'),
         ('slate', 'Slate'),
         ('metal', 'Metal'),
-        ('felt', 'Felt'),
+        ('rosemary', 'Rosemary'),
         ('other', 'Other'),
     ]
     
@@ -608,7 +608,7 @@ class FieldSubmission(SoftDeleteModel):
     # Media files (stored as JSON)
     photos = models.JSONField(
         default=dict, 
-        help_text='Base64 encoded photos (dict with keys: roof, frontRear, energyBill)'
+        help_text='Base64 encoded photos (dict with keys: frontRoof, rearRoof, sideRoof, energyBill, additional array)'
     )
     
     # Status and timestamps
@@ -651,43 +651,55 @@ class FieldSubmission(SoftDeleteModel):
         if isinstance(self.photos, list):
             return len(self.photos)
         elif isinstance(self.photos, dict):
-            # New format: count non-empty photo values
-            return sum(1 for photo in self.photos.values() if photo)
+            # New format: count non-empty photo values (exclude 'additional' array)
+            count = sum(1 for key, photo in self.photos.items() if key != 'additional' and photo)
+            # Add additional photos count if it exists
+            if 'additional' in self.photos and isinstance(self.photos['additional'], list):
+                count += sum(1 for photo in self.photos['additional'] if photo)
+            return count
         return 0
     
     def get_formatted_notes(self):
         """Get formatted notes for display."""
-        notes = f"Canvas Assessment by {self.canvasser_name or 'Unknown'}\n"
-        notes += f"Date: {self.assessment_date} at {self.assessment_time}\n\n"
+        # Helper function to safely format values
+        def safe_value(value):
+            if not value:
+                return 'Not specified'
+            if isinstance(value, str) and not value.strip():
+                return 'Not specified'
+            return value
+        
+        notes = f"Canvas Assessment by {safe_value(self.canvasser_name)}\n"
+        notes += f"Date: {safe_value(self.assessment_date)} at {safe_value(self.assessment_time)}\n\n"
         
         # Property Information
         notes += "Property Information:\n"
-        notes += f"- Owns Property: {self.owns_property or 'Not specified'}\n"
-        notes += f"- Type: {self.get_property_type_display() or 'Not specified'}\n"
-        notes += f"- Bedrooms: {self.number_of_bedrooms or 'Not specified'}\n"
-        notes += f"- Roof Type: {self.get_roof_type_display() or 'Not specified'}\n"
-        notes += f"- Roof Material: {self.get_roof_material_display() or 'Not specified'}\n"
-        notes += f"- Roof Condition: {self.get_roof_condition_display() or 'Not specified'}\n"
-        notes += f"- Roof Age: {self.roof_age or 'Not specified'}\n\n"
+        notes += f"- Owns Property: {safe_value(self.owns_property)}\n"
+        notes += f"- Type: {self.get_property_type_display() if self.property_type else 'Not specified'}\n"
+        notes += f"- Bedrooms: {safe_value(self.number_of_bedrooms)}\n"
+        notes += f"- Roof Type: {self.get_roof_type_display() if self.roof_type else 'Not specified'}\n"
+        notes += f"- Roof Material: {self.get_roof_material_display() if self.roof_material else 'Not specified'}\n"
+        notes += f"- Roof Condition: {self.get_roof_condition_display() if self.roof_condition else 'Not specified'}\n"
+        notes += f"- Roof Age: {safe_value(self.roof_age)}\n\n"
         
         # Energy Information
         notes += "Energy Information:\n"
-        notes += f"- Supplier: {self.current_energy_supplier or 'Not specified'}\n"
-        notes += f"- Monthly Bill: £{self.average_monthly_bill or 'Not specified'}\n"
-        notes += f"- Energy Type: {self.get_energy_type_display() or 'Not specified'}\n"
-        notes += f"- Electric Heating: {self.uses_electric_heating or 'Not specified'}\n"
-        if self.electric_heating_details:
+        notes += f"- Supplier: {safe_value(self.current_energy_supplier)}\n"
+        notes += f"- Monthly Bill: £{safe_value(self.average_monthly_bill)}\n"
+        notes += f"- Energy Type: {self.get_energy_type_display() if self.energy_type else 'Not specified'}\n"
+        notes += f"- Electric Heating: {safe_value(self.uses_electric_heating)}\n"
+        if self.electric_heating_details and self.electric_heating_details.strip():
             notes += f"- Heating Details: {self.electric_heating_details}\n"
         notes += "\n"
         
         # Customer Interest
         notes += "Customer Interest:\n"
-        notes += f"- Other Quotes: {self.has_received_other_quotes or 'Not specified'}\n"
-        notes += f"- Decision Maker: {self.is_decision_maker or 'Not specified'}\n"
-        notes += f"- Moving in 5 Years: {self.moving_in_5_years or 'Not specified'}\n"
-        notes += f"- Preferred Contact: {self.preferred_contact_time or 'Not specified'}\n\n"
+        notes += f"- Other Quotes: {safe_value(self.has_received_other_quotes)}\n"
+        notes += f"- Decision Maker: {safe_value(self.is_decision_maker)}\n"
+        notes += f"- Moving in 5 Years: {safe_value(self.moving_in_5_years)}\n"
+        notes += f"- Preferred Contact: {safe_value(self.preferred_contact_time)}\n\n"
         
-        if self.notes:
+        if self.notes and self.notes.strip():
             notes += f"Additional Notes:\n{self.notes}\n\n"
         
         notes += f"Photos: {self.get_photo_count()} captured\n"

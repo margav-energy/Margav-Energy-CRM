@@ -236,18 +236,31 @@ const AgentDashboard: React.FC = () => {
       if (showLoading) {
         setLoading(true);
       }
-      const response = await leadsAPI.getMyLeads();
       
-      // DISABLED: Toast notifications for new leads are disabled
-      // if (newLeads.length > 0 && !showLoading && !isInitialLoad) {
-      //   toast.success(`${newLeads.length} new lead(s) received!`, {
-      //     position: 'top-right',
-      //     autoClose: 3000,
-      //   });
-      // }
+      // Fetch all leads - get first page with large page size
+      let response = await leadsAPI.getMyLeads({ page_size: 1000 });
+      let allLeads = [...response.results];
+      let nextUrl = response.next;
+      let pageNumber = 2;
+      
+      // If there are more pages, fetch them using the page parameter
+      while (nextUrl) {
+        try {
+          response = await leadsAPI.getMyLeads({ page_size: 1000, page: pageNumber.toString() });
+          allLeads = [...allLeads, ...response.results];
+          nextUrl = response.next;
+          pageNumber++;
+          
+          // Safety check to prevent infinite loops
+          if (pageNumber > 100) break;
+        } catch (err) {
+          console.error('Error fetching page:', err);
+          break;
+        }
+      }
       
       // Handle different response structures
-      const leadsData = response.results || response || [];
+      const leadsData = allLeads;
       setLeads(Array.isArray(leadsData) ? leadsData : []);
       
       // Reset to first page if current page is beyond available pages

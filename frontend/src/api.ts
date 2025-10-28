@@ -123,6 +123,8 @@ export const leadsAPI = {
     assigned_agent?: number;
     search?: string;
     ordering?: string;
+    page_size?: number;
+    page?: string;
   }): Promise<ApiResponse<Lead>> => {
     const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/leads/', { params });
     return response.data;
@@ -151,8 +153,11 @@ export const leadsAPI = {
     await api.delete(`/leads/${id}/`);
   },
 
-  getMyLeads: async (): Promise<ApiResponse<Lead>> => {
-    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/leads/my/');
+  getMyLeads: async (params?: {
+    page_size?: number;
+    page?: string;
+  }): Promise<ApiResponse<Lead>> => {
+    const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/leads/my/', { params });
     return response.data;
   },
 
