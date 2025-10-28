@@ -10,8 +10,15 @@ import os
 import django
 
 # Setup Django environment FIRST
-# Change to the backend directory
-backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
+# Get the backend directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.join(script_dir, 'backend')
+
+# Add backend directory to Python path
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+# Change to backend directory
 if os.path.exists(backend_dir):
     os.chdir(backend_dir)
 
