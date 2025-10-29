@@ -200,30 +200,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
     try {
       setLoading(true);
       
-      // Fetch all leads - get first page with large page size
-      let response = await leadsAPI.getLeads({ page_size: 1000 });
+      // OPTIMIZATION: Fetch first page immediately to show board quickly
+      const response = await leadsAPI.getLeads({ page_size: 100, ordering: '-created_at' });
       let allLeads = [...response.results];
-      let nextUrl = response.next;
-      let pageNumber = 2;
       
-      // If there are more pages, fetch them using the page parameter
-      while (nextUrl) {
-        try {
-          response = await leadsAPI.getLeads({ page_size: 1000, page: pageNumber.toString() });
-          allLeads = [...allLeads, ...response.results];
-          nextUrl = response.next;
-          pageNumber++;
-          
-          // Safety check to prevent infinite loops
-          if (pageNumber > 100) break;
-        } catch (err) {
-          console.error('Error fetching page:', err);
-          break;
-        }
-      }
-      
-      const leads = allLeads;
-
+      // Define column definitions based on role
       let columnDefinitions: Omit<KanbanColumn, 'leads'>[] = [];
 
       if (userRole === 'admin') {
@@ -258,17 +239,99 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
         ];
       }
 
-      const validLeads = leads.filter(lead => lead && lead.id);
+      const validLeads = allLeads.filter(lead => lead && lead.id);
       
+      // Show board immediately with first page of leads
       const populatedColumns = columnDefinitions.map(column => ({
         ...column,
         leads: validLeads.filter(lead => column.statuses.includes(lead.status)),
       }));
 
       setColumns(populatedColumns);
+      setLoading(false); // Show board immediately
+      
+      // Check if there are more pages - use response.next as the primary indicator
+      const hasMorePages = !!response.next || (response.count && response.count > allLeads.length);
+      const totalCount = response.count || allLeads.length;
+      
+      // OPTIMIZATION: Load remaining pages in background without blocking UI
+      if (hasMorePages) {
+        // Calculate expected pages from count, but also use next URL if available
+        const estimatedTotalPages = Math.ceil(totalCount / 100);
+        // Use a higher limit to ensure we get all leads, but still cap it
+        const maxPagesToLoad = Math.min(Math.max(estimatedTotalPages, 10), 200); // At least 10 pages, max 20,000 leads
+        
+        // Load pages in parallel batches for speed (don't block UI)
+        const batchSize = 5; // Load 5 pages at a time
+        
+        // Load all remaining pages in background
+        (async () => {
+          try {
+            let currentPage = 2;
+            let hasNextPage = true;
+            
+            while (hasNextPage && currentPage <= maxPagesToLoad) {
+              const batchPromises = [];
+              const batchEndPage = Math.min(currentPage + batchSize - 1, maxPagesToLoad);
+              
+              // Create batch of page requests
+              for (let pageNum = currentPage; pageNum <= batchEndPage; pageNum++) {
+                batchPromises.push(
+                  leadsAPI.getLeads({ 
+                    page_size: 100, 
+                    page: pageNum.toString(),
+                    ordering: '-created_at'
+                  }).catch((err) => {
+                    // Silently handle individual page errors - return empty results
+                    return { results: [], next: null, count: 0 };
+                  })
+                );
+              }
+              
+              // Wait for batch to complete
+              const batchResults = await Promise.all(batchPromises);
+              
+              // Check if any response has a next page
+              hasNextPage = batchResults.some(result => result?.next);
+              
+              // Add results to allLeads (using functional approach to avoid closure issue)
+              const newLeads = batchResults
+                .filter((batchResponse) => batchResponse?.results)
+                .flatMap((batchResponse) => batchResponse.results);
+              allLeads = [...allLeads, ...newLeads];
+              
+              // Update columns periodically (every batch or when approaching limit) to show progress
+              if (!hasNextPage || currentPage + batchSize > maxPagesToLoad || (currentPage - 1) % 10 === 1) {
+                const validLeads = allLeads.filter(lead => lead && lead.id);
+                const populatedColumns = columnDefinitions.map(column => ({
+                  ...column,
+                  leads: validLeads.filter(lead => column.statuses.includes(lead.status)),
+                }));
+                setColumns(populatedColumns);
+              }
+              
+              // Move to next batch
+              currentPage += batchSize;
+              
+              // Stop if no more pages
+              if (!hasNextPage) break;
+            }
+            
+            // Final update with all loaded leads
+            const validLeads = allLeads.filter(lead => lead && lead.id);
+            const populatedColumns = columnDefinitions.map(column => ({
+              ...column,
+              leads: validLeads.filter(lead => column.statuses.includes(lead.status)),
+            }));
+            setColumns(populatedColumns);
+          } catch (error) {
+            // Background loading errors are handled silently
+            // We already have the first page showing, so board still works
+          }
+        })();
+      }
     } catch (error) {
       toast.error('Failed to fetch leads');
-    } finally {
       setLoading(false);
     }
   }, [userRole]);

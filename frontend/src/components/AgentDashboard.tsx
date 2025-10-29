@@ -26,6 +26,7 @@ const AgentDashboard: React.FC = () => {
   const [selectedCallback, setSelectedCallback] = useState<Callback | null>(null);
   const [showCallbackCompletion, setShowCallbackCompletion] = useState(false);
   const lastLeadCreationTimeRef = useRef<number>(0);
+  const backgroundLoadingInProgress = useRef<boolean>(false);
   const cardsPerPage = 4;
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   
@@ -232,6 +233,11 @@ const AgentDashboard: React.FC = () => {
   };
 
   const fetchLeads = async (showLoading = true) => {
+    // Skip if background loading is already in progress (unless it's a manual refresh)
+    if (backgroundLoadingInProgress.current && !showLoading) {
+      return;
+    }
+    
     try {
       if (showLoading) {
         setLoading(true);
@@ -242,7 +248,19 @@ const AgentDashboard: React.FC = () => {
       let allLeads = [...response.results];
       
       // Show first page immediately (don't wait for all pages) - dashboard loads fast!
-      setLeads(allLeads);
+      if (showLoading || !backgroundLoadingInProgress.current) {
+        setLeads(allLeads);
+      } else {
+        // For silent refreshes during background loading, merge with existing leads instead of overwriting
+        setLeads(prevLeads => {
+          const leadMap = new Map<number, Lead>();
+          prevLeads.forEach(lead => leadMap.set(lead.id, lead));
+          allLeads.forEach(lead => leadMap.set(lead.id, lead));
+          return Array.from(leadMap.values()).sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        });
+      }
       
       if (showLoading) {
         setLoading(false);
@@ -258,7 +276,8 @@ const AgentDashboard: React.FC = () => {
       const totalPages = Math.ceil(totalCount / 100);
       
       // OPTIMIZATION: Load remaining pages in background without blocking UI
-      if (totalPages > 1) {
+      if (totalPages > 1 && !backgroundLoadingInProgress.current) {
+        backgroundLoadingInProgress.current = true;
         // Limit to reasonable number of pages to avoid overwhelming the server
         const maxPagesToLoad = Math.min(totalPages, 100); // Max 10,000 leads
         
@@ -287,36 +306,64 @@ const AgentDashboard: React.FC = () => {
               // Wait for batch to complete
               const batchResults = await Promise.all(batchPromises);
               
-              // Add results to allLeads
-              batchResults.forEach((batchResponse) => {
-                if (batchResponse?.results) {
-                  allLeads = [...allLeads, ...batchResponse.results];
-                }
-              });
+              // Add results to allLeads (using functional approach to avoid closure issue)
+              const newLeads = batchResults
+                .filter((batchResponse) => batchResponse?.results)
+                .flatMap((batchResponse) => batchResponse.results);
+              allLeads = [...allLeads, ...newLeads];
               
-              // Update leads state periodically (every 5 pages) to show progress
+              // Update leads state periodically (every 5 pages) using functional update to prevent race conditions
               if (pageNum % 5 === 2 || pageNum + batchSize > maxPagesToLoad) {
-                const sortedLeads = allLeads.sort((a, b) => 
+                // Create a copy and sort to avoid mutation issues
+                const sortedLeads = [...allLeads].sort((a, b) => 
                   new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                 );
-                setLeads(sortedLeads);
+                // Use functional update to merge with any new leads that arrived during loading
+                setLeads(prevLeads => {
+                  // Create a map of existing leads by ID to deduplicate
+                  const leadMap = new Map<number, Lead>();
+                  // Add existing leads first (they might have been updated)
+                  prevLeads.forEach(lead => leadMap.set(lead.id, lead));
+                  // Add new leads (newer data takes precedence)
+                  sortedLeads.forEach(lead => leadMap.set(lead.id, lead));
+                  // Convert back to array and sort
+                  return Array.from(leadMap.values()).sort((a, b) => 
+                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                  );
+                });
               }
             }
             
-            // Final update with all loaded leads, sorted
-            const sortedLeads = allLeads.sort((a, b) => 
+            // Final update with all loaded leads, sorted - using functional update
+            const sortedLeads = [...allLeads].sort((a, b) => 
               new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             );
-            setLeads(sortedLeads);
             
-            // Reset to first page if current page is beyond available pages
-            const newTotalPages = Math.ceil(sortedLeads.length / cardsPerPage);
-            if (currentPage > newTotalPages && newTotalPages > 0) {
-              setCurrentPage(1);
-            }
+            // Use functional update to ensure we don't overwrite any new leads
+            setLeads(prevLeads => {
+              const leadMap = new Map<number, Lead>();
+              // Add existing leads first
+              prevLeads.forEach(lead => leadMap.set(lead.id, lead));
+              // Add all loaded leads (newer takes precedence)
+              sortedLeads.forEach(lead => leadMap.set(lead.id, lead));
+              // Return sorted array
+              const finalLeads = Array.from(leadMap.values()).sort((a, b) => 
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+              
+              // Reset to first page if current page is beyond available pages
+              const newTotalPages = Math.ceil(finalLeads.length / cardsPerPage);
+              if (currentPage > newTotalPages && newTotalPages > 0) {
+                setCurrentPage(1);
+              }
+              
+              return finalLeads;
+            });
           } catch (error) {
             // Background loading errors are handled silently
             // We already have the first page showing, so dashboard still works
+          } finally {
+            backgroundLoadingInProgress.current = false;
           }
         })();
       } else {
