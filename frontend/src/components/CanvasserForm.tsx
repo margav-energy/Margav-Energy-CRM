@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatUKPostcode, formatName, formatAddress } from '../utils/formatting';
+import { fieldSubmissionsAPI } from '../api';
 
 interface FieldFormData {
   id?: string;
@@ -138,6 +139,10 @@ const CanvasserForm: React.FC = () => {
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingSubmissionId, setEditingSubmissionId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; synced: boolean; customerName: string } | null>(null);
+  const [syncingSubmissionId, setSyncingSubmissionId] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -248,23 +253,6 @@ const CanvasserForm: React.FC = () => {
         newSet.add(step);
         return newSet;
       });
-    }
-  };
-
-  const loadSyncedSubmissions = async () => {
-    try {
-      const db = await openDB();
-      const transaction = db.transaction(['syncedSubmissions'], 'readonly');
-      const store = transaction.objectStore('syncedSubmissions');
-      const request = store.getAll();
-      
-      request.onsuccess = () => {
-        setSyncedSubmissions(request.result as FieldFormData[]);
-      };
-      
-      request.onerror = () => {
-      };
-    } catch (error) {
     }
   };
 
@@ -543,13 +531,13 @@ const CanvasserForm: React.FC = () => {
               };
             });
           } else {
-            setFormData(prev => ({
-              ...prev,
-              photos: {
-                ...prev.photos,
-                [currentPhotoType]: photoData
-              }
-            }));
+          setFormData(prev => ({
+            ...prev,
+            photos: {
+              ...prev.photos,
+              [currentPhotoType]: photoData
+            }
+          }));
           }
         }
         
@@ -580,13 +568,13 @@ const CanvasserForm: React.FC = () => {
         };
       });
     } else {
-      setFormData(prev => ({
-        ...prev,
-        photos: {
-          ...prev.photos,
-          [photoType]: ''
-        }
-      }));
+    setFormData(prev => ({
+      ...prev,
+      photos: {
+        ...prev.photos,
+        [photoType]: ''
+      }
+    }));
     }
   };
   
@@ -607,6 +595,124 @@ const CanvasserForm: React.FC = () => {
     } catch (error) {
       
     }
+  };
+
+  const loadSubmissionForEdit = async (submission: FieldFormData) => {
+    try {
+      setFormData({
+        ...submission,
+        // Update timestamp and online status
+        timestamp: new Date().toISOString(),
+        isOnline: navigator.onLine,
+      });
+      
+      // Set editing state
+      setEditingSubmissionId(submission.id || null);
+      
+      // Mark all steps as completed so user can navigate freely
+      const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'review'];
+      setCompletedSteps(new Set(stepOrder));
+      
+      // Navigate to contact step
+      setCurrentStep('contact');
+      
+      // Scroll to top of form
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      setSuccessMessage('Form loaded for editing. Make your changes and submit.');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      setErrorMessage('Failed to load submission for editing.');
+      setShowError(true);
+    }
+  };
+
+  const deletePendingSubmission = async (submissionId: string) => {
+    try {
+      const db = await openDB();
+      const transaction = db.transaction(['pendingSubmissions'], 'readwrite');
+      const store = transaction.objectStore('pendingSubmissions');
+      
+      await new Promise<void>((resolve, reject) => {
+        const request = store.delete(submissionId);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+      
+      // Update state
+      setPendingSubmissions(prev => prev.filter(s => s.id !== submissionId));
+      
+      setSuccessMessage('Submission deleted successfully.');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      setErrorMessage('Failed to delete submission.');
+      setShowError(true);
+    }
+  };
+
+  const deleteSyncedSubmission = async (submissionId: string, backendId?: number) => {
+    try {
+      // If we have a backend ID and we're online, delete from backend
+      if (backendId && formData.isOnline) {
+        try {
+          await fieldSubmissionsAPI.deleteFieldSubmission(backendId);
+        } catch (error) {
+          // If backend deletion fails, still try to remove from local storage
+          console.warn('Failed to delete from backend, removing from local storage only');
+        }
+      }
+      
+      // Remove from local IndexedDB
+      const db = await openDB();
+      const transaction = db.transaction(['syncedSubmissions'], 'readwrite');
+      const store = transaction.objectStore('syncedSubmissions');
+      
+      await new Promise<void>((resolve, reject) => {
+        const request = store.delete(submissionId);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+      
+      // Update state
+      setSyncedSubmissions(prev => prev.filter(s => s.id !== submissionId));
+      setActualSyncedCount(prev => Math.max(0, prev - 1));
+      
+      setSuccessMessage('Submission deleted successfully.');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      setErrorMessage('Failed to delete submission.');
+      setShowError(true);
+    }
+  };
+
+  const confirmDelete = (submission: FieldFormData, isSynced: boolean) => {
+    setDeleteTarget({
+      id: submission.id || '',
+      synced: isSynced,
+      customerName: submission.customerName
+    });
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    
+    if (deleteTarget.synced) {
+      // Find the submission to get backend ID
+      const submission = syncedSubmissions.find(s => s.id === deleteTarget.id);
+      const backendId = submission?.id?.startsWith('restored_')
+        ? parseInt(submission.id.replace('restored_', ''))
+        : undefined;
+      await deleteSyncedSubmission(deleteTarget.id, backendId);
+    } else {
+      await deletePendingSubmission(deleteTarget.id);
+    }
+    
+    setShowDeleteConfirm(false);
+    setDeleteTarget(null);
   };
 
   const handleSubmit = async () => {
@@ -656,16 +762,133 @@ const CanvasserForm: React.FC = () => {
         timestamp: new Date().toISOString()
       };
       
+      // Check if we're editing
+      const isEditing = editingSubmissionId !== null;
+      
       if (formData.isOnline) {
         // Submit directly to server
-        await submitToServer(submissionData);
-        setSuccessMessage('Form submitted to qualifier successfully!');
+        const result = await submitToServer(submissionData);
+        
+        // If editing, remove old submission from local storage
+        if (isEditing && editingSubmissionId) {
+          // Remove from pending if it exists there
+          const db = await openDB();
+          const transaction = db.transaction(['pendingSubmissions', 'syncedSubmissions'], 'readwrite');
+          const pendingStore = transaction.objectStore('pendingSubmissions');
+          const syncedStore = transaction.objectStore('syncedSubmissions');
+          
+          // Try to delete from both stores
+          try {
+            await new Promise<void>((resolve, reject) => {
+              const deleteRequest = pendingStore.delete(editingSubmissionId);
+              deleteRequest.onsuccess = () => resolve();
+              deleteRequest.onerror = () => {
+                // Try synced store
+                const syncedDeleteRequest = syncedStore.delete(editingSubmissionId);
+                syncedDeleteRequest.onsuccess = () => resolve();
+                syncedDeleteRequest.onerror = () => reject(syncedDeleteRequest.error);
+              };
+            });
+            
+            // Update state
+            setPendingSubmissions(prev => prev.filter(s => s.id !== editingSubmissionId));
+            setSyncedSubmissions(prev => prev.filter(s => s.id !== editingSubmissionId));
+          } catch (error) {
+            // Ignore errors if submission not found in storage
+          }
+        }
+        
+        // Add/update in synced submissions
+        if (result && result.id) {
+          // Convert server response (snake_case) to form data format (camelCase)
+          const syncedSubmission: FieldFormData = {
+            id: `restored_${result.id}`,
+            canvasserName: result.field_agent_name || submissionData.canvasserName,
+            date: result.assessment_date || submissionData.date,
+            time: result.assessment_time || submissionData.time,
+            customerName: result.customer_name || submissionData.customerName,
+            address: result.address || submissionData.address,
+            postalCode: result.postal_code || submissionData.postalCode,
+            phone: result.phone || submissionData.phone,
+            email: result.email || submissionData.email,
+            preferredContactTime: result.preferred_contact_time || submissionData.preferredContactTime,
+            ownsProperty: result.owns_property || submissionData.ownsProperty,
+            propertyType: result.property_type || submissionData.propertyType,
+            numberOfBedrooms: result.number_of_bedrooms || submissionData.numberOfBedrooms,
+            roofType: result.roof_type || submissionData.roofType,
+            roofMaterial: result.roof_material || submissionData.roofMaterial,
+            roofCondition: result.roof_condition || submissionData.roofCondition,
+            roofAge: result.roof_age || submissionData.roofAge,
+            averageMonthlyBill: result.average_monthly_bill || submissionData.averageMonthlyBill,
+            energyType: result.energy_type || submissionData.energyType,
+            currentEnergySupplier: result.current_energy_supplier || submissionData.currentEnergySupplier,
+            usesElectricHeating: result.uses_electric_heating || submissionData.usesElectricHeating,
+            electricHeatingDetails: result.electric_heating_details || submissionData.electricHeatingDetails,
+            hasReceivedOtherQuotes: result.has_received_other_quotes || submissionData.hasReceivedOtherQuotes,
+            isDecisionMaker: result.is_decision_maker || submissionData.isDecisionMaker,
+            movingIn5Years: result.moving_in_5_years || submissionData.movingIn5Years,
+            photos: result.photos || submissionData.photos,
+            notes: result.notes || submissionData.notes,
+            timestamp: result.created_at || result.timestamp || submissionData.timestamp,
+            isOnline: navigator.onLine,
+            synced: true
+          };
+          
+          const db = await openDB();
+          const transaction = db.transaction(['syncedSubmissions'], 'readwrite');
+          const store = transaction.objectStore('syncedSubmissions');
+          
+          // Always use put to update (or create if doesn't exist)
+          const updateKey = `restored_${result.id}`;
+          await new Promise<void>((resolve, reject) => {
+            const request = store.put(syncedSubmission);
+            request.onsuccess = () => {
+              // Update state - remove old entry if editing, then add updated one
+              setSyncedSubmissions(prev => {
+                const filtered = prev.filter(s => s.id !== editingSubmissionId && s.id !== updateKey);
+                return [...filtered, syncedSubmission];
+              });
+              
+              // Only increment count if this is a new submission (not an edit)
+              if (!isEditing) {
+                setActualSyncedCount(prev => prev + 1);
+              }
+              resolve();
+            };
+            request.onerror = () => reject(request.error);
+          });
+          
+          // Reload submissions to ensure we have the latest data
+          await loadPendingSubmissions();
+        }
+        
+        setSuccessMessage(isEditing ? 'Form updated successfully!' : 'Form submitted to qualifier successfully!');
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
       } else {
-        // Save to offline storage
+        // If editing offline, update existing submission; otherwise create new
+        if (isEditing && editingSubmissionId) {
+          // Update existing pending submission
+          const db = await openDB();
+          const transaction = db.transaction(['pendingSubmissions'], 'readwrite');
+          const store = transaction.objectStore('pendingSubmissions');
+          
+          await new Promise<void>((resolve, reject) => {
+            const request = store.put({ ...submissionData, id: editingSubmissionId });
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+          });
+          
+          setPendingSubmissions(prev => prev.map(s => 
+            s.id === editingSubmissionId ? { ...submissionData, id: editingSubmissionId } : s
+          ));
+          
+          setSuccessMessage('Form updated offline successfully!');
+        } else {
+          // Save to offline storage as new
         await saveToOfflineStorage(submissionData);
         setSuccessMessage('Form saved offline successfully!');
+        }
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
       }
@@ -725,6 +948,9 @@ const CanvasserForm: React.FC = () => {
         synced: false
       });
       
+      // Reset editing state
+      setEditingSubmissionId(null);
+      
       // Reset steps
       setCurrentStep('contact');
       setCompletedSteps(new Set());
@@ -747,8 +973,30 @@ const CanvasserForm: React.FC = () => {
         timestamp: new Date().toISOString()
       };
       
+      const isEditing = editingSubmissionId !== null;
+      
+      if (isEditing && editingSubmissionId) {
+        // Update existing pending submission
+        const db = await openDB();
+        const transaction = db.transaction(['pendingSubmissions'], 'readwrite');
+        const store = transaction.objectStore('pendingSubmissions');
+        
+        await new Promise<void>((resolve, reject) => {
+          const request = store.put({ ...submissionData, id: editingSubmissionId });
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+        });
+        
+        setPendingSubmissions(prev => prev.map(s => 
+          s.id === editingSubmissionId ? { ...submissionData, id: editingSubmissionId } : s
+        ));
+        
+        setSuccessMessage('Form updated offline successfully!');
+      } else {
       await saveToOfflineStorage(submissionData);
       setSuccessMessage('Form saved offline successfully!');
+      }
+      
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
       
@@ -807,6 +1055,9 @@ const CanvasserForm: React.FC = () => {
         synced: false
       });
       
+      // Reset editing state
+      setEditingSubmissionId(null);
+      
       // Reset steps
       setCurrentStep('contact');
       setCompletedSteps(new Set());
@@ -863,8 +1114,42 @@ const CanvasserForm: React.FC = () => {
       timestamp: data.timestamp
     };
     
-    const response = await fetch(`${API_BASE_URL}/field-submissions/`, {
-      method: 'POST',
+    // Check if we're editing an existing submission
+    const isEditing = editingSubmissionId !== null;
+    let submissionId: number | undefined;
+    
+    if (isEditing && editingSubmissionId) {
+      // Extract backend ID directly from editingSubmissionId
+      // Synced submissions have IDs like "restored_123" where 123 is the backend ID
+      if (editingSubmissionId.startsWith('restored_')) {
+        const extractedId = parseInt(editingSubmissionId.replace('restored_', ''));
+        if (!isNaN(extractedId)) {
+          submissionId = extractedId;
+        }
+      } else {
+        // For pending submissions, try to find the submission and check if it has a backend ID
+        // But typically pending submissions don't have backend IDs yet
+        const editingSubmission = pendingSubmissions.find(s => s.id === editingSubmissionId) ||
+                                 syncedSubmissions.find(s => s.id === editingSubmissionId);
+        
+        // Check if the submission itself has a backend ID stored
+        if (editingSubmission?.id?.startsWith('restored_')) {
+          const extractedId = parseInt(editingSubmission.id.replace('restored_', ''));
+          if (!isNaN(extractedId)) {
+            submissionId = extractedId;
+          }
+        }
+      }
+    }
+    
+    const url = isEditing && submissionId
+      ? `${API_BASE_URL}/field-submissions/${submissionId}/`
+      : `${API_BASE_URL}/field-submissions/`;
+    
+    const method = isEditing && submissionId ? 'PATCH' : 'POST';
+    
+    const response = await fetch(url, {
+      method,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Token ${token}`
@@ -874,7 +1159,6 @@ const CanvasserForm: React.FC = () => {
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      
       
       // Format validation errors
       if (errorData && typeof errorData === 'object') {
@@ -888,18 +1172,39 @@ const CanvasserForm: React.FC = () => {
       throw new Error(errorData.detail || errorData.error || `Server error: ${response.status}`);
     }
     
-    return response.json();
+    const result = await response.json();
+    
+    // If updating, ensure the result has the same ID
+    if (isEditing && submissionId && !result.id) {
+      // If backend doesn't return ID, use the one we sent
+      result.id = submissionId;
+    }
+    
+    return result;
   };
 
-  const syncPendingSubmissions = async () => {
-    const submissionsToSync = [...pendingSubmissions]; // Create a copy to avoid state issues
-    
-    
-    for (const submission of submissionsToSync) {
-      try {
-        
-        await submitToServer(submission);
-        
+  const syncSingleSubmission = async (submission: FieldFormData) => {
+    if (!formData.isOnline) {
+      setErrorMessage('Cannot sync while offline. Please check your internet connection.');
+      setShowError(true);
+      return;
+    }
+
+    if (!submission.id) {
+      setErrorMessage('Submission ID not found.');
+      setShowError(true);
+      return;
+    }
+
+    setSyncingSubmissionId(submission.id);
+
+    try {
+      // Submit to server
+      const result = await submitToServer(submission);
+      
+      if (!result || !result.id) {
+        throw new Error('Server did not return a valid submission ID');
+      }
         
         // Move to synced submissions
         await new Promise<void>((resolve, reject) => {
@@ -908,49 +1213,90 @@ const CanvasserForm: React.FC = () => {
             const syncedStore = transaction.objectStore('syncedSubmissions');
             const pendingStore = transaction.objectStore('pendingSubmissions');
             
-            if (submission.id) {
+          // Create synced submission with backend ID
+          const syncedSubmission: FieldFormData = {
+            ...submission,
+            id: `restored_${result.id}`,
+            synced: true
+          };
+
               // Add to synced submissions
-              const addRequest = syncedStore.add({ ...submission, synced: true });
+          const addRequest = syncedStore.add(syncedSubmission);
               
               addRequest.onsuccess = () => {
-                
                 // Remove from pending submissions
                 const deleteRequest = pendingStore.delete(submission.id!);
                 
                 deleteRequest.onsuccess = () => {
-                  
                   // Update React state
                   setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
-                  setSyncedSubmissions(prev => [...prev, { ...submission, synced: true }]);
-                  setActualSyncedCount(prev => prev + 1); // Increment actual count
+              setSyncedSubmissions(prev => [...prev, syncedSubmission]);
+              setActualSyncedCount(prev => prev + 1);
+              
+              setSuccessMessage(`Submission for ${submission.customerName} synced successfully!`);
+              setShowSuccess(true);
+              setTimeout(() => setShowSuccess(false), 3000);
                   
                   resolve();
                 };
                 
                 deleteRequest.onerror = () => {
-                  
                   reject(deleteRequest.error);
                 };
               };
               
-              addRequest.onerror = () => {
-                
-                reject(addRequest.error);
+          addRequest.onerror = (event) => {
+            // If it's a duplicate key error, try to update instead
+            const error = (event.target as IDBRequest).error;
+            if (error && error.name === 'ConstraintError') {
+              // Update existing record
+              const updateRequest = syncedStore.put(syncedSubmission);
+              updateRequest.onsuccess = () => {
+                const deleteRequest = pendingStore.delete(submission.id!);
+                deleteRequest.onsuccess = () => {
+                  setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
+                  setSyncedSubmissions(prev => {
+                    const filtered = prev.filter(s => s.id !== syncedSubmission.id);
+                    return [...filtered, syncedSubmission];
+                  });
+                  setSuccessMessage(`Submission for ${submission.customerName} synced successfully!`);
+                  setShowSuccess(true);
+                  setTimeout(() => setShowSuccess(false), 3000);
+                  resolve();
+                };
+                deleteRequest.onerror = () => reject(deleteRequest.error);
               };
+              updateRequest.onerror = () => reject(updateRequest.error);
             } else {
-              resolve();
+              reject(error);
             }
+          };
           }).catch(error => {
-            
             reject(error);
           });
         });
+
       } catch (error) {
-        
+      console.error('Sync error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to sync submission. Please try again.';
+      setErrorMessage(`Failed to sync: ${errorMessage}`);
+      setShowError(true);
+    } finally {
+      setSyncingSubmissionId(null);
+    }
+  };
+
+  const syncPendingSubmissions = async () => {
+    const submissionsToSync = [...pendingSubmissions]; // Create a copy to avoid state issues
+    
+    for (const submission of submissionsToSync) {
+      try {
+        await syncSingleSubmission(submission);
+      } catch (error) {
         // Continue with other submissions even if one fails
+        console.error('Error syncing submission:', error);
       }
     }
-    
   };
 
   const manualSync = async () => {
@@ -1337,16 +1683,16 @@ const CanvasserForm: React.FC = () => {
               {formData.usesElectricHeating === 'yes' && (
                 <>
                   <div>
-                    <label htmlFor="electricHeatingDetails" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="electricHeatingDetails" className="block text-sm font-medium text-gray-700 mb-1">
                       Please select your high electric usage items <span className="text-red-500">*</span>
-                    </label>
+                  </label>
                     <select
-                      id="electricHeatingDetails"
-                      name="electricHeatingDetails"
+                    id="electricHeatingDetails"
+                    name="electricHeatingDetails"
                       required={formData.usesElectricHeating === 'yes'}
-                      value={formData.electricHeatingDetails}
-                      onChange={(e) => setFormData(prev => ({ ...prev, electricHeatingDetails: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={formData.electricHeatingDetails}
+                    onChange={(e) => setFormData(prev => ({ ...prev, electricHeatingDetails: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Select item</option>
                       <option value="EV Charger">EV Charger</option>
@@ -1369,8 +1715,8 @@ const CanvasserForm: React.FC = () => {
                         onChange={(e) => setFormData(prev => ({ ...prev, electricHeatingDetails: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Please specify"
-                      />
-                    </div>
+                  />
+                </div>
                   )}
                 </>
               )}
@@ -1701,7 +2047,7 @@ const CanvasserForm: React.FC = () => {
                 <p><strong>Additional Photos:</strong> {formData.photos.additional.filter(p => p).length} captured</p>
               )}
             </div>
-            
+
             {/* Optional Notes */}
             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
               <h3 className="font-semibold mb-2 text-yellow-900">Additional Notes (Optional)</h3>
@@ -1718,7 +2064,16 @@ const CanvasserForm: React.FC = () => {
 
             {/* Submit Buttons */}
             <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-              <h3 className="font-semibold mb-4 text-blue-900">Submit Lead Sheet</h3>
+              <h3 className="font-semibold mb-4 text-blue-900">
+                {editingSubmissionId ? 'Update Lead Sheet' : 'Submit Lead Sheet'}
+              </h3>
+              {editingSubmissionId && (
+                <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ You are editing an existing submission. Changes will update the original.
+                  </p>
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row gap-4">
                 {/* Always show Submit to Qualifier button when online */}
                 {formData.isOnline && (
@@ -1730,12 +2085,12 @@ const CanvasserForm: React.FC = () => {
                     {isSubmitting ? (
                       <>
                         <span className="animate-spin">⏳</span>
-                        <span>Submitting...</span>
+                        <span>{editingSubmissionId ? 'Updating...' : 'Submitting...'}</span>
                       </>
                     ) : (
                       <>
-                        <span>📤</span>
-                        <span>Submit to Qualifier</span>
+                        <span>{editingSubmissionId ? '🔄' : '📤'}</span>
+                        <span>{editingSubmissionId ? 'Update Submission' : 'Submit to Qualifier'}</span>
                       </>
                     )}
                   </button>
@@ -1750,12 +2105,12 @@ const CanvasserForm: React.FC = () => {
                   {isSubmitting ? (
                     <>
                       <span className="animate-spin">⏳</span>
-                      <span>Saving...</span>
+                      <span>{editingSubmissionId ? 'Updating...' : 'Saving...'}</span>
                     </>
                   ) : (
                     <>
-                      <span>💾</span>
-                      <span>Save Offline</span>
+                      <span>{editingSubmissionId ? '🔄' : '💾'}</span>
+                      <span>{editingSubmissionId ? 'Update Offline' : 'Save Offline'}</span>
                     </>
                   )}
                 </button>
@@ -1852,36 +2207,37 @@ const CanvasserForm: React.FC = () => {
                   {pendingSubmissions.map((submission, index) => (
                     <div key={submission.id || index} className="bg-orange-50 p-3 rounded-lg border border-orange-200">
                       <div className="flex justify-between items-start">
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium">{submission.customerName}</p>
                           <p className="text-sm text-gray-600">{submission.address}, {submission.postalCode}</p>
                           <p className="text-sm text-gray-500">Saved: {new Date(submission.timestamp).toLocaleString()}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="flex flex-col items-end gap-2">
                           <p className="text-sm text-orange-600">⏳ Waiting to sync</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => loadSubmissionForEdit(submission)}
+                              className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                              disabled={editingSubmissionId !== null}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={() => confirmDelete(submission, false)}
+                              className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                            >
+                              🗑️ Delete
+                            </button>
                           <button
                             onClick={async () => {
-                              if (formData.isOnline && pendingSubmissions.length > 0) {
-                                try {
-                                  await syncPendingSubmissions();
-                                  // Show success message
-                                  setShowSuccess(true);
-                                  setTimeout(() => setShowSuccess(false), 3000);
-                                } catch (error) {
-                                  
-                                  setErrorMessage('Failed to sync submissions. Please try again.');
-                                  setShowError(true);
-                                }
-                              } else if (pendingSubmissions.length === 0) {
-                                setErrorMessage('No pending submissions to sync');
-                                setShowError(true);
-                              }
-                            }}
-                            disabled={!formData.isOnline || pendingSubmissions.length === 0}
-                            className="text-xs bg-orange-600 text-white px-2 py-1 rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {formData.isOnline ? 'Sync Now' : 'Offline'}
+                                await syncSingleSubmission(submission);
+                              }}
+                              disabled={!formData.isOnline || syncingSubmissionId === submission.id || editingSubmissionId !== null}
+                              className="text-xs bg-orange-600 text-white px-3 py-1 rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {syncingSubmissionId === submission.id ? '⏳ Syncing...' : (formData.isOnline ? 'Sync' : 'Offline')}
                           </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1903,13 +2259,28 @@ const CanvasserForm: React.FC = () => {
                   {syncedSubmissions.slice(0, 5).map((submission, index) => (
                     <div key={submission.id || index} className="bg-green-50 p-3 rounded-lg border border-green-200">
                       <div className="flex justify-between items-start">
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium">{submission.customerName}</p>
                           <p className="text-sm text-gray-600">{submission.address}, {submission.postalCode}</p>
                           <p className="text-sm text-gray-500">Sent: {new Date(submission.timestamp).toLocaleString()}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="flex flex-col items-end gap-2">
                           <p className="text-sm text-green-600">✅ Synced</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => loadSubmissionForEdit(submission)}
+                              className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                              disabled={editingSubmissionId !== null}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={() => confirmDelete(submission, true)}
+                              className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2018,9 +2389,9 @@ const CanvasserForm: React.FC = () => {
               )}
 
               <button
-                  type="button"
-                  onClick={() => {
-                    markStepCompleted(currentStep);
+                type="button"
+                onClick={() => {
+                  markStepCompleted(currentStep);
                     const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'review'];
                   const currentIndex = stepOrder.indexOf(currentStep);
                   if (currentIndex < stepOrder.length - 1) {
@@ -2059,6 +2430,41 @@ const CanvasserForm: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsCapturingPhoto(false)}
+                  className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && deleteTarget && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4 text-red-600">Confirm Delete</h3>
+              <p className="mb-4 text-gray-700">
+                Are you sure you want to delete the submission for <strong>{deleteTarget.customerName}</strong>?
+                {deleteTarget.synced && ' This submission has been synced to the server.'}
+              </p>
+              <p className="mb-6 text-sm text-gray-500">
+                This action cannot be undone.
+              </p>
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteTarget(null);
+                  }}
                   className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
                 >
                   Cancel

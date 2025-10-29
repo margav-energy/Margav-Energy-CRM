@@ -41,23 +41,15 @@ const openAuthDB = (): Promise<IDBDatabase> => {
     const request = indexedDB.open('AuthDB', 3);
     
     request.onerror = () => {
-      console.error('❌ IndexedDB open error:', request.error);
       reject(request.error);
     };
     
     request.onsuccess = () => {
       const db = request.result;
-      console.log('✅ IndexedDB opened successfully, version:', db.version);
       
       // Handle version change events (database upgrades)
       db.onversionchange = (event) => {
-        console.log('⚠️ IndexedDB version change detected');
         db.close();
-      };
-      
-      // Add error handling for the database
-      db.onerror = (event) => {
-        console.error('❌ IndexedDB error:', event);
       };
       
       resolve(db);
@@ -65,11 +57,9 @@ const openAuthDB = (): Promise<IDBDatabase> => {
     
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      console.log('📦 IndexedDB upgrade needed');
       
       // Create object store for authentication tokens
       if (!db.objectStoreNames.contains('authTokens')) {
-        console.log('📦 Creating authTokens object store');
         const store = db.createObjectStore('authTokens', { keyPath: 'id' });
         store.createIndex('loginTimestamp', 'loginTimestamp', { unique: false });
         store.createIndex('token', 'token', { unique: true });
@@ -77,7 +67,6 @@ const openAuthDB = (): Promise<IDBDatabase> => {
       
       // Delete the 'keys' store if it exists (old schema)
       if (db.objectStoreNames.contains('keys')) {
-        console.log('🗑️ Deleting old keys store');
         db.deleteObjectStore('keys');
       }
     };
@@ -100,9 +89,7 @@ export const storeAuthToken = async (
   expiryMinutes?: number
 ): Promise<void> => {
   try {
-    console.log('📦 Opening IndexedDB...');
     const db = await openAuthDB();
-    console.log('✅ IndexedDB opened successfully');
     
     const now = Date.now();
     // Calculate expiry timestamp: now + (minutes * 60 seconds * 1000 milliseconds)
@@ -118,35 +105,23 @@ export const storeAuthToken = async (
       user,
     };
     
-    console.log('📝 Preparing to store auth data:', { user: authData.user.username, tokenLength: token.length });
-    
     return new Promise((resolve, reject) => {
       try {
         const transaction = db.transaction(['authTokens'], 'readwrite');
         const store = transaction.objectStore('authTokens');
         
-        console.log('📝 Store ready, object store:', store.name);
-        
         const request = store.put(authData);
         
-        request.onsuccess = () => {
-          console.log('✅ Auth token stored successfully in IndexedDB');
-          console.log('✅ Store request success, waiting for transaction...');
-        };
-        
         request.onerror = () => {
-          console.error('❌ Error storing auth token:', request.error);
           reject(request.error);
         };
         
         // Wait for the transaction to complete
         transaction.oncomplete = () => {
-          console.log('✅ Transaction completed - auth token now persisted');
           resolve();
         };
         
         transaction.onerror = () => {
-          console.error('❌ Transaction error:', transaction.error);
           reject(transaction.error);
         };
         
@@ -158,17 +133,14 @@ export const storeAuthToken = async (
             expiryTimestamp,
             loginTimestamp: now,
           }));
-          console.log('✅ Also stored in localStorage as backup');
         } catch (e) {
-          console.error('⚠️ Could not store in localStorage:', e);
+          // Ignore localStorage errors
         }
       } catch (transactionError) {
-        console.error('❌ Transaction setup error:', transactionError);
         reject(transactionError);
       }
     });
   } catch (error) {
-    console.error('❌ Error in storeAuthToken:', error);
     throw error;
   }
 };
@@ -185,57 +157,31 @@ export const storeAuthToken = async (
  */
 export const getStoredAuthToken = async (): Promise<AuthTokenData | null> => {
     try {
-      console.log('🔍 Opening IndexedDB to retrieve auth token...');
       const db = await openAuthDB();
-      console.log('✅ IndexedDB opened');
-      console.log('📦 Checking object stores:', Array.from(db.objectStoreNames));
       
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['authTokens'], 'readonly');
         const store = transaction.objectStore('authTokens');
         
-        // Wait for the transaction to be ready
-        transaction.oncomplete = () => {
-          console.log('✅ Transaction completed (read)');
-        };
-        
-        transaction.onerror = () => {
-          console.error('❌ Transaction error:', transaction.error);
-        };
-        
-        // First, try to get all records to see what's in there
-        const getAllRequest = store.getAll();
-        getAllRequest.onsuccess = () => {
-          console.log('🔍 All records in store:', getAllRequest.result);
-          console.log('🔍 Record count:', getAllRequest.result.length);
-        };
-        
         const request = store.get('current');
         
         request.onsuccess = () => {
-          console.log('🔍 Request completed, result:', request.result);
           const data = request.result as (AuthTokenData & { id: string }) | undefined;
           
-          console.log('🔍 Data from request.result:', data);
-          
           if (!data) {
-            console.log('❌ No auth data found in IndexedDB, trying localStorage fallback...');
             // Fallback to localStorage
             try {
               const localStorageData = localStorage.getItem('authTokenIndexedDB');
               if (localStorageData) {
-                console.log('✅ Found token in localStorage fallback');
                 const parsedData = JSON.parse(localStorageData);
                 
                 // Check if token has expired
                 if (parsedData.expiryTimestamp && Date.now() > parsedData.expiryTimestamp) {
-                  console.log('⚠️ Token in localStorage has expired');
                   localStorage.removeItem('authTokenIndexedDB');
                   resolve(null);
                   return;
                 }
                 
-                console.log('✅ Token from localStorage is valid');
                 resolve({
                   token: parsedData.token,
                   loginTimestamp: parsedData.loginTimestamp,
@@ -245,25 +191,21 @@ export const getStoredAuthToken = async (): Promise<AuthTokenData | null> => {
                 return;
               }
             } catch (e) {
-              console.error('❌ Error parsing localStorage data:', e);
+              // Ignore parsing errors
             }
             
             resolve(null);
             return;
           }
           
-          console.log('✅ Found auth data for user:', data.user.username);
-          
           // Check if token has expired
           if (data.expiryTimestamp && Date.now() > data.expiryTimestamp) {
-            console.log('⚠️ Token has expired');
             // Token expired, automatically clean it up
             clearAuthToken();
             resolve(null);
             return;
           }
           
-          console.log('✅ Token is valid');
           resolve({
             token: data.token,
             loginTimestamp: data.loginTimestamp,
@@ -273,12 +215,10 @@ export const getStoredAuthToken = async (): Promise<AuthTokenData | null> => {
         };
         
         request.onerror = () => {
-          console.error('❌ Error getting auth token:', request.error);
           reject(request.error);
         };
       });
     } catch (error) {
-      console.error('❌ Error in getStoredAuthToken:', error);
       return null;
     }
   };
@@ -308,7 +248,6 @@ export const clearAuthToken = async (): Promise<void> => {
       request.onerror = () => reject(request.error);
     });
   } catch (error) {
-    console.error('Error clearing auth token:', error);
     throw error;
   }
 };

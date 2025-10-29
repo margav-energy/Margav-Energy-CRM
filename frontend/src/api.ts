@@ -278,6 +278,32 @@ export const callbacksAPI = {
   },
 };
 
+// Field Submissions API
+export const fieldSubmissionsAPI = {
+  getFieldSubmissions: async (): Promise<any[]> => {
+    try {
+      const response: AxiosResponse<any> = await api.get('/field-submissions/');
+      return Array.isArray(response.data) ? response.data : (response.data.results || []);
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  getFieldSubmission: async (id: number): Promise<any> => {
+    const response: AxiosResponse<any> = await api.get(`/field-submissions/${id}/`);
+    return response.data;
+  },
+
+  updateFieldSubmission: async (id: number, submissionData: any): Promise<any> => {
+    const response: AxiosResponse<any> = await api.patch(`/field-submissions/${id}/`, submissionData);
+    return response.data;
+  },
+
+  deleteFieldSubmission: async (id: number): Promise<void> => {
+    await api.delete(`/field-submissions/${id}/`);
+  },
+};
+
 
 
 

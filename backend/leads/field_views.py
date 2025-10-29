@@ -90,6 +90,76 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         response_serializer = FieldSubmissionSerializer(submission)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     
+    def update(self, request, *args, **kwargs):
+        """
+        Update an existing field submission and update the associated lead.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        
+        # Update the field submission
+        submission = serializer.save()
+        
+        # Update or create the associated lead
+        # Parse city from address if it follows the format "Street, City, Postcode"
+        parsed_city = ''
+        if submission.address:
+            address_parts = submission.address.split(',')
+            if len(address_parts) >= 2:
+                # Take the second part as city (index 1)
+                parsed_city = address_parts[1].strip()
+        
+        # Check if a lead already exists for this submission
+        existing_lead = None
+        try:
+            existing_lead = Lead.objects.get(field_submission=submission)
+        except Lead.DoesNotExist:
+            pass
+        
+        lead_data = {
+            'full_name': submission.customer_name,
+            'phone': submission.phone,
+            'email': submission.email or '',
+            'address1': submission.address,
+            'city': parsed_city,
+            'postal_code': submission.postal_code,
+            'notes': self._format_submission_notes(submission),
+            'assigned_agent': submission.field_agent,
+            'field_submission': submission,
+        }
+        
+        try:
+            if existing_lead:
+                # Update existing lead but preserve status if it's been changed by qualifier
+                # Only update status to 'sent_to_kelly' if it's still 'sent_to_kelly'
+                # This prevents overwriting status changes made by qualifiers
+                current_status = existing_lead.status
+                for key, value in lead_data.items():
+                    setattr(existing_lead, key, value)
+                # Preserve status if qualifier has changed it from 'sent_to_kelly'
+                if current_status != 'sent_to_kelly':
+                    existing_lead.status = current_status
+                existing_lead.updated_at = timezone.now()
+                existing_lead.save()
+                logger.info(f"Updated lead {existing_lead.id} from field submission {submission.id}")
+            else:
+                # Create new lead if it doesn't exist (edge case)
+                lead_data['status'] = 'sent_to_kelly'
+                lead_data['created_at'] = submission.timestamp
+                lead_data['updated_at'] = submission.timestamp
+                lead = Lead.objects.create(**lead_data)
+                logger.info(f"Created lead {lead.id} from updated field submission {submission.id}")
+        except Exception as e:
+            logger.error(f"Error updating/creating lead from field submission: {e}")
+            # Don't fail the submission update if lead update fails
+        
+        # Return the updated submission data
+        response_serializer = FieldSubmissionSerializer(submission)
+        return Response(response_serializer.data)
+    
     def _format_submission_notes(self, submission):
         """Format field submission data into notes for the lead."""
         notes = f"Canvas Team Assessment by {submission.canvasser_name}\n"
@@ -345,6 +415,76 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         # Return the submission data
         response_serializer = FieldSubmissionSerializer(submission)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Update an existing field submission and update the associated lead.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        
+        # Update the field submission
+        submission = serializer.save()
+        
+        # Update or create the associated lead
+        # Parse city from address if it follows the format "Street, City, Postcode"
+        parsed_city = ''
+        if submission.address:
+            address_parts = submission.address.split(',')
+            if len(address_parts) >= 2:
+                # Take the second part as city (index 1)
+                parsed_city = address_parts[1].strip()
+        
+        # Check if a lead already exists for this submission
+        existing_lead = None
+        try:
+            existing_lead = Lead.objects.get(field_submission=submission)
+        except Lead.DoesNotExist:
+            pass
+        
+        lead_data = {
+            'full_name': submission.customer_name,
+            'phone': submission.phone,
+            'email': submission.email or '',
+            'address1': submission.address,
+            'city': parsed_city,
+            'postal_code': submission.postal_code,
+            'notes': self._format_submission_notes(submission),
+            'assigned_agent': submission.field_agent,
+            'field_submission': submission,
+        }
+        
+        try:
+            if existing_lead:
+                # Update existing lead but preserve status if it's been changed by qualifier
+                # Only update status to 'sent_to_kelly' if it's still 'sent_to_kelly'
+                # This prevents overwriting status changes made by qualifiers
+                current_status = existing_lead.status
+                for key, value in lead_data.items():
+                    setattr(existing_lead, key, value)
+                # Preserve status if qualifier has changed it from 'sent_to_kelly'
+                if current_status != 'sent_to_kelly':
+                    existing_lead.status = current_status
+                existing_lead.updated_at = timezone.now()
+                existing_lead.save()
+                logger.info(f"Updated lead {existing_lead.id} from field submission {submission.id}")
+            else:
+                # Create new lead if it doesn't exist (edge case)
+                lead_data['status'] = 'sent_to_kelly'
+                lead_data['created_at'] = submission.timestamp
+                lead_data['updated_at'] = submission.timestamp
+                lead = Lead.objects.create(**lead_data)
+                logger.info(f"Created lead {lead.id} from updated field submission {submission.id}")
+        except Exception as e:
+            logger.error(f"Error updating/creating lead from field submission: {e}")
+            # Don't fail the submission update if lead update fails
+        
+        # Return the updated submission data
+        response_serializer = FieldSubmissionSerializer(submission)
+        return Response(response_serializer.data)
     
     def _format_submission_notes(self, submission):
         """Format field submission data into notes for the lead."""
