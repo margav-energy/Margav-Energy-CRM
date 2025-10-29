@@ -195,14 +195,27 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
               // Wait for batch to complete
               const batchResults = await Promise.all(batchPromises);
               
-              // Check if any response has a next page
-              hasNextPage = batchResults.some(result => result?.next);
+              // Filter out empty/error responses and get valid results
+              const validResults = batchResults.filter(result => result?.results && result.results.length > 0);
+              
+              // Check the LAST valid result to see if there are more pages
+              // This is critical: we need to check the last page in the batch, not just any page
+              if (validResults.length > 0) {
+                const lastResult = validResults[validResults.length - 1];
+                hasNextPage = !!lastResult.next;
+              } else {
+                // If no valid results, check if we got any results at all
+                hasNextPage = batchResults.some(result => result?.next);
+              }
               
               // Add results to allLeads (using functional approach to avoid closure issue)
-              const newLeads = batchResults
-                .filter((batchResponse) => batchResponse?.results)
+              const newLeads = validResults
                 .flatMap((batchResponse) => batchResponse.results);
-              allLeads = [...allLeads, ...newLeads];
+              
+              // Only add if we have new leads
+              if (newLeads.length > 0) {
+                allLeads = [...allLeads, ...newLeads];
+              }
               
               // Update leads state periodically (every batch or when approaching limit) using functional update to prevent race conditions
               if (!hasNextPage || currentPage + batchSize > maxPagesToLoad || (currentPage - 1) % 10 === 1) {

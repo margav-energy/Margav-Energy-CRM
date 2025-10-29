@@ -271,15 +271,17 @@ const AgentDashboard: React.FC = () => {
         setIsInitialLoad(false);
       }
       
-      // Check total count from first response
+      // Check if there are more pages - use response.next as the primary indicator
+      const hasMorePages = !!response.next || (response.count && response.count > allLeads.length);
       const totalCount = response.count || allLeads.length;
-      const totalPages = Math.ceil(totalCount / 100);
       
       // OPTIMIZATION: Load remaining pages in background without blocking UI
-      if (totalPages > 1 && !backgroundLoadingInProgress.current) {
+      if (hasMorePages && !backgroundLoadingInProgress.current) {
         backgroundLoadingInProgress.current = true;
-        // Limit to reasonable number of pages to avoid overwhelming the server
-        const maxPagesToLoad = Math.min(totalPages, 100); // Max 10,000 leads
+        // Calculate expected pages from count, but also use next URL if available
+        const estimatedTotalPages = Math.ceil(totalCount / 100);
+        // Use a higher limit to ensure we get all leads, but still cap it
+        const maxPagesToLoad = Math.min(Math.max(estimatedTotalPages, 10), 200); // At least 10 pages, max 20,000 leads
         
         // Load pages in parallel batches for speed (don't block UI)
         const batchSize = 5; // Load 5 pages at a time
@@ -287,15 +289,19 @@ const AgentDashboard: React.FC = () => {
         // Load all remaining pages in background
         (async () => {
           try {
-            for (let pageNum = 2; pageNum <= maxPagesToLoad; pageNum += batchSize) {
+            let currentPage = 2;
+            let hasNextPage = true;
+            
+            while (hasNextPage && currentPage <= maxPagesToLoad) {
               const batchPromises = [];
+              const batchEndPage = Math.min(currentPage + batchSize - 1, maxPagesToLoad);
               
               // Create batch of page requests
-              for (let i = 0; i < batchSize && (pageNum + i) <= maxPagesToLoad; i++) {
+              for (let pageNum = currentPage; pageNum <= batchEndPage; pageNum++) {
                 batchPromises.push(
                   leadsAPI.getMyLeads({ 
                     page_size: 100, 
-                    page: (pageNum + i).toString()
+                    page: pageNum.toString()
                   }).catch((err) => {
                     // Silently handle individual page errors - return empty results
                     return { results: [], next: null, count: 0 };
@@ -306,14 +312,30 @@ const AgentDashboard: React.FC = () => {
               // Wait for batch to complete
               const batchResults = await Promise.all(batchPromises);
               
-              // Add results to allLeads (using functional approach to avoid closure issue)
-              const newLeads = batchResults
-                .filter((batchResponse) => batchResponse?.results)
-                .flatMap((batchResponse) => batchResponse.results);
-              allLeads = [...allLeads, ...newLeads];
+              // Filter out empty/error responses and get valid results
+              const validResults = batchResults.filter(result => result?.results && result.results.length > 0);
               
-              // Update leads state periodically (every 5 pages) using functional update to prevent race conditions
-              if (pageNum % 5 === 2 || pageNum + batchSize > maxPagesToLoad) {
+              // Check the LAST valid result to see if there are more pages
+              // This is critical: we need to check the last page in the batch, not just any page
+              if (validResults.length > 0) {
+                const lastResult = validResults[validResults.length - 1];
+                hasNextPage = !!lastResult.next;
+              } else {
+                // If no valid results, check if we got any results at all
+                hasNextPage = batchResults.some(result => result?.next);
+              }
+              
+              // Add results to allLeads (using functional approach to avoid closure issue)
+              const newLeads = validResults
+                .flatMap((batchResponse) => batchResponse.results);
+              
+              // Only add if we have new leads
+              if (newLeads.length > 0) {
+                allLeads = [...allLeads, ...newLeads];
+              }
+              
+              // Update leads state periodically (every batch or when approaching limit) using functional update to prevent race conditions
+              if (!hasNextPage || currentPage + batchSize > maxPagesToLoad || (currentPage - 1) % 10 === 1) {
                 // Create a copy and sort to avoid mutation issues
                 const sortedLeads = [...allLeads].sort((a, b) => 
                   new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -332,6 +354,12 @@ const AgentDashboard: React.FC = () => {
                   );
                 });
               }
+              
+              // Move to next batch
+              currentPage += batchSize;
+              
+              // Stop if no more pages
+              if (!hasNextPage) break;
             }
             
             // Final update with all loaded leads, sorted - using functional update
@@ -353,9 +381,12 @@ const AgentDashboard: React.FC = () => {
               
               // Reset to first page if current page is beyond available pages
               const newTotalPages = Math.ceil(finalLeads.length / cardsPerPage);
-              if (currentPage > newTotalPages && newTotalPages > 0) {
-                setCurrentPage(1);
-              }
+              setCurrentPage(prevPage => {
+                if (prevPage > newTotalPages && newTotalPages > 0) {
+                  return 1;
+                }
+                return prevPage;
+              });
               
               return finalLeads;
             });
