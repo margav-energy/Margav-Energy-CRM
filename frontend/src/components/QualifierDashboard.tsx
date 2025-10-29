@@ -123,49 +123,107 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
     try {
       if (!silent) setLoading(true);
       
-      // Fetch all leads - get first page with large page size
-      let response = await leadsAPI.getLeads({ page_size: 1000 });
+      // OPTIMIZATION: Fetch first page immediately to show dashboard quickly
+      const response = await leadsAPI.getLeads({ page_size: 100, ordering: '-created_at' });
       let allLeads = [...response.results];
-      let nextUrl = response.next;
-      let pageNumber = 2;
       
-      // If there are more pages, fetch them using the page parameter
-      while (nextUrl) {
-        try {
-          response = await leadsAPI.getLeads({ page_size: 1000, page: pageNumber.toString() });
-          allLeads = [...allLeads, ...response.results];
-          nextUrl = response.next;
-          pageNumber++;
-          
-          // Safety check to prevent infinite loops
-          if (pageNumber > 100) break;
-        } catch (err) {
-          console.error('Error fetching page:', err);
-          break;
-        }
-      }
-      
-      // Check if there are new leads (increase in count) - only for non-silent updates
-      if (!silent && previousLeadCount.current > 0 && allLeads.length > previousLeadCount.current) {
-        // Play notification sound for new leads
-        playNotificationSound();
-        toast.info(`New lead received! Total leads: ${allLeads.length}`);
-      }
-      
-      previousLeadCount.current = allLeads.length;
-      
-      // Always replace leads with fresh data from API
-      setLeads(allLeads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-      
+      // Show first page immediately (don't wait for all pages) - dashboard loads fast!
       if (!silent) {
-        toast.success(`Leads refreshed successfully (${allLeads.length} total)`);
+        setLeads(allLeads);
+        setLoading(false);
+      } else {
+        // For silent refreshes, also show first page immediately
+        setLeads(allLeads);
+      }
+      
+      // Check total count from first response
+      const totalCount = response.count || allLeads.length;
+      const totalPages = Math.ceil(totalCount / 100);
+      
+      // OPTIMIZATION: Load remaining pages in background without blocking UI
+      if (totalPages > 1) {
+        // Limit to reasonable number of pages to avoid overwhelming the server
+        const maxPagesToLoad = Math.min(totalPages, 100); // Max 10,000 leads
+        
+        // Load pages in parallel batches for speed (don't block UI)
+        const batchSize = 5; // Load 5 pages at a time
+        
+        // Load all remaining pages in background
+        (async () => {
+          try {
+            for (let pageNum = 2; pageNum <= maxPagesToLoad; pageNum += batchSize) {
+              const batchPromises = [];
+              
+              // Create batch of page requests
+              for (let i = 0; i < batchSize && (pageNum + i) <= maxPagesToLoad; i++) {
+                batchPromises.push(
+                  leadsAPI.getLeads({ 
+                    page_size: 100, 
+                    page: (pageNum + i).toString(),
+                    ordering: '-created_at'
+                  }).catch((err) => {
+                    // Silently handle individual page errors - return empty results
+                    return { results: [], next: null, count: 0 };
+                  })
+                );
+              }
+              
+              // Wait for batch to complete
+              const batchResults = await Promise.all(batchPromises);
+              
+              // Add results to allLeads
+              batchResults.forEach((batchResponse) => {
+                if (batchResponse?.results) {
+                  allLeads = [...allLeads, ...batchResponse.results];
+                }
+              });
+              
+              // Update leads state periodically (every 5 pages) to show progress
+              if (pageNum % 5 === 2 || pageNum + batchSize > maxPagesToLoad) {
+                const sortedLeads = allLeads.sort((a, b) => 
+                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                );
+                setLeads(sortedLeads);
+              }
+            }
+            
+            // Final update with all loaded leads, sorted
+            const sortedLeads = allLeads.sort((a, b) => 
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+            setLeads(sortedLeads);
+            
+            // Check for new leads after background loading completes
+            if (previousLeadCount.current > 0 && sortedLeads.length > previousLeadCount.current) {
+              if (!silent) {
+                playNotificationSound();
+                toast.info(`New lead received! Total leads: ${sortedLeads.length}`);
+              }
+            }
+            
+            previousLeadCount.current = sortedLeads.length;
+            
+            if (!silent && sortedLeads.length > 100) {
+              toast.success(`All leads loaded (${sortedLeads.length} total)`);
+            }
+          } catch (error) {
+            // Background loading errors are handled silently
+            // We already have the first page showing, so dashboard still works
+          }
+        })();
+      } else {
+        // No additional pages - update count and check for new leads
+        if (!silent && previousLeadCount.current > 0 && allLeads.length > previousLeadCount.current) {
+          playNotificationSound();
+          toast.info(`New lead received! Total leads: ${allLeads.length}`);
+        }
+        previousLeadCount.current = allLeads.length;
       }
     } catch (error) {
       if (!silent) {
         toast.error('Failed to fetch leads');
+        setLoading(false);
       }
-    } finally {
-      if (!silent) setLoading(false);
     }
   }, [playNotificationSound]);
 
