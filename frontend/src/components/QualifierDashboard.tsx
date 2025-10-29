@@ -217,27 +217,6 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
                 allLeads = [...allLeads, ...newLeads];
               }
               
-              // Update leads state periodically (every batch or when approaching limit) using functional update to prevent race conditions
-              if (!hasNextPage || currentPage + batchSize > maxPagesToLoad || (currentPage - 1) % 10 === 1) {
-                // Create a copy and sort to avoid mutation issues
-                const sortedLeads = [...allLeads].sort((a, b) => 
-                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                );
-                // Use functional update to merge with any new leads that arrived during loading
-                setLeads(prevLeads => {
-                  // Create a map of existing leads by ID to deduplicate
-                  const leadMap = new Map<number, Lead>();
-                  // Add existing leads first (they might have been updated)
-                  prevLeads.forEach(lead => leadMap.set(lead.id, lead));
-                  // Add new leads (newer data takes precedence)
-                  sortedLeads.forEach(lead => leadMap.set(lead.id, lead));
-                  // Convert back to array and sort
-                  return Array.from(leadMap.values()).sort((a, b) => 
-                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                  );
-                });
-              }
-              
               // Move to next batch
               currentPage += batchSize;
               
@@ -245,7 +224,8 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
               if (!hasNextPage) break;
             }
             
-            // Final update with all loaded leads, sorted - using functional update
+            // Single final update with all loaded leads after background loading completes
+            // This prevents multiple state updates that cause counter fluctuations
             const sortedLeads = [...allLeads].sort((a, b) => 
               new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             );
@@ -262,7 +242,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
               );
               
-              // Update count
+              // Update count only after all leads are loaded
               const finalCount = finalLeads.length;
               if (previousLeadCount.current > 0 && finalCount > previousLeadCount.current) {
       if (!silent) {
@@ -306,7 +286,12 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
     fetchLeads();
     
     // Auto-refresh every 30 seconds silently (no screen flicker)
-    const interval = setInterval(() => fetchLeads(true), 30000);
+    // Skip if background loading is in progress to prevent interference
+    const interval = setInterval(() => {
+      if (!backgroundLoadingInProgress.current) {
+        fetchLeads(true);
+      }
+    }, 30000);
     
     return () => {
       clearInterval(interval);
@@ -325,11 +310,30 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       // Show toast notification
       toast.info(`New lead received: ${lead.full_name || 'Unnamed lead'}`);
       
-      // Update the lead count
+      // Update the lead in state immediately instead of triggering a full refresh
+      setLeads(prevLeads => {
+        // Check if lead already exists
+        const existingIndex = prevLeads.findIndex(l => l.id === lead.id);
+        if (existingIndex !== -1) {
+          // Update existing lead
+          const newLeads = [...prevLeads];
+          newLeads[existingIndex] = lead;
+          return newLeads;
+        } else {
+          // Add new lead at the beginning (most recent first)
+          return [lead, ...prevLeads].sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        }
+      });
+      
+      // Update count
       previousLeadCount.current += 1;
       
-      // Trigger a refresh to get the latest data
+      // Only trigger a refresh if background loading is not in progress
+      if (!backgroundLoadingInProgress.current) {
       fetchLeads(true);
+      }
     } else if (type === 'LEAD_UPDATED' && lead.status === 'sent_to_kelly') {
       
       // Play notification sound for updated leads sent to qualifier
@@ -338,8 +342,26 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       // Show toast notification
       toast.info(`Lead updated: ${lead.full_name || 'Unnamed lead'}`);
       
-      // Trigger a refresh to get the latest data
+      // Update the lead in state immediately
+      setLeads(prevLeads => {
+        const existingIndex = prevLeads.findIndex(l => l.id === lead.id);
+        if (existingIndex !== -1) {
+          // Update existing lead
+          const newLeads = [...prevLeads];
+          newLeads[existingIndex] = lead;
+          return newLeads;
+        } else {
+          // Add if doesn't exist
+          return [lead, ...prevLeads].sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        }
+      });
+      
+      // Only trigger a refresh if background loading is not in progress
+      if (!backgroundLoadingInProgress.current) {
       fetchLeads(true);
+      }
     } else {
     }
   }, [playNotificationSound, fetchLeads]);
