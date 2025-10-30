@@ -110,9 +110,15 @@ def import_leads_from_json(json_file):
             if lead_data.get('appointment_date'):
                 appointment_date = datetime.fromisoformat(lead_data['appointment_date'].split('T')[0]).date()
             
-            # Check if lead already exists (by phone number)
+            # Check if lead already exists (by phone number or lead_number)
             # SAFETY: This prevents duplicates and preserves existing data
-            existing_lead = Lead.objects.filter(phone=lead_data['phone']).first()
+            existing_lead = None
+            if lead_data.get('lead_number'):
+                existing_lead = Lead.objects.filter(lead_number=lead_data['lead_number']).first()
+            
+            # If not found by lead_number, check by phone
+            if not existing_lead:
+                existing_lead = Lead.objects.filter(phone=lead_data['phone']).first()
             
             if existing_lead:
                 # SAFE UPDATE: Only update fields from imported data

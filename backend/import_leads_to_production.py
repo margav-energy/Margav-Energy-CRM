@@ -6,13 +6,6 @@ Run this on your Render/production server
 
 import json
 import sys
-import os
-import django
-
-# Setup Django environment
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'crm_backend.settings')
-django.setup()
-
 from django.contrib.auth import get_user_model
 from leads.models import Lead
 from django.utils import timezone
@@ -22,11 +15,6 @@ User = get_user_model()
 
 def import_leads_from_json(json_file):
     """Import leads from exported JSON file"""
-    
-    # Make path absolute - look in parent directory
-    if not os.path.isabs(json_file):
-        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        json_file = os.path.join(parent_dir, json_file)
     
     print(f"Loading leads from {json_file}...")
     
@@ -154,3 +142,4 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
         sys.exit(1)
+

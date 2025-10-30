@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lead } from '../types';
 import { leadsAPI } from '../api';
+import { dedupeLeadsById } from '../utils/leadFilters';
 import { toast } from 'react-toastify';
 import LeadDetailsModal from './LeadDetailsModal';
 import {
@@ -226,6 +227,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
       } else if (userRole === 'qualifier') {
         columnDefinitions = [
           { id: 'sent_to_kelly', title: 'To Qualify', statuses: ['sent_to_kelly'], color: 'bg-blue-100' },
+          { id: 'qualified', title: 'Qualified', statuses: ['qualified'], color: 'bg-green-100' },
           { id: 'appointments', title: 'Appointments Set', statuses: ['appointment_set'], color: 'bg-purple-100' },
           { id: 'qualifier_callback', title: 'On Hold/Callback', statuses: ['on_hold', 'qualifier_callback'], color: 'bg-orange-100' },
           { id: 'no_contact', title: 'No Contact', statuses: ['no_contact'], color: 'bg-yellow-100' },
@@ -240,12 +242,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
       }
 
       const validLeads = allLeads.filter(lead => lead && lead.id);
+      const uniqueLeads = dedupeLeadsById(validLeads);
       
       // Show board immediately with first page of leads
+      // Populate columns
       const populatedColumns = columnDefinitions.map(column => ({
         ...column,
-        leads: validLeads.filter(lead => column.statuses.includes(lead.status)),
+        leads: uniqueLeads.filter(lead => column.statuses.includes(lead.status)),
       }));
+      // No catch-all column for qualifiers
 
       setColumns(populatedColumns);
       setLoading(false); // Show board immediately
@@ -256,10 +261,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
       
       // OPTIMIZATION: Load remaining pages in background without blocking UI
       if (hasMorePages) {
-        // Calculate expected pages from count, but also use next URL if available
-        const estimatedTotalPages = Math.ceil(totalCount / 100);
-        // Use a higher limit to ensure we get all leads, but still cap it
-        const maxPagesToLoad = Math.min(Math.max(estimatedTotalPages, 10), 200); // At least 10 pages, max 20,000 leads
+      // Calculate expected pages from count using actual page size returned
+      const pageSize = Math.max(1, response.results?.length || 100);
+      const estimatedTotalPages = Math.ceil(totalCount / pageSize);
+        // Cap to prevent runaway loops; no artificial minimum so we don't over-fetch
+        const maxPagesToLoad = Math.min(estimatedTotalPages, 200);
         
         // Load pages in parallel batches for speed (don't block UI)
         const batchSize = 5; // Load 5 pages at a time
@@ -274,68 +280,75 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
               const batchPromises = [];
               const batchEndPage = Math.min(currentPage + batchSize - 1, maxPagesToLoad);
               
-              // Create batch of page requests
+              // Create batch of page requests without mutating outer vars inside catch
               for (let pageNum = currentPage; pageNum <= batchEndPage; pageNum++) {
                 batchPromises.push(
                   leadsAPI.getLeads({ 
                     page_size: 100, 
                     page: pageNum.toString(),
                     ordering: '-created_at'
-                  }).catch((err) => {
-                    // Silently handle individual page errors - return empty results
-                    return { results: [], next: null, count: 0 };
+                  })
+                  .then((res) => ({ data: res, had404: false, isError: false }))
+                  .catch((err: any) => {
+                    const had404 = err?.response?.status === 404 || err?.response?.status === 400;
+                    return { data: { results: [], next: null, count: 0 }, had404, isError: true };
                   })
                 );
               }
               
               // Wait for batch to complete
-              const batchResults = await Promise.all(batchPromises);
+              const batchResults: Array<{ data: any; had404: boolean; isError: boolean }> = await Promise.all(batchPromises);
+              
+              // If any 404 occurred, stop at the first error index and process those before it
+              const errorIndex = batchResults.findIndex((r) => r?.had404 === true);
+              if (errorIndex >= 0) {
+                hasNextPage = false;
+                const resultsBefore404 = batchResults.slice(0, errorIndex).map((r) => r.data);
+                const validResults = resultsBefore404.filter((result: any) => result?.results && result.results.length > 0);
+                const newLeads = validResults.flatMap((batchResponse: any) => batchResponse.results);
+                if (newLeads.length > 0) {
+                  allLeads = [...allLeads, ...newLeads];
+                }
+                break;
+              }
               
               // Filter out empty/error responses and get valid results
-              const validResults = batchResults.filter(result => result?.results && result.results.length > 0);
+              const validResults = batchResults
+                .filter((r) => r && !r.isError && r.data?.results && r.data.results.length > 0)
+                .map((r) => r.data);
               
               // Check the LAST valid result to see if there are more pages
-              // This is critical: we need to check the last page in the batch, not just any page
               if (validResults.length > 0) {
                 const lastResult = validResults[validResults.length - 1];
                 hasNextPage = !!lastResult.next;
               } else {
-                // If no valid results, check if we got any results at all
-                hasNextPage = batchResults.some(result => result?.next);
+                hasNextPage = false;
               }
               
-              // Add results to allLeads (using functional approach to avoid closure issue)
-              const newLeads = validResults
-                .flatMap((batchResponse) => batchResponse.results);
-              
-              // Only add if we have new leads
+              // Add results to allLeads
+              const newLeads = validResults.flatMap((batchResponse: any) => batchResponse.results);
               if (newLeads.length > 0) {
                 allLeads = [...allLeads, ...newLeads];
               }
               
-              // Update columns periodically (every batch or when approaching limit) to show progress
-              if (!hasNextPage || currentPage + batchSize > maxPagesToLoad || (currentPage - 1) % 10 === 1) {
-                const validLeads = allLeads.filter(lead => lead && lead.id);
-                const populatedColumns = columnDefinitions.map(column => ({
-                  ...column,
-                  leads: validLeads.filter(lead => column.statuses.includes(lead.status)),
-                }));
-                setColumns(populatedColumns);
+              // If we already reached the expected total, stop
+              if (totalCount && allLeads.length >= totalCount) {
+                hasNextPage = false;
               }
               
               // Move to next batch
               currentPage += batchSize;
-              
-              // Stop if no more pages
               if (!hasNextPage) break;
             }
             
             // Final update with all loaded leads
             const validLeads = allLeads.filter(lead => lead && lead.id);
+            const uniqueLeads = dedupeLeadsById(validLeads);
             const populatedColumns = columnDefinitions.map(column => ({
               ...column,
-              leads: validLeads.filter(lead => column.statuses.includes(lead.status)),
+              leads: uniqueLeads.filter(lead => column.statuses.includes(lead.status)),
             }));
+            // No catch-all column for qualifiers
             setColumns(populatedColumns);
           } catch (error) {
             // Background loading errors are handled silently

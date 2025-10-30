@@ -6,6 +6,29 @@
 {% block extrastyle %}
 {{ block.super }}
 <style>
+/* Margav theme variables + dark mode */
+:root {
+    --brand-bg: #1f2937; /* slate-800 */
+    --brand-accent: #16a34a; /* green-600 */
+    --brand-accent-2: #2563eb; /* blue-600 */
+    --brand-surface: #ffffff;
+    --brand-text: #111827;
+}
+.theme-dark {
+    --brand-bg: #0b1220;
+    --brand-surface: #0f172a;
+    --brand-text: #e5e7eb;
+}
+body, .dashboard #content, .module caption, .module h2, .breadcrumbs, .grp-header, .grp-module {
+    background-color: var(--brand-surface) !important;
+    color: var(--brand-text) !important;
+}
+.button, input[type="submit"], .submit-row input, .default, .deletelink, .addlink {
+    background: var(--brand-accent) !important;
+    border-color: var(--brand-accent) !important;
+    color: #fff !important;
+}
+.nav-toggle { position: fixed; right: 12px; top: 10px; z-index: 1000; background: var(--brand-bg); color: #fff; border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
 /* Hide navigation bar */
 #header {
     display: none !important;
@@ -28,7 +51,7 @@
 
 /* Custom Navigation Menu */
 .custom-nav-menu {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(90deg, var(--brand-accent) 0%, var(--brand-accent-2) 100%);
     padding: 15px 30px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     margin-bottom: 20px;
@@ -83,7 +106,7 @@
 
 .nav-link.active {
     background: white;
-    color: #667eea;
+    color: var(--brand-accent-2);
 }
 
 .user-info {
@@ -163,6 +186,10 @@
 </style>
 <script>
 (function() {
+    try {
+        var saved = localStorage.getItem('admin_theme');
+        if (saved === 'dark') document.documentElement.classList.add('theme-dark');
+    } catch(e){}
     // Hide header immediately
     function hideNavigationElements() {
         const header = document.getElementById('header');
@@ -211,6 +238,11 @@
         });
     });
 })();
+function toggleTheme(){
+    var root = document.documentElement;
+    var isDark = root.classList.toggle('theme-dark');
+    try { localStorage.setItem('admin_theme', isDark ? 'dark' : 'light'); } catch(e){}
+}
 </script>
 {% endblock %}
 
@@ -219,8 +251,8 @@
 <div class="custom-nav-menu">
     <div class="nav-container">
         <a href="{% url 'admin:index' %}" class="nav-brand">
-            <span>🏠</span>
-            <span>Margav Energy CRM</span>
+            
+            <span>MARGAV ENERGY CRM</span>
         </a>
         <div class="nav-links">
             <a href="{% url 'admin:index' %}" class="nav-link">📊 Dashboard</a>
@@ -231,6 +263,7 @@
         </div>
         <div class="user-info">
             <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+            <button type="button" class="logout-link" onclick="toggleTheme()">🌓</button>
             <a href="{% url 'admin:logout' %}" class="logout-link">🚪 Logout</a>
         </div>
     </div>

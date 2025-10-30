@@ -23,11 +23,25 @@ const QualifyLeadModal: React.FC<QualifyLeadModalProps> = ({
   const [fieldSalesReps, setFieldSalesReps] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Editable lead fields for qualifiers
+  const [fullName, setFullName] = useState<string>('');
+  const [phone, setPhone] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [address1, setAddress1] = useState<string>('');
+  const [city, setCity] = useState<string>('');
+  const [postalCode, setPostalCode] = useState<string>('');
+
   React.useEffect(() => {
     if (lead) {
       setStatus(lead.status);
       setNotes(lead.notes || '');
       setFieldSalesRep(lead.field_sales_rep || null);
+      setFullName(lead.full_name || '');
+      setPhone(lead.phone || '');
+      setEmail(lead.email || '');
+      setAddress1(lead.address1 || '');
+      setCity(lead.city || '');
+      setPostalCode(lead.postal_code || '');
       // Format existing appointment date for datetime-local input
       if (lead.appointment_date) {
         try {
@@ -83,6 +97,14 @@ const QualifyLeadModal: React.FC<QualifyLeadModalProps> = ({
         status: status as Lead['status'],
         notes: notes
       };
+
+      // Include edited lead information if changed
+      if (fullName && fullName !== lead.full_name) formData.full_name = fullName;
+      if (phone && phone !== lead.phone) formData.phone = phone;
+      if (email !== undefined && email !== lead.email) formData.email = email;
+      if (address1 !== undefined && address1 !== lead.address1) formData.address1 = address1;
+      if (city !== undefined && city !== lead.city) formData.city = city;
+      if (postalCode !== undefined && postalCode !== lead.postal_code) formData.postal_code = postalCode;
 
       // Add field sales rep if selected
       if (fieldSalesRep) {
@@ -155,18 +177,30 @@ const QualifyLeadModal: React.FC<QualifyLeadModalProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                  <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{lead.full_name}</p>
+                  <input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="mt-1 w-full px-2 py-2 border border-gray-300 rounded"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Phone</label>
-                  <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{lead.phone}</p>
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/[^0-9+\s()-]/g, ''))}
+                    className="mt-1 w-full px-2 py-2 border border-gray-300 rounded"
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{lead.email || 'Not provided'}</p>
+                  <input
+                    value={email || ''}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="mt-1 w-full px-2 py-2 border border-gray-300 rounded"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Current Status</label>
@@ -176,17 +210,29 @@ const QualifyLeadModal: React.FC<QualifyLeadModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">Address</label>
-                <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{lead.address1 || 'Not provided'}</p>
+                <input
+                  value={address1 || ''}
+                  onChange={(e) => setAddress1(e.target.value)}
+                  className="mt-1 w-full px-2 py-2 border border-gray-300 rounded"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">City</label>
-                  <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{lead.city || 'Not provided'}</p>
+                  <input
+                    value={city || ''}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="mt-1 w-full px-2 py-2 border border-gray-300 rounded"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Postcode</label>
-                  <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">{lead.postal_code || 'Not provided'}</p>
+                  <input
+                    value={postalCode || ''}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    className="mt-1 w-full px-2 py-2 border border-gray-300 rounded"
+                  />
                 </div>
               </div>
 

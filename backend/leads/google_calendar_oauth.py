@@ -207,7 +207,7 @@ class GoogleCalendarOAuthService:
             attendees: List of attendee email addresses
             
         Returns:
-            Google Calendar event link if successful, None otherwise
+            Google Calendar event ID if successful, None otherwise
         """
         if not self.service:
             logger.warning("Google Calendar service not available")
@@ -240,18 +240,35 @@ class GoogleCalendarOAuthService:
             if attendees:
                 event['attendees'] = [{'email': email} for email in attendees]
             
-            # Create the event
-            created_event = self.service.events().insert(
-                calendarId='primary',  # sales@margav.energy's primary calendar
-                body=event,
-                sendUpdates='all'  # Send email notifications to all attendees
-            ).execute()
+            # Create the event on configured calendar (fallback to primary)
+            from django.conf import settings
+            calendar_id = getattr(settings, 'GOOGLE_CALENDAR_EMAIL', None) or 'primary'
+            try:
+                created_event = self.service.events().insert(
+                    calendarId=calendar_id,
+                    body=event,
+                    sendUpdates='all'
+                ).execute()
+            except HttpError as e:
+                logger.error(f"Google Calendar API error for calendar '{calendar_id}': {e}")
+                # Fallback to 'primary' calendar if configured email fails
+                if calendar_id != 'primary':
+                    try:
+                        created_event = self.service.events().insert(
+                            calendarId='primary',
+                            body=event,
+                            sendUpdates='all'
+                        ).execute()
+                        logger.info("Fallback to 'primary' calendar succeeded")
+                    except HttpError as e2:
+                        logger.error(f"Google Calendar API error on fallback 'primary': {e2}")
+                        return None
+                else:
+                    return None
             
             event_id = created_event.get('id')
-            event_link = created_event.get('htmlLink')
-            
             logger.info(f"Created calendar event {event_id}")
-            return event_link
+            return event_id
             
         except HttpError as e:
             logger.error(f"Google Calendar API error: {e}")
@@ -269,7 +286,7 @@ class GoogleCalendarOAuthService:
             appointment_date: Appointment datetime
             
         Returns:
-            Event link if successful, None otherwise
+            Event ID if successful, None otherwise
         """
         if not self.service:
             logger.warning("Google Calendar service not available")
@@ -294,7 +311,7 @@ This appointment was automatically created from the Margav Energy CRM system.
             """.strip()
             
             # Create the event
-            event_link = self.create_calendar_event(
+            event_id = self.create_calendar_event(
                 summary=summary,
                 start_datetime=appointment_date,
                 end_datetime=end_datetime,
@@ -302,7 +319,7 @@ This appointment was automatically created from the Margav Energy CRM system.
                 attendees=['sales@margav.energy']
             )
             
-            return event_link
+            return event_id
             
         except Exception as e:
             logger.error(f"Failed to create appointment event: {e}")
@@ -325,10 +342,22 @@ This appointment was automatically created from the Margav Energy CRM system.
         
         try:
             # Get the existing event
-            event = self.service.events().get(
-                calendarId='primary',
-                eventId=lead.google_calendar_event_id
-            ).execute()
+            from django.conf import settings
+            calendar_id = getattr(settings, 'GOOGLE_CALENDAR_EMAIL', None) or 'primary'
+            try:
+                event = self.service.events().get(
+                    calendarId=calendar_id,
+                    eventId=lead.google_calendar_event_id
+                ).execute()
+            except HttpError as e:
+                logger.error(f"Get event failed on '{calendar_id}': {e}")
+                if calendar_id != 'primary':
+                    event = self.service.events().get(
+                        calendarId='primary',
+                        eventId=lead.google_calendar_event_id
+                    ).execute()
+                else:
+                    return None
             
             # Calculate end time (1 hour duration)
             end_datetime = appointment_date + timedelta(hours=1)
@@ -357,12 +386,24 @@ This appointment was automatically updated from the Margav Energy CRM system.
             }
             
             # Update the event
-            updated_event = self.service.events().update(
-                calendarId='primary',
-                eventId=lead.google_calendar_event_id,
-                body=event,
-                sendUpdates='all'
-            ).execute()
+            try:
+                updated_event = self.service.events().update(
+                    calendarId=calendar_id,
+                    eventId=lead.google_calendar_event_id,
+                    body=event,
+                    sendUpdates='all'
+                ).execute()
+            except HttpError as e:
+                logger.error(f"Update event failed on '{calendar_id}': {e}")
+                if calendar_id != 'primary':
+                    updated_event = self.service.events().update(
+                        calendarId='primary',
+                        eventId=lead.google_calendar_event_id,
+                        body=event,
+                        sendUpdates='all'
+                    ).execute()
+                else:
+                    return None
             
             logger.info(f"Updated calendar event {lead.google_calendar_event_id}")
             return updated_event.get('htmlLink')
@@ -389,11 +430,24 @@ This appointment was automatically updated from the Margav Energy CRM system.
             return False
         
         try:
-            self.service.events().delete(
-                calendarId='primary',
-                eventId=lead.google_calendar_event_id,
-                sendUpdates='all'
-            ).execute()
+            from django.conf import settings
+            calendar_id = getattr(settings, 'GOOGLE_CALENDAR_EMAIL', None) or 'primary'
+            try:
+                self.service.events().delete(
+                    calendarId=calendar_id,
+                    eventId=lead.google_calendar_event_id,
+                    sendUpdates='all'
+                ).execute()
+            except HttpError as e:
+                logger.error(f"Delete event failed on '{calendar_id}': {e}")
+                if calendar_id != 'primary':
+                    self.service.events().delete(
+                        calendarId='primary',
+                        eventId=lead.google_calendar_event_id,
+                        sendUpdates='all'
+                    ).execute()
+                else:
+                    return False
             
             logger.info(f"Deleted calendar event {lead.google_calendar_event_id}")
             return True

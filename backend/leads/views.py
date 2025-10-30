@@ -80,11 +80,17 @@ class LeadViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
+        request = self.request
+        show_all = request.query_params.get('all') in ['1', 'true', 'True']
         
         # Admins can see all leads
         if user.is_admin:
             return Lead.objects.all()
         
+        # Allow qualifiers to see all leads when explicitly requested with ?all=true
+        if user.is_qualifier and show_all:
+            return Lead.objects.all()
+
         # Agents can only see their own leads
         if user.is_agent:
             return Lead.objects.filter(assigned_agent=user)

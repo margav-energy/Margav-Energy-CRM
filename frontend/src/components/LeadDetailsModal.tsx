@@ -27,6 +27,21 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
   
   if (!isOpen || !lead) return null;
 
+  // Sanitize notes to avoid duplicated detailed sections
+  const sanitizeNotes = (notes?: string) => {
+    if (!notes) return '';
+    const marker = '--- DETAILED LEAD INFORMATION ---';
+    const idx = notes.indexOf(marker);
+    if (idx === -1) return notes;
+    const before = notes.substring(0, idx).trim();
+    const after = notes.substring(idx);
+    // Split by marker and keep only the first detailed block
+    const parts = after.split(marker).filter(Boolean);
+    const firstDetails = parts.length > 0 ? parts[0].trim() : '';
+    const rebuilt = `${before ? before + '\n\n' : ''}${marker}\n${firstDetails}`.trim();
+    return rebuilt;
+  };
+
   const openPhotoModal = (type: string, src: string) => {
     setSelectedPhoto({ type, src });
     setShowPhotoModal(true);
@@ -224,7 +239,7 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
                 </svg>
                 Notes
               </h3>
-              <p className="text-gray-700 whitespace-pre-wrap">{lead.notes}</p>
+              <p className="text-gray-700 whitespace-pre-wrap">{sanitizeNotes(lead.notes)}</p>
             </div>
           )}
 

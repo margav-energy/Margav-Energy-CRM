@@ -311,6 +311,21 @@ class Lead(SoftDeleteModel):
                 logger.warning(f"No appointment date set for lead {self.id}")
                 return False
             
+            # Ensure Google service is initialized (refresh from stored token if needed)
+            try:
+                google_calendar_oauth_service.get_connection_status()
+            except Exception:
+                pass
+            if not getattr(google_calendar_oauth_service, 'service', None):
+                logger.warning("Google Calendar service not initialized at sync time")
+                # Attempt one more init and proceed; if still None, bail out
+                try:
+                    google_calendar_oauth_service._initialize_service()
+                except Exception:
+                    return False
+                if not getattr(google_calendar_oauth_service, 'service', None):
+                    return False
+
             # Convert to timezone-aware datetime if needed
             appointment_date = self.appointment_date
             if timezone.is_naive(appointment_date):
@@ -318,18 +333,25 @@ class Lead(SoftDeleteModel):
             
             # Create or update calendar event
             if self.google_calendar_event_id:
-                # Update existing event
+                # Update existing event; if update fails, attempt to create a new one and store ID
                 event_link = google_calendar_oauth_service.update_appointment_event(self, appointment_date)
+                if not event_link:
+                    event_id_new = google_calendar_oauth_service.create_appointment_event(self, appointment_date)
+                    if event_id_new:
+                        self.google_calendar_event_id = event_id_new
+                        self.save(update_fields=['google_calendar_event_id'])
+                        event_link = True
             else:
                 # Create new event
-                event_link = google_calendar_oauth_service.create_appointment_event(self, appointment_date)
+                event_id = google_calendar_oauth_service.create_appointment_event(self, appointment_date)
+                if event_id:
+                    self.google_calendar_event_id = event_id
+                    self.save(update_fields=['google_calendar_event_id'])
+                    event_link = True
+                else:
+                    event_link = None
             
             if event_link:
-                # Extract event ID from the link for storage
-                # The OAuth service returns the full event link, but we need to store the event ID
-                # For now, we'll store a placeholder and update the logic later
-                self.google_calendar_event_id = "oauth_event_created"
-                self.save(update_fields=['google_calendar_event_id'])
                 logger.info(f"Successfully synced lead {self.id} to Google Calendar")
                 return True
             else:

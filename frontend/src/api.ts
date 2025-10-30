@@ -125,6 +125,7 @@ export const leadsAPI = {
     ordering?: string;
     page_size?: number;
     page?: string;
+    all?: boolean | string;
   }): Promise<ApiResponse<Lead>> => {
     const response: AxiosResponse<ApiResponse<Lead>> = await api.get('/leads/', { params });
     return response.data;

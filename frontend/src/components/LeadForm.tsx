@@ -273,6 +273,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
   // Update form data when lead prop changes (for editing)
   useEffect(() => {
     if (lead) {
+      const parsedFromLead = lead.notes ? parseNotesData(lead.notes) : {} as any;
       setFormData(prev => ({
         ...prev,
         full_name: lead.full_name || '',
@@ -281,7 +282,8 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         address: lead.address1 || '',
         city: lead.city || '',
         postcode: lead.postal_code || '',
-        notes: lead.notes || '',
+        // Strip any previous detailed section when editing to avoid duplication
+        notes: (parsedFromLead as any).notes || '',
         appointment_date: lead.appointment_date || '',
         energy_bill_amount: lead.energy_bill_amount !== null && lead.energy_bill_amount !== undefined ? lead.energy_bill_amount.toString() : '',
         has_ev_charger: lead.has_ev_charger !== null && lead.has_ev_charger !== undefined ? lead.has_ev_charger.toString() : '',
@@ -389,7 +391,8 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         day_night_rate: formData.day_night_rate as 'yes' | 'no' | undefined,
         has_previous_quotes: formData.has_previous_quotes === 'true' ? true : formData.has_previous_quotes === 'false' ? false : undefined,
         previous_quotes_details: formData.previous_quotes_details || undefined,
-        notes: `${formData.notes}\n\n--- DETAILED LEAD INFORMATION ---\n` +
+        // Ensure we don't duplicate an existing detailed section
+        notes: `${(formData.notes || '').split('--- DETAILED LEAD INFORMATION ---')[0].trim()}\n\n--- DETAILED LEAD INFORMATION ---\n` +
                `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                `Property Ownership: ${formData.property_ownership}\n` +
                `Property Type: ${formData.property_type}\n` +
@@ -448,7 +451,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         day_night_rate: formData.day_night_rate as 'yes' | 'no' | undefined,
         has_previous_quotes: formData.has_previous_quotes === 'true' ? true : formData.has_previous_quotes === 'false' ? false : undefined,
         previous_quotes_details: formData.previous_quotes_details || undefined,
-        notes: `${formData.notes}\n\n--- DETAILED LEAD INFORMATION ---\n` +
+        notes: `${(formData.notes || '').split('--- DETAILED LEAD INFORMATION ---')[0].trim()}\n\n--- DETAILED LEAD INFORMATION ---\n` +
                `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                `Property Ownership: ${formData.property_ownership}\n` +
                `Property Type: ${formData.property_type}\n` +
@@ -507,7 +510,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           day_night_rate: formData.day_night_rate as 'yes' | 'no' | undefined,
         has_previous_quotes: formData.has_previous_quotes === 'true' ? true : formData.has_previous_quotes === 'false' ? false : undefined,
         previous_quotes_details: formData.previous_quotes_details || undefined,
-          notes: `${formData.notes}\n\n--- DETAILED LEAD INFORMATION ---\n` +
+          notes: `${(formData.notes || '').split('--- DETAILED LEAD INFORMATION ---')[0].trim()}\n\n--- DETAILED LEAD INFORMATION ---\n` +
                  `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                  `Property Ownership: ${formData.property_ownership}\n` +
                  `Property Type: ${formData.property_type}\n` +

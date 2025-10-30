@@ -8,6 +8,7 @@ import QualifierLeadModal from './QualifierLeadModal';
 import AppointmentForm from './AppointmentForm';
 import LeadDetailsModal from './LeadDetailsModal';
 import { useLocalStorageEvents } from '../hooks/useLocalStorageEvents';
+import { filterLeadsForQualifier, dedupeLeadsById } from '../utils/leadFilters';
 
 interface QualifierDashboardProps {
   onKanbanLeadUpdate?: React.MutableRefObject<((lead: Lead) => void) | null>;
@@ -27,6 +28,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
   const [searchQuery, setSearchQuery] = useState<string>('');
   const previousLeadCount = useRef<number>(0);
   const backgroundLoadingInProgress = useRef<boolean>(false);
+  
 
   // Handle lead updates from KanbanBoard
   const handleKanbanLeadUpdate = useCallback((updatedLead: Lead) => {
@@ -131,26 +133,23 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       
       // OPTIMIZATION: Fetch first page immediately to show dashboard quickly
       const response = await leadsAPI.getLeads({ page_size: 100, ordering: '-created_at' });
-      let allLeads = [...response.results];
+      // Single source of truth for filtering + dedupe
+      let allLeads = filterLeadsForQualifier(response.results);
       
       // Show first page immediately (don't wait for all pages) - dashboard loads fast!
       if (!silent) {
         setLeads(allLeads);
         setLoading(false);
       } else {
-        // For silent refreshes during background loading, merge with existing leads instead of overwriting
-        if (backgroundLoadingInProgress.current) {
-          setLeads(prevLeads => {
-            const leadMap = new Map<number, Lead>();
-            prevLeads.forEach(lead => leadMap.set(lead.id, lead));
-            allLeads.forEach(lead => leadMap.set(lead.id, lead));
-            return Array.from(leadMap.values()).sort((a, b) => 
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
-          });
-        } else {
-          setLeads(allLeads);
-        }
+        // For silent refreshes, ALWAYS merge with existing leads to avoid overwriting full dataset
+        setLeads(prevLeads => {
+          const leadMap = new Map<number, Lead>();
+          filterLeadsForQualifier(prevLeads).forEach(lead => leadMap.set(lead.id, lead));
+          allLeads.forEach(lead => leadMap.set(lead.id, lead));
+          return Array.from(leadMap.values()).sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        });
       }
       
       // Check if there are more pages - use response.next as the primary indicator
@@ -160,10 +159,11 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       // OPTIMIZATION: Load remaining pages in background without blocking UI
       if (hasMorePages && !backgroundLoadingInProgress.current) {
         backgroundLoadingInProgress.current = true;
-        // Calculate expected pages from count, but also use next URL if available
-        const estimatedTotalPages = Math.ceil(totalCount / 100);
-        // Use a higher limit to ensure we get all leads, but still cap it
-        const maxPagesToLoad = Math.min(Math.max(estimatedTotalPages, 10), 200); // At least 10 pages, max 20,000 leads
+        // Calculate expected pages from count using actual page size returned
+        const pageSize = Math.max(1, response.results?.length || 100);
+        const estimatedTotalPages = Math.ceil(totalCount / pageSize);
+        // Cap to prevent runaway loops; no artificial minimum so we don't over-fetch
+        const maxPagesToLoad = Math.min(estimatedTotalPages, 200);
         
         // Load pages in parallel batches for speed (don't block UI)
         const batchSize = 5; // Load 5 pages at a time
@@ -178,57 +178,76 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
               const batchPromises = [];
               const batchEndPage = Math.min(currentPage + batchSize - 1, maxPagesToLoad);
               
-              // Create batch of page requests
+              // Create batch of page requests without mutating outer vars inside catch
               for (let pageNum = currentPage; pageNum <= batchEndPage; pageNum++) {
                 batchPromises.push(
                   leadsAPI.getLeads({ 
                     page_size: 100, 
                     page: pageNum.toString(),
                     ordering: '-created_at'
-                  }).catch((err) => {
-                    // Silently handle individual page errors - return empty results
-                    return { results: [], next: null, count: 0 };
+                  })
+                  .then((res) => ({ data: res, had404: false, isError: false }))
+                  .catch((err: any) => {
+                    const had404 = err?.response?.status === 404 || err?.response?.status === 400;
+                    return { data: { results: [], next: null, count: 0 }, had404, isError: true };
                   })
                 );
               }
               
               // Wait for batch to complete
-              const batchResults = await Promise.all(batchPromises);
+              const batchResults: Array<{ data: any; had404: boolean; isError: boolean }> = await Promise.all(batchPromises);
+              
+              // If any 404 occurred, stop at the first error index and process those before it
+              const errorIndex = batchResults.findIndex((r) => r?.had404 === true);
+              if (errorIndex >= 0) {
+                hasNextPage = false;
+                const resultsBefore404 = batchResults.slice(0, errorIndex).map((r) => r.data);
+                const validResults = resultsBefore404.filter((result: any) => result?.results && result.results.length > 0);
+                const newLeads = validResults.flatMap((batchResponse: any) => batchResponse.results);
+                if (newLeads.length > 0) {
+                  allLeads = [...allLeads, ...newLeads];
+                }
+                break;
+              }
               
               // Filter out empty/error responses and get valid results
-              const validResults = batchResults.filter(result => result?.results && result.results.length > 0);
+              const validResults = batchResults
+                .filter((r) => r && !r.isError && r.data?.results && r.data.results.length > 0)
+                .map((r) => r.data);
               
               // Check the LAST valid result to see if there are more pages
-              // This is critical: we need to check the last page in the batch, not just any page
               if (validResults.length > 0) {
                 const lastResult = validResults[validResults.length - 1];
                 hasNextPage = !!lastResult.next;
               } else {
-                // If no valid results, check if we got any results at all
-                hasNextPage = batchResults.some(result => result?.next);
+                hasNextPage = false;
               }
               
-              // Add results to allLeads (using functional approach to avoid closure issue)
-              const newLeads = validResults
-                .flatMap((batchResponse) => batchResponse.results);
-              
-              // Only add if we have new leads
+              // Add results to allLeads
+              const newLeads = filterLeadsForQualifier(
+                validResults.flatMap((batchResponse: any) => batchResponse.results)
+              );
               if (newLeads.length > 0) {
                 allLeads = [...allLeads, ...newLeads];
               }
               
+              // If we already reached the expected total, stop
+              if (totalCount && allLeads.length >= totalCount) {
+                hasNextPage = false;
+              }
+              
               // Move to next batch
               currentPage += batchSize;
-              
-              // Stop if no more pages
               if (!hasNextPage) break;
             }
             
             // Single final update with all loaded leads after background loading completes
             // This prevents multiple state updates that cause counter fluctuations
-            const sortedLeads = [...allLeads].sort((a, b) => 
+            const sortedLeads = filterLeadsForQualifier(allLeads)
+              .sort((a, b) => 
               new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             );
+            
             
             // Use functional update to ensure we don't overwrite any new leads
             setLeads(prevLeads => {
@@ -256,7 +275,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
             });
             
             if (!silent && allLeads.length > 100) {
-              toast.success(`All leads loaded (${allLeads.length} total)`);
+              toast.success(`All leads loaded`);
             }
           } catch (error) {
             // Background loading errors are handled silently
@@ -269,7 +288,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
         // No additional pages - update count and check for new leads
         if (!silent && previousLeadCount.current > 0 && allLeads.length > previousLeadCount.current) {
           playNotificationSound();
-          toast.info(`New lead received! Total leads: ${allLeads.length}`);
+          toast.info(`New lead received!`);
         }
         previousLeadCount.current = allLeads.length;
       }
@@ -297,6 +316,8 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       clearInterval(interval);
     };
   }, [fetchLeads]);
+
+  //
 
   // Listen for lead updates from AgentDashboard via localStorage events
   const handleLeadUpdateMessage = useCallback((message: { type: string; lead: Lead; timestamp: number }) => {
@@ -417,6 +438,8 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
   };
 
   const getStatusCounts = (leadsToCount: Lead[]) => {
+    // Deduplicate by ID to ensure counts are accurate across pages/refreshes
+    const uniqueLeads = dedupeLeadsById(leadsToCount);
     const counts = {
       cold_call: 0,
       interested: 0,
@@ -436,7 +459,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       qualifier_callback: 0,
     };
 
-    leadsToCount.forEach(lead => {
+    uniqueLeads.forEach(lead => {
       if (lead.status in counts) {
         counts[lead.status as keyof typeof counts]++;
       }
@@ -496,7 +519,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
 
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <div 
           className="bg-white overflow-hidden shadow rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg"
           onClick={() => handleFilterClick('sent_to_kelly')}
@@ -512,6 +535,27 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Sent to Kelly</dt>
                   <dd className="text-lg font-medium text-gray-900">{statusCounts.sent_to_kelly}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div 
+          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg"
+          onClick={() => handleFilterClick('qualified')}
+        >
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-green-600 text-sm font-medium">✅</span>
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Qualified</dt>
+                  <dd className="text-lg font-medium text-gray-900">{statusCounts.qualified}</dd>
                 </dl>
               </div>
             </div>
@@ -621,6 +665,8 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
           onSuccess={handleAppointmentSuccess}
         />
       )}
+
+      {/* Admin/Qualifier Tools removed per request */}
 
       {/* Filter Modal */}
       {filterModalOpen && (
