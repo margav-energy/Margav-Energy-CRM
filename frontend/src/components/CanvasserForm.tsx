@@ -1336,10 +1336,10 @@ const CanvasserForm: React.FC = () => {
             {/* Canvasser Info - Auto-generated */}
             <div className="bg-gray-50 p-4 rounded-lg mb-4">
               <h3 className="font-semibold mb-2">Canvasser Information</h3>
-              <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Canvasser:</span>
-                  <p className="font-medium">{formData.canvasserName}</p>
+                  <p className="font-medium break-words">{formData.canvasserName}</p>
                 </div>
                 <div>
                   <span className="text-gray-600">Date:</span>
@@ -2139,54 +2139,54 @@ const CanvasserForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-2 sm:p-4">
+      <div className="max-w-4xl mx-auto w-full overflow-x-hidden">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Canvas Team Lead Sheet</h1>
-              <p className="text-lg text-gray-600 mt-1">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">Canvas Team Lead Sheet</h1>
+              <p className="text-sm sm:text-lg text-gray-600 mt-1">
                 Welcome, <span className="font-semibold text-[#3333cc]">{user?.first_name || user?.username || 'Canvasser'}</span>! 
               </p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 flex-shrink-0">
               <div className={`flex items-center space-x-2 ${formData.isOnline ? 'text-green-600' : 'text-red-600'}`}>
-                <span className="text-lg">{formData.isOnline ? '📶' : '❌'}</span>
-                <span className="text-sm font-medium">
+                <span className="text-base sm:text-lg">{formData.isOnline ? '📶' : '❌'}</span>
+                <span className="text-xs sm:text-sm font-medium">
                   {formData.isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
-              <div className="flex items-center space-x-4 text-sm">
-                <div className="flex items-center space-x-2 text-orange-600">
-                  <span className="text-lg">📤</span>
-                  <span className="font-medium">{pendingSubmissions.length} pending</span>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
+                <div className="flex items-center space-x-1 sm:space-x-2 text-orange-600">
+                  <span className="text-base sm:text-lg">📤</span>
+                  <span className="text-xs sm:text-sm font-medium whitespace-nowrap">{pendingSubmissions.length} pending</span>
                 </div>
-                  <div className="flex items-center space-x-2 text-green-600">
-                    <button
-                      onClick={() => setShowSyncedSubmissions(!showSyncedSubmissions)}
-                      className="relative flex items-center space-x-2 hover:text-green-700 transition-colors"
-                    >
-                      <span className="text-lg">🔔</span>
-                      <span className="font-medium">{actualSyncedCount} synced</span>
-                      {actualSyncedCount > 0 && (
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
-                      )}
-                    </button>
-                  </div>
+                <div className="flex items-center space-x-1 sm:space-x-2 text-green-600">
+                  <button
+                    onClick={() => setShowSyncedSubmissions(!showSyncedSubmissions)}
+                    className="relative flex items-center space-x-1 sm:space-x-2 hover:text-green-700 transition-colors"
+                  >
+                    <span className="text-base sm:text-lg">🔔</span>
+                    <span className="text-xs sm:text-sm font-medium whitespace-nowrap">{actualSyncedCount} synced</span>
+                    {actualSyncedCount > 0 && (
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+                    )}
+                  </button>
+                </div>
                 {actualSyncedCount > 0 && (
-                  <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded whitespace-nowrap hidden sm:block">
                     Great work! 🎉
                   </div>
                 )}
               </div>
-                <button
-                  onClick={handleLogout}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
-                >
-                  <span>🚪</span>
-                  <span>Logout</span>
-                </button>
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start"
+              >
+                <span>🚪</span>
+                <span>Logout</span>
+              </button>
             </div>
           </div>
         </div>
