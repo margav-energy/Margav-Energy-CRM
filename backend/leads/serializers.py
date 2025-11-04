@@ -203,21 +203,47 @@ class DialerLeadSerializer(serializers.ModelSerializer):
     Handles comprehensive dialer data.
     """
     dialer_user_id = serializers.CharField(required=False, allow_blank=True)
+    
+    # Form fields (stored in notes)
+    preferred_contact_time = serializers.CharField(required=False, allow_blank=True)
+    property_ownership = serializers.CharField(required=False, allow_blank=True)
+    property_type = serializers.CharField(required=False, allow_blank=True)
+    number_of_bedrooms = serializers.CharField(required=False, allow_blank=True)
+    roof_type = serializers.CharField(required=False, allow_blank=True)
+    roof_material = serializers.CharField(required=False, allow_blank=True)
+    average_monthly_electricity_bill = serializers.CharField(required=False, allow_blank=True)
+    current_energy_supplier = serializers.CharField(required=False, allow_blank=True)
+    electric_heating_appliances = serializers.CharField(required=False, allow_blank=True)
+    energy_details = serializers.CharField(required=False, allow_blank=True)
+    timeframe = serializers.CharField(required=False, allow_blank=True)
+    moving_properties_next_five_years = serializers.CharField(required=False, allow_blank=True)
+    timeframe_details = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Lead
         fields = [
             # Core fields
             'full_name', 'phone', 'email', 'notes', 'status',
+            # Address fields
+            'address1', 'city', 'postal_code',
             # Dialer-specific fields
             'dialer_lead_id', 'vendor_id', 'list_id', 'gmt_offset_now', 'phone_code',
             'phone_number', 'title', 'first_name', 'middle_initial', 'last_name',
-            'postal_code', 'country_code', 'gender', 'date_of_birth', 'alt_phone',
+            'country_code', 'gender', 'date_of_birth', 'alt_phone',
             'security_phrase', 'comments', 'user', 'campaign', 'phone_login',
             'fronter', 'closer', 'group', 'channel_group', 'SQLdate', 'epoch',
             'uniqueid', 'customer_zap_channel', 'server_ip', 'SIPexten', 'session_id',
             'dialed_number', 'dialed_label', 'rank', 'owner', 'camp_script',
             'in_script', 'script_width', 'script_height', 'recording_file',
+            # Energy section fields
+            'energy_bill_amount', 'has_ev_charger', 'day_night_rate',
+            'has_previous_quotes', 'previous_quotes_details',
+            # Form fields (stored in notes)
+            'preferred_contact_time', 'property_ownership', 'property_type',
+            'number_of_bedrooms', 'roof_type', 'roof_material',
+            'average_monthly_electricity_bill', 'current_energy_supplier',
+            'electric_heating_appliances', 'energy_details', 'timeframe',
+            'moving_properties_next_five_years', 'timeframe_details',
             # Mapping field
             'dialer_user_id'
         ]
@@ -270,6 +296,83 @@ class DialerLeadSerializer(serializers.ModelSerializer):
         # Use phone_number if phone is not provided
         if not validated_data.get('phone') and validated_data.get('phone_number'):
             validated_data['phone'] = validated_data['phone_number']
+        
+        # Extract existing notes before modifying validated_data
+        existing_notes = validated_data.get('notes', '') or ''
+        
+        # Extract form fields and format them into notes
+        form_fields = {
+            'preferred_contact_time': validated_data.pop('preferred_contact_time', None),
+            'property_ownership': validated_data.pop('property_ownership', None),
+            'property_type': validated_data.pop('property_type', None),
+            'number_of_bedrooms': validated_data.pop('number_of_bedrooms', None),
+            'roof_type': validated_data.pop('roof_type', None),
+            'roof_material': validated_data.pop('roof_material', None),
+            'average_monthly_electricity_bill': validated_data.pop('average_monthly_electricity_bill', None),
+            'current_energy_supplier': validated_data.pop('current_energy_supplier', None),
+            'electric_heating_appliances': validated_data.pop('electric_heating_appliances', None),
+            'energy_details': validated_data.pop('energy_details', None),
+            'timeframe': validated_data.pop('timeframe', None),
+            'moving_properties_next_five_years': validated_data.pop('moving_properties_next_five_years', None),
+            'timeframe_details': validated_data.pop('timeframe_details', None),
+        }
+        
+        # Build detailed notes section if any form fields are provided
+        detailed_sections = []
+        
+        # Check if there's already a detailed section
+        if '--- DETAILED LEAD INFORMATION ---' not in existing_notes:
+            # Build detailed section from form fields
+            if any(form_fields.values()):
+                detailed_sections.append('\n--- DETAILED LEAD INFORMATION ---\n')
+                
+                if form_fields['preferred_contact_time']:
+                    detailed_sections.append(f'Preferred Contact Time: {form_fields["preferred_contact_time"]}\n')
+                if form_fields['property_ownership']:
+                    detailed_sections.append(f'Property Ownership: {form_fields["property_ownership"]}\n')
+                if form_fields['property_type']:
+                    detailed_sections.append(f'Property Type: {form_fields["property_type"]}\n')
+                if form_fields['number_of_bedrooms']:
+                    detailed_sections.append(f'Number of Bedrooms: {form_fields["number_of_bedrooms"]}\n')
+                if form_fields['roof_type']:
+                    detailed_sections.append(f'Roof Type: {form_fields["roof_type"]}\n')
+                if form_fields['roof_material']:
+                    detailed_sections.append(f'Roof Material: {form_fields["roof_material"]}\n')
+                if form_fields['average_monthly_electricity_bill']:
+                    detailed_sections.append(f'Average Monthly Electricity Bill: {form_fields["average_monthly_electricity_bill"]}\n')
+                if validated_data.get('energy_bill_amount'):
+                    detailed_sections.append(f'Specific Energy Bill Amount: £{validated_data["energy_bill_amount"]}\n')
+                if validated_data.get('has_ev_charger') is not None:
+                    ev_status = 'Yes' if validated_data['has_ev_charger'] else 'No'
+                    detailed_sections.append(f'Has EV Charger: {ev_status}\n')
+                if validated_data.get('day_night_rate'):
+                    detailed_sections.append(f'Day/Night Rate: {validated_data["day_night_rate"]}\n')
+                if form_fields['current_energy_supplier']:
+                    detailed_sections.append(f'Current Energy Supplier: {form_fields["current_energy_supplier"]}\n')
+                if form_fields['electric_heating_appliances']:
+                    detailed_sections.append(f'Electric Heating/Appliances: {form_fields["electric_heating_appliances"]}\n')
+                if form_fields['energy_details']:
+                    detailed_sections.append(f'Energy Details: {form_fields["energy_details"]}\n')
+                if form_fields['timeframe']:
+                    detailed_sections.append(f'Timeframe: {form_fields["timeframe"]}\n')
+                if form_fields['moving_properties_next_five_years']:
+                    detailed_sections.append(f'Moving Properties Next 5 Years: {form_fields["moving_properties_next_five_years"]}\n')
+                if form_fields['timeframe_details']:
+                    detailed_sections.append(f'Timeframe Details: {form_fields["timeframe_details"]}\n')
+                if validated_data.get('has_previous_quotes') is not None:
+                    quotes_status = 'Yes' if validated_data['has_previous_quotes'] else 'No'
+                    detailed_sections.append(f'Has Previous Quotes: {quotes_status}\n')
+                if validated_data.get('previous_quotes_details'):
+                    detailed_sections.append(f'Previous Quotes Details: {validated_data["previous_quotes_details"]}\n')
+        
+        # Combine notes
+        if detailed_sections:
+            # Remove any existing detailed section from notes
+            notes_parts = existing_notes.split('--- DETAILED LEAD INFORMATION ---')
+            base_notes = notes_parts[0].strip() if notes_parts else ''
+            validated_data['notes'] = base_notes + ''.join(detailed_sections)
+        else:
+            validated_data['notes'] = existing_notes
         
         # Resolve agent using dialer_user_id mapping first; fallback to username
         from django.contrib.auth import get_user_model
