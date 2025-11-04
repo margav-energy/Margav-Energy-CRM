@@ -156,13 +156,15 @@ class LeadViewSet(viewsets.ModelViewSet):
                 logger.warning(f'Dialer API key missing or invalid. Expected: {expected_key[:10]}..., Got: {api_key[:10] if api_key else None}...')
                 return Response({'error': 'Invalid API key'}, status=status.HTTP_401_UNAUTHORIZED)
         
-        # HMAC signature validation for production security (only if API key is configured)
-        if not settings.DEBUG and expected_key:
+        # HMAC signature validation for enhanced production security (only if DIALER_SECRET_KEY is explicitly configured)
+        # If DIALER_SECRET_KEY is not set, HMAC validation is optional and API key alone is sufficient
+        secret_key = getattr(settings, 'DIALER_SECRET_KEY', None)
+        if secret_key:  # Only require HMAC if DIALER_SECRET_KEY is explicitly configured
             signature = request.headers.get('X-Dialer-Signature')
             timestamp = request.headers.get('X-Dialer-Timestamp')
             
             if not signature or not timestamp:
-                logger.warning('Missing HMAC signature or timestamp')
+                logger.warning('Missing HMAC signature or timestamp (DIALER_SECRET_KEY is configured)')
                 return Response({'error': 'Missing security headers'}, status=status.HTTP_401_UNAUTHORIZED)
             
             # Check timestamp to prevent replay attacks (5 minute window)
@@ -177,24 +179,25 @@ class LeadViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'Invalid timestamp format'}, status=status.HTTP_400_BAD_REQUEST)
             
             # Verify HMAC signature
-            secret_key = getattr(settings, 'DIALER_SECRET_KEY', expected_key)
-            if secret_key:
-                # Create canonical string for signing
-                canonical_params = []
-                for key in sorted(incoming_data.keys()):
-                    if key not in ['api_key', 'dialer_api_key', 'signature']:  # Exclude auth params
-                        canonical_params.append(f"{key}={incoming_data[key]}")
-                canonical_string = "&".join(canonical_params)
-                
-                expected_signature = hmac.new(
-                    secret_key.encode('utf-8'),
-                    canonical_string.encode('utf-8'),
-                    hashlib.sha256
-                ).hexdigest()
-                
-                if not hmac.compare_digest(signature, expected_signature):
-                    logger.warning('HMAC signature validation failed')
-                    return Response({'error': 'Invalid signature'}, status=status.HTTP_401_UNAUTHORIZED)
+            # Create canonical string for signing
+            canonical_params = []
+            for key in sorted(incoming_data.keys()):
+                if key not in ['api_key', 'dialer_api_key', 'signature']:  # Exclude auth params
+                    canonical_params.append(f"{key}={incoming_data[key]}")
+            canonical_string = "&".join(canonical_params)
+            
+            expected_signature = hmac.new(
+                secret_key.encode('utf-8'),
+                canonical_string.encode('utf-8'),
+                hashlib.sha256
+            ).hexdigest()
+            
+            if not hmac.compare_digest(signature, expected_signature):
+                logger.warning('HMAC signature validation failed')
+                return Response({'error': 'Invalid signature'}, status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            # HMAC not required - API key authentication is sufficient
+            logger.info('HMAC signature validation skipped (DIALER_SECRET_KEY not configured)')
 
         # Validate required fields - prefer dialer_user_id mapping; fallback to user
         required_fields = []
