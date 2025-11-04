@@ -117,39 +117,50 @@ def send_appointment_confirmation_email(lead, appointment_date, appointment_time
         # Prepare email content
         subject = f"Appointment Confirmation - Margav Energy"
         
-        # Create email body
-        email_body = f"""
-Dear {lead.full_name},
+        # Format contact number with country code if needed
+        contact_number = lead.phone
+        if contact_number and not contact_number.startswith('+'):
+            # Add +44 for UK numbers if not already present
+            if contact_number.startswith('0'):
+                contact_number = '+44' + contact_number[1:]
+            elif not contact_number.startswith('+'):
+                contact_number = '+44' + contact_number
+        
+        # Create professional email body
+        email_body = f"""Dear {lead.full_name},
 
 Thank you for your interest in Margav Energy's solar solutions. We are pleased to confirm your scheduled consultation appointment.
 
-APPOINTMENT DETAILS:
-• Date: {formatted_date}
-• Time: {formatted_time if formatted_time else 'To be confirmed'}
-• Property Address: {lead.address1 or 'To be confirmed'}
-• Contact Number: {lead.phone}
+APPOINTMENT DETAILS
+────────────────────────────────────────────────────────────────────────────
+Date:            {formatted_date}
+Time:            {formatted_time if formatted_time else 'To be confirmed'}
+Property:        {lead.address1 or 'To be confirmed'}
+Contact Number:  {contact_number}
+────────────────────────────────────────────────────────────────────────────
 
-"""
-        
-        if notes:
-            email_body += f"Additional Notes: {notes}\n\n"
-        
-        email_body += f"""
-WHAT TO EXPECT:
+WHAT TO EXPECT
+────────────────────────────────────────────────────────────────────────────
 Our solar energy specialist will conduct a comprehensive property assessment including:
+
 • Roof evaluation and solar panel placement analysis
 • Energy usage review and system sizing
 • Detailed quotation for your solar energy system
 • Discussion of financing options and available incentives
+────────────────────────────────────────────────────────────────────────────
 
-PREPARATION:
-• Please ensure access to your property at the scheduled time
-• Have recent energy bills available for review
-• Prepare any questions about solar energy systems
+PREPARATION
+────────────────────────────────────────────────────────────────────────────
+Please ensure you have the following ready for your appointment:
 
-If you need to reschedule or have any questions, please contact us:
-• Email: sales@margav.energy
-• Phone: [Your contact number]
+• Access to your property at the scheduled time
+• Recent energy bills for review
+• Any questions you may have about solar energy systems
+────────────────────────────────────────────────────────────────────────────
+
+If you need to reschedule or have any questions, please contact us at:
+Email: sales@margav.energy
+Phone: 01889 256069
 
 We look forward to helping you transition to clean, renewable solar energy.
 
@@ -157,7 +168,7 @@ Best regards,
 The Margav Energy Team
 sales@margav.energy
 
----
+────────────────────────────────────────────────────────────────────────────
 Margav Energy
 Leading the way in renewable energy solutions
         """
@@ -233,7 +244,7 @@ Please ensure you have access to your property at the scheduled time. If you nee
 
 Contact Information:
 • Email: sales@margav.energy
-• Phone: [Your contact number]
+• Phone: 01889 256069
 
 We look forward to meeting with you and discussing your solar energy needs.
 
