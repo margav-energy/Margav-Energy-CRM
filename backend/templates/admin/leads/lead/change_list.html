@@ -107,22 +107,40 @@
     margin-top: 0 !important;
   }
   
-  /* Ensure filter sidebar doesn't cause overflow */
-  #changelist-filter {
-    max-width: 250px !important;
-    overflow-x: hidden !important;
-  }
-  
-  /* Fix main content area - ensure proper layout without separate columns */
+  /* Layout: Filter sidebar next to content */
   #changelist {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 20px !important;
     max-width: 100% !important;
     overflow-x: hidden !important;
-    display: block !important;
+    align-items: flex-start !important;
   }
   
-  /* Ensure changelist content flows properly and is visible */
-  #changelist {
-    display: block !important;
+  /* Main content area (leads list) - wraps the form */
+  #changelist-form {
+    flex: 1 !important;
+    min-width: 0 !important;
+    order: 1 !important;
+  }
+  
+  /* Filter sidebar - positioned on the right */
+  #changelist-filter {
+    flex: 0 0 250px !important;
+    max-width: 250px !important;
+    min-width: 250px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    order: 2 !important;
+    position: sticky !important;
+    top: 20px !important;
+    align-self: flex-start !important;
+    background: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 4px !important;
+    padding: 15px !important;
+    margin-top: 0 !important;
+    max-height: calc(100vh - 100px) !important;
   }
   
   #changelist .results,
@@ -157,6 +175,23 @@
       display: block !important;
       width: 100% !important;
       text-align: center !important;
+    }
+    
+    /* Stack filter below content on smaller screens */
+    #changelist {
+      flex-direction: column !important;
+    }
+    
+    #changelist-filter {
+      flex: 1 1 auto !important;
+      max-width: 100% !important;
+      min-width: 100% !important;
+      position: relative !important;
+      order: 2 !important;
+    }
+    
+    #changelist-form {
+      order: 1 !important;
     }
   }
 </style>

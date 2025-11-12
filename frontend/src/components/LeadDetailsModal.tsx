@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Lead } from '../types';
 import { formatDateSafe, formatDateShortSafe } from '../utils/dateUtils';
-import QualifyLeadModal from './QualifyLeadModal';
+import QualifierLeadModal from './QualifierLeadModal';
 import { leadsAPI } from '../api';
 import { toast } from 'react-toastify';
 
@@ -433,17 +433,24 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
       </div>
 
       {/* Qualify Lead Modal */}
-      <QualifyLeadModal
-        lead={lead}
-        isOpen={showQualifyModal}
-        onClose={() => setShowQualifyModal(false)}
-        onLeadUpdated={(updatedLead) => {
-          if (onLeadUpdated) {
-            onLeadUpdated(updatedLead);
-          }
-          setShowQualifyModal(false);
-        }}
-      />
+      {showQualifyModal && (
+        <QualifierLeadModal
+          lead={lead}
+          onClose={() => setShowQualifyModal(false)}
+          onSuccess={() => {
+            if (onLeadUpdated && lead) {
+              // Refetch the lead to get updated data
+              leadsAPI.getLead(lead.id).then((updatedLead) => {
+                onLeadUpdated(updatedLead);
+              }).catch(() => {
+                // If refetch fails, just close the modal
+                onLeadUpdated(lead);
+              });
+            }
+            setShowQualifyModal(false);
+          }}
+        />
+      )}
 
       {/* Photo Modal */}
       {showPhotoModal && selectedPhoto && (

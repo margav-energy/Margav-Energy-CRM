@@ -339,6 +339,120 @@ class Lead(SoftDeleteModel):
         help_text='Time preference for assessment'
     )
     
+    # Qualifier Lead Sheet Fields
+    desktop_roof_check_completed = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Desktop roof check completed - minimum 8 panels suitable'
+    )
+    property_type_qualifier = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        choices=[
+            ('detached', 'Detached'),
+            ('semi-detached', 'Semi-Detached'),
+            ('terraced', 'Terrace'),
+            ('bungalow', 'Bungalow'),
+            ('caravan', 'Caravan'),
+            ('commercial', 'Commercial'),
+            ('other', 'Other'),
+        ],
+        help_text='Property type for qualifier'
+    )
+    roof_type_qualifier = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        choices=[
+            ('hip', 'Hip'),
+            ('gable', 'Gable'),
+            ('flat', 'Flat'),
+        ],
+        help_text='Roof type for qualifier'
+    )
+    speaking_to_homeowner = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Are you speaking to the homeowner?'
+    )
+    both_homeowners_present = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Will both homeowners be present on appointment day?'
+    )
+    property_listed = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Is the property listed?'
+    )
+    conservation_area = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Is the property in a conservation area?'
+    )
+    building_work_ongoing = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Any building work ongoing or planned in next 6 months?'
+    )
+    roof_shaded_obstructed = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Is the roof shaded or obstructed?'
+    )
+    customer_aware_no_grants = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Customer aware there are NO grants for solar?'
+    )
+    current_electric_bill_type = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        choices=[
+            ('electric', 'Electric'),
+            ('gas', 'Gas'),
+            ('dual', 'Dual'),
+        ],
+        help_text='Current electric bill type'
+    )
+    customer_age = models.IntegerField(
+        blank=True,
+        null=True,
+        help_text='Customer age (must be between 18-70)'
+    )
+    aged_18_70 = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Is customer aged between 18 & 70?'
+    )
+    currently_employed = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Is the customer currently employed?'
+    )
+    has_good_credit = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Do they have good credit?'
+    )
+    earns_over_12k = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Do they earn over £12K per year?'
+    )
+    planning_to_move_5_years = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Are they planning to move within 5 years?'
+    )
+    available_3_working_days = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Is customer available for appointment within next 3 working days?'
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

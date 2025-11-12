@@ -95,6 +95,10 @@ class LeadViewSet(viewsets.ModelViewSet):
         if user.is_agent:
             return Lead.objects.filter(assigned_agent=user)
         
+        # Staff4dshire users can see their own leads
+        if user.is_staff4dshire:
+            return Lead.objects.filter(assigned_agent=user)
+        
         # Qualifiers can see leads they've processed (sent_to_kelly and beyond)
         if user.is_qualifier:
             return Lead.objects.filter(
@@ -322,6 +326,10 @@ class LeadListCreateView(generics.ListCreateAPIView):
         
         # Agents can only see their own leads
         if user.is_agent:
+            return Lead.objects.filter(assigned_agent=user)
+        
+        # Staff4dshire users can see their own leads
+        if user.is_staff4dshire:
             return Lead.objects.filter(assigned_agent=user)
         
         # Qualifiers can see leads they've processed (sent_to_kelly and beyond)

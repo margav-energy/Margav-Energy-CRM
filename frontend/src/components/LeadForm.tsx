@@ -1343,42 +1343,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           </div>
         </div>
 
-        {/* Appointment Booking Section */}
-        <div className="border-b border-gray-200 pb-6">
-          <h4 className="text-lg font-medium text-gray-900 mb-4">📅 Appointment Booking</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="assessment_date_preference" className="block text-sm font-medium text-gray-700">
-                Day/Time Preference for Assessment?
-              </label>
-              <input
-                type="date"
-                id="assessment_date_preference"
-                name="assessment_date_preference"
-                value={formData.assessment_date_preference}
-                onChange={handleChange}
-                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
-                disabled={loading}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="assessment_time_preference" className="block text-sm font-medium text-gray-700">
-                Time of Confirmed Assessment
-              </label>
-              <input
-                type="time"
-                id="assessment_time_preference"
-                name="assessment_time_preference"
-                value={formData.assessment_time_preference}
-                onChange={handleChange}
-                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
-                disabled={loading}
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Timeframe & Interest Section */}
         <div className="border-b border-gray-200 pb-6">
           <h4 className="text-lg font-medium text-gray-900 mb-4">⏰ Timeframe & Interest</h4>

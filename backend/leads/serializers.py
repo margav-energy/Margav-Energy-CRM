@@ -98,6 +98,13 @@ class LeadSerializer(serializers.ModelSerializer):
             'government_grants_aware',
             # Appointment Booking
             'assessment_date_preference', 'assessment_time_preference',
+            # Qualifier Lead Sheet Fields
+            'desktop_roof_check_completed', 'property_type_qualifier', 'roof_type_qualifier',
+            'speaking_to_homeowner', 'both_homeowners_present', 'property_listed',
+            'conservation_area', 'building_work_ongoing', 'roof_shaded_obstructed',
+            'customer_aware_no_grants', 'current_electric_bill_type', 'customer_age',
+            'aged_18_70', 'currently_employed', 'has_good_credit', 'earns_over_12k',
+            'planning_to_move_5_years', 'available_3_working_days',
             # Field submission data
             'field_submission_data',
             'created_at', 'updated_at'
@@ -238,6 +245,13 @@ class LeadUpdateSerializer(serializers.ModelSerializer):
             'government_grants_aware',
             # Appointment Booking
             'assessment_date_preference', 'assessment_time_preference',
+            # Qualifier Lead Sheet Fields
+            'desktop_roof_check_completed', 'property_type_qualifier', 'roof_type_qualifier',
+            'speaking_to_homeowner', 'both_homeowners_present', 'property_listed',
+            'conservation_area', 'building_work_ongoing', 'roof_shaded_obstructed',
+            'customer_aware_no_grants', 'current_electric_bill_type', 'customer_age',
+            'aged_18_70', 'currently_employed', 'has_good_credit', 'earns_over_12k',
+            'planning_to_move_5_years', 'available_3_working_days',
         ]
 
 

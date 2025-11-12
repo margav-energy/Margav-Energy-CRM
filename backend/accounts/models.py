@@ -12,6 +12,7 @@ class User(AbstractUser):
         ('salesrep', 'SalesRep'),
         ('admin', 'Admin'),
         ('canvasser', 'Canvasser'),
+        ('staff4dshire', 'Staff4dshire'),
     ]
     
     role = models.CharField(
@@ -53,8 +54,7 @@ class User(AbstractUser):
     @property
     def is_canvasser(self):
         return self.role == 'canvasser'
-
     
     @property
-    def is_canvasser(self):
-        return self.role == 'canvasser'
+    def is_staff4dshire(self):
+        return self.role == 'staff4dshire'

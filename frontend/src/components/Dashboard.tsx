@@ -6,6 +6,7 @@ import QualifierDashboard from './QualifierDashboard';
 import AdminDialerControl from './AdminDialerControl';
 import CanvasserCreation from './CanvasserCreation';
 import KanbanBoard from './KanbanBoard';
+import Staff4dshireDashboard from './Staff4dshireDashboard';
 import { Lead } from '../types';
 
 const Dashboard: React.FC = () => {
@@ -76,6 +77,8 @@ const Dashboard: React.FC = () => {
           <KanbanBoard userRole={user.role} />
         </div>
       );
+    case 'staff4dshire':
+      return <Staff4dshireDashboard />;
     default:
       return (
         <div className="space-y-6">

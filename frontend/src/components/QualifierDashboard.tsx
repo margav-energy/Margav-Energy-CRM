@@ -417,15 +417,32 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
   //   setUpdatingLead(lead);
   // };
 
-  const handleLeadUpdate = async () => {
+  const handleLeadUpdate = async (updatedLead?: Lead) => {
     try {
-      // Refresh the leads list to get updated data
-      await fetchLeads();
+      // If updated lead is provided, use it directly; otherwise refetch
+      if (updatedLead) {
+        // Update the lead in the modal with the saved data - this will trigger form update
+        setUpdatingLead(updatedLead);
+        // Also update it in the leads list
+        setLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
+      } else if (updatingLead) {
+        // Refetch the specific lead to ensure we have the latest data
+        try {
+          const refetchedLead = await leadsAPI.getLead(updatingLead.id);
+          setUpdatingLead(refetchedLead); // Update the lead in the modal with fresh data
+          setLeads(prev => prev.map(lead => lead.id === refetchedLead.id ? refetchedLead : lead));
+        } catch (error) {
+          // If refetch fails, refresh the leads list
+          await fetchLeads(true, true);
+        }
+      }
       
-      setUpdatingLead(null);
+      // Refresh the leads list to get updated counts (in background)
+      fetchLeads(true, true);
     } catch (error) {
       toast.error('Failed to qualify lead');
     }
+    // Don't close the modal automatically - let user close it manually to see the persisted data
   };
 
   // const handleScheduleAppointment = (lead: Lead) => {

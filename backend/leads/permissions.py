@@ -17,6 +17,10 @@ class LeadPermission(permissions.BasePermission):
         if request.user.is_agent:
             return True
         
+        # Staff4dshire users can create leads
+        if request.user.is_staff4dshire:
+            return True
+        
         # Qualifiers can see leads with status 'interested'
         if request.user.is_qualifier:
             return True
@@ -37,6 +41,10 @@ class LeadPermission(permissions.BasePermission):
         
         # Agents can access their own leads for any operation
         if request.user.is_agent:
+            return obj.assigned_agent == request.user
+        
+        # Staff4dshire users can access their own leads
+        if request.user.is_staff4dshire:
             return obj.assigned_agent == request.user
         
         # Qualifiers can access leads they've processed (sent_to_kelly and beyond)

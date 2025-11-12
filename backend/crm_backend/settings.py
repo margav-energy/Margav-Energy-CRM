@@ -10,7 +10,7 @@ if env_path.exists():
     os.environ.setdefault('DECOUPLE_CONFIG', str(env_path))
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,crm.margav.energy,www.crm.margav.energy,testserver,margav-crm-backend.onrender.com,margav-energy-crm.onrender.com').split(',')
 
 INSTALLED_APPS = [
@@ -117,7 +117,7 @@ DATABASES = {
     }
 }
 
-# Use SQLite as fallback if DATABASE_URL is not provided
+# Use DATABASE_URL if provided (for production)
 if config('DATABASE_URL', default=None):
     import dj_database_url
     DATABASES['default'] = dj_database_url.parse(config('DATABASE_URL'))
@@ -171,16 +171,18 @@ if not DEBUG:
         STATICFILES_DIRS.append(build_static_dir)
 
 # WhiteNoise settings for proper MIME types and static file serving
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
-WHITENOISE_USE_FINDERS = True
-WHITENOISE_AUTOREFRESH = True
-WHITENOISE_MANIFEST_STRICT = False
-
-# Ensure static files are served correctly in production
-if not DEBUG:
+# Use simpler storage for development, manifest storage for production
+if DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+    WHITENOISE_USE_FINDERS = True
+    WHITENOISE_AUTOREFRESH = True
+    WHITENOISE_MANIFEST_STRICT = False
+else:
+    # Production: use manifest storage
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
     WHITENOISE_USE_FINDERS = False  # Disable finders in production
     WHITENOISE_AUTOREFRESH = False  # Disable auto-refresh in production
+    WHITENOISE_MANIFEST_STRICT = False
 
 # --------------------
 # REST Framework

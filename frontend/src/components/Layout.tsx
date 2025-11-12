@@ -24,6 +24,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       'salesrep': 'Sales Rep',
       'admin': 'Admin',
       'canvasser': 'Canvasser',
+      'staff4dshire': 'Staff4dshire',
     };
     return roleMap[role] || role;
   };

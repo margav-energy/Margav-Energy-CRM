@@ -20,7 +20,7 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'agent' | 'qualifier' | 'salesrep' | 'admin' | 'canvasser';
+  role: 'agent' | 'qualifier' | 'salesrep' | 'admin' | 'canvasser' | 'staff4dshire';
   phone?: string;
   date_joined: string;
 }
@@ -71,9 +71,32 @@ export interface Lead {
   employment_status?: 'employed' | 'unemployed' | 'self-employed' | 'retired';
   debt_management_bankruptcy?: boolean;
   government_grants_aware?: boolean;
+  // Energy Usage
+  current_energy_supplier?: string;
+  electric_heating_appliances?: string;
+  energy_details?: string;
   // Appointment Booking
   assessment_date_preference?: string;
   assessment_time_preference?: string;
+  // Qualifier Lead Sheet Fields
+  desktop_roof_check_completed?: boolean;
+  property_type_qualifier?: 'detached' | 'semi-detached' | 'terraced' | 'bungalow' | 'caravan' | 'commercial' | 'other';
+  roof_type_qualifier?: 'hip' | 'gable' | 'flat';
+  speaking_to_homeowner?: boolean;
+  both_homeowners_present?: boolean;
+  property_listed?: boolean;
+  conservation_area?: boolean;
+  building_work_ongoing?: boolean;
+  roof_shaded_obstructed?: boolean;
+  customer_aware_no_grants?: boolean;
+  current_electric_bill_type?: 'electric' | 'gas' | 'dual';
+  customer_age?: number;
+  aged_18_70?: boolean;
+  currently_employed?: boolean;
+  has_good_credit?: boolean;
+  earns_over_12k?: boolean;
+  planning_to_move_5_years?: boolean;
+  available_3_working_days?: boolean;
   field_submission_data?: {
     id: number;
     canvasser_name: string;
@@ -154,6 +177,10 @@ export interface LeadForm {
   employment_status?: 'employed' | 'unemployed' | 'self-employed' | 'retired';
   debt_management_bankruptcy?: boolean;
   government_grants_aware?: boolean;
+  // Energy Usage
+  current_energy_supplier?: string;
+  electric_heating_appliances?: string;
+  energy_details?: string;
   // Appointment Booking
   assessment_date_preference?: string;
   assessment_time_preference?: string;
@@ -181,6 +208,26 @@ export interface LeadUpdateForm {
   address1?: string;
   city?: string;
   postal_code?: string;
+  // Qualifier Lead Sheet Fields
+  desktop_roof_check_completed?: boolean;
+  property_type_qualifier?: 'detached' | 'semi-detached' | 'terraced' | 'bungalow' | 'caravan' | 'commercial' | 'other';
+  roof_type_qualifier?: 'hip' | 'gable' | 'flat';
+  speaking_to_homeowner?: boolean;
+  both_homeowners_present?: boolean;
+  property_listed?: boolean;
+  conservation_area?: boolean;
+  building_work_ongoing?: boolean;
+  roof_shaded_obstructed?: boolean;
+  spray_foam_roof?: boolean;
+  customer_aware_no_grants?: boolean;
+  current_electric_bill_type?: 'electric' | 'gas' | 'dual';
+  customer_age?: number;
+  aged_18_70?: boolean;
+  currently_employed?: boolean;
+  has_good_credit?: boolean;
+  earns_over_12k?: boolean;
+  planning_to_move_5_years?: boolean;
+  available_3_working_days?: boolean;
 }
 
 export interface LeadDispositionForm {
