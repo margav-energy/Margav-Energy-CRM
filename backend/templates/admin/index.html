@@ -53,25 +53,25 @@
   }
 
   .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%);
     color: white;
   }
 
   .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 8px 20px rgba(102, 204, 102, 0.4);
     color: white;
     text-decoration: none;
   }
 
   .btn-secondary {
     background: white;
-    color: #667eea;
-    border: 2px solid #667eea;
+    color: #3333cc;
+    border: 2px solid #3333cc;
   }
 
   .btn-secondary:hover {
-    background: #667eea;
+    background: #3333cc;
     color: white;
     text-decoration: none;
   }
@@ -132,7 +132,7 @@
   }
 
   .stat-link {
-    color: #667eea;
+    color: #3333cc;
     text-decoration: none;
     font-weight: 600;
     font-size: 0.875rem;
@@ -142,7 +142,7 @@
   }
 
   .stat-link:hover {
-    color: #764ba2;
+    color: #00cc99;
     text-decoration: none;
   }
 
@@ -181,7 +181,7 @@
   }
 
   .action-card:hover {
-    border-color: #667eea;
+      border-color: #3333cc;
     transform: translateY(-3px);
     box-shadow: 0 10px 25px rgba(102, 126, 234, 0.2);
     text-decoration: none;
@@ -201,7 +201,7 @@
   .action-icon {
     width: 50px;
     height: 50px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -211,7 +211,7 @@
   }
 
   .action-card.danger .action-icon {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: #3333cc;
   }
 
   .action-card h3 {
@@ -259,12 +259,12 @@
 
     .btn-secondary {
       background: #1e293b;
-      border-color: #667eea;
-      color: #667eea;
+      border-color: #3333cc;
+      color: #3333cc;
     }
 
     .btn-secondary:hover {
-      background: #667eea;
+      background: #3333cc;
       color: white;
     }
   }
@@ -327,7 +327,7 @@
   <!-- Stats Cards -->
   <div class="stats-container">
     <div class="stat-card-card">
-      <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%);">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
           <circle cx="9" cy="7" r="4"></circle>
@@ -337,26 +337,26 @@
       </div>
       <div class="stat-info">
         <p class="stat-label">Agents</p>
-        <p class="stat-number">{{ agents_count }}</p>
+        <p class="stat-number" id="agents-count">{{ agents_count }}</p>
       </div>
       <a href="{% url 'admin:accounts_user_changelist' %}?role__exact=agent" class="stat-link">View all →</a>
     </div>
 
     <div class="stat-card-card">
-      <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+      <div class="stat-icon" style="background: #3333cc;">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
         </svg>
       </div>
       <div class="stat-info">
         <p class="stat-label">Qualifiers</p>
-        <p class="stat-number">{{ qualifiers_count }}</p>
+        <p class="stat-number" id="qualifiers-count">{{ qualifiers_count }}</p>
       </div>
       <a href="{% url 'admin:accounts_user_changelist' %}?role__exact=qualifier" class="stat-link">View all →</a>
     </div>
 
     <div class="stat-card-card">
-      <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%);">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
@@ -364,13 +364,29 @@
       </div>
       <div class="stat-info">
         <p class="stat-label">Sales Reps</p>
-        <p class="stat-number">{{ salesreps_count }}</p>
+        <p class="stat-number" id="salesreps-count">{{ salesreps_count }}</p>
       </div>
       <a href="{% url 'admin:accounts_user_changelist' %}?role__exact=salesrep" class="stat-link">View all →</a>
     </div>
 
     <div class="stat-card-card">
-      <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+      </div>
+      <div class="stat-info">
+        <p class="stat-label">Canvassers</p>
+        <p class="stat-number" id="canvassers-count">{{ canvassers_count }}</p>
+      </div>
+      <a href="{% url 'admin:accounts_user_changelist' %}?role__exact=canvasser" class="stat-link">View all →</a>
+    </div>
+
+    <div class="stat-card-card">
+      <div class="stat-icon" style="background: #3333cc;">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
@@ -381,7 +397,7 @@
       </div>
       <div class="stat-info">
         <p class="stat-label">Total Leads</p>
-        <p class="stat-number">{{ total_leads }}</p>
+        <p class="stat-number" id="leads-count">{{ total_leads }}</p>
       </div>
       <a href="{% url 'admin:leads_lead_changelist' %}" class="stat-link">View all →</a>
     </div>
@@ -608,6 +624,10 @@
             data.user_stats.qualifiers || 0;
           document.getElementById("salesreps-count").textContent =
             data.user_stats.salesreps || 0;
+          const canvassersCountEl = document.getElementById("canvassers-count");
+          if (canvassersCountEl) {
+            canvassersCountEl.textContent = data.user_stats.canvassers || 0;
+          }
         }
         if (data.lead_stats) {
           document.getElementById("leads-count").textContent =

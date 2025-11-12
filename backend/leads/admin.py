@@ -189,12 +189,12 @@ class LeadAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     """
     Enhanced admin interface for Lead model with soft delete support.
     """
-    list_display = ('lead_number', 'full_name', 'phone', 'status', 'assigned_agent', 'soft_delete_status', 'created_at')
+    list_display = ('lead_number', 'full_name', 'phone', 'status', 'assigned_agent_display', 'soft_delete_status', 'created_at')
     list_filter = ('status', 'disposition', 'is_deleted', 'assigned_agent', 'field_sales_rep', 'created_at')
     search_fields = ('lead_number', 'full_name', 'phone', 'email', 'notes')
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'updated_at', 'deleted_at', 'deleted_by', 'deletion_reason', 
-                      'contact_centre_notes_display', 'kelly_notes_display', 'data_source_display')
+                      'contact_centre_notes_display', 'kelly_notes_display', 'data_source_display', 'assigned_agent_name')
     actions = [bulk_soft_delete_action, bulk_delete_forever_action, download_excel_action, download_csv_action, sync_to_sheets_action]
     
     def get_actions(self, request):
@@ -207,7 +207,7 @@ class LeadAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
             'fields': ('lead_number', 'full_name', 'phone', 'email', 'status', 'disposition')
         }),
         ('Assignment', {
-            'fields': ('assigned_agent', 'field_sales_rep')
+            'fields': ('assigned_agent', 'assigned_agent_name', 'field_sales_rep')
         }),
         ('Contact Details', {
             'fields': ('address1', 'address2', 'address3', 'city', 'state', 'postal_code', 'country_code'),
@@ -246,6 +246,21 @@ class LeadAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
         return format_html('<span style="color: green;">Active</span>')
     
     soft_delete_status.short_description = 'Status'
+    
+    def assigned_agent_display(self, obj):
+        """Display assigned agent name, showing stored name if agent is deleted"""
+        if obj.assigned_agent:
+            # Agent exists, show current name
+            agent_name = obj.assigned_agent.get_full_name() or obj.assigned_agent.username
+            return format_html('<span>{}</span>', agent_name)
+        elif obj.assigned_agent_name:
+            # Agent deleted but name preserved, show stored name with indicator
+            return format_html('<span style="color: #666; font-style: italic;">{} <span style="font-size: 0.85em;">(deleted)</span></span>', obj.assigned_agent_name)
+        else:
+            return format_html('<span style="color: #999;">-</span>')
+    
+    assigned_agent_display.short_description = 'Assigned Agent'
+    assigned_agent_display.admin_order_field = 'assigned_agent'
     
     def contact_centre_notes_display(self, obj):
         """Extract Contact Centre Notes from notes field"""

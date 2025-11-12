@@ -194,6 +194,7 @@ def get_user_stats(request):
             'agents': User.objects.filter(role='agent').count(),
             'qualifiers': User.objects.filter(role='qualifier').count(),
             'salesreps': User.objects.filter(role='salesrep').count(),
+            'canvassers': User.objects.filter(role='canvasser').count(),
             'admins': User.objects.filter(role='admin').count(),
         }
         

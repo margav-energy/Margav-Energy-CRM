@@ -15,6 +15,7 @@ def admin_dashboard(request):
     agents_count = User.objects.filter(role='agent').count()
     qualifiers_count = User.objects.filter(role='qualifier').count()
     salesreps_count = User.objects.filter(role='salesrep').count()
+    canvassers_count = User.objects.filter(role='canvasser').count()
     total_users = User.objects.count()
     total_leads = Lead.objects.count()
     
@@ -93,6 +94,7 @@ def admin_dashboard(request):
         'agents_count': agents_count,
         'qualifiers_count': qualifiers_count,
         'salesreps_count': salesreps_count,
+        'canvassers_count': canvassers_count,
         'total_users': total_users,
         'total_leads': total_leads,
         'activity_items': activity_items,

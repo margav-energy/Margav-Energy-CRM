@@ -5,7 +5,7 @@
 {{ block.super }}
 <style>
   .user-management-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%);
     color: white;
     padding: 25px;
     border-radius: 12px;
@@ -36,7 +36,7 @@
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border-left: 4px solid #667eea;
+    border-left: 4px solid #3333cc;
     transition: transform 0.2s ease;
   }
 
@@ -60,7 +60,7 @@
   .action-btn {
     display: inline-block;
     padding: 8px 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%);
     color: white !important;
     text-decoration: none;
     border-radius: 6px;
@@ -71,7 +71,7 @@
 
   .action-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(102, 204, 102, 0.3);
     color: white !important;
     text-decoration: none;
   }
@@ -81,7 +81,7 @@
   }
 
   .action-btn.success {
-    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+    background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%);
     color: white !important;
   }
   .action-btn.warning {
@@ -148,7 +148,7 @@
 
   /* Object tools container styling */
   .object-tools {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%);
     padding: 10px 15px;
     border-radius: 8px;
     margin-bottom: 20px;
@@ -186,6 +186,10 @@
   <div class="stat-item">
     <p class="stat-number">{{ user_stats.salesreps|default:0 }}</p>
     <p class="stat-label">Sales Reps</p>
+  </div>
+  <div class="stat-item">
+    <p class="stat-number">{{ user_stats.canvassers|default:0 }}</p>
+    <p class="stat-label">Canvassers</p>
   </div>
   <div class="stat-item">
     <p class="stat-number">{{ user_stats.total|default:0 }}</p>

@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Lead } from '../types';
 import { leadsAPI } from '../api';
 import { dedupeLeadsById } from '../utils/leadFilters';
 import { toast } from 'react-toastify';
 import LeadDetailsModal from './LeadDetailsModal';
+import { useLocalStorageEvents } from '../hooks/useLocalStorageEvents';
 import {
   DndContext,
   closestCenter,
@@ -197,12 +198,64 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const fetchLeads = useCallback(async () => {
+  const backgroundLoadingInProgress = useRef<boolean>(false);
+  
+  // Helper function to get current week date range (Monday to Sunday)
+  const getCurrentWeekRange = useCallback(() => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust to get Monday
+    
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    
+    return { start: monday, end: sunday };
+  }, []);
+  
+  // Helper function to check if lead is from current week or has "to qualify" status
+  const isLeadInCurrentWeekOrToQualify = useCallback((lead: Lead, weekRange: { start: Date; end: Date }) => {
+    // Always show leads with "sent_to_kelly" status (To Qualify) regardless of date
+    if (lead.status === 'sent_to_kelly') {
+      return true;
+    }
+    
+    // For all other statuses, check if lead was created OR updated in current week
+    // This ensures leads moved from "To Qualify" to another status this week are shown
+    const createdDate = lead.created_at ? new Date(lead.created_at) : null;
+    const updatedDate = lead.updated_at ? new Date(lead.updated_at) : null;
+    
+    const createdInWeek = createdDate && createdDate >= weekRange.start && createdDate <= weekRange.end;
+    const updatedInWeek = updatedDate && updatedDate >= weekRange.start && updatedDate <= weekRange.end;
+    
+    return createdInWeek || updatedInWeek;
+  }, []);
+  
+  const fetchLeads = useCallback(async (silent = false) => {
+    // Skip if background loading is already in progress (unless it's a manual refresh)
+    if (backgroundLoadingInProgress.current && silent) {
+      return;
+    }
+    
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       
-      // OPTIMIZATION: Fetch first page immediately to show board quickly
-      const response = await leadsAPI.getLeads({ page_size: 100, ordering: '-created_at' });
+      // Use the correct API endpoint based on role
+      let response;
+      if (userRole === 'agent') {
+        // Agents should use getMyLeads to get only their assigned leads
+        response = await leadsAPI.getMyLeads({ page_size: 100 });
+      } else {
+        // Admins, qualifiers, and salesreps can use getLeads
+        response = await leadsAPI.getLeads({ page_size: 100, ordering: '-created_at' });
+      }
+      
       let allLeads = [...response.results];
       
       // Define column definitions based on role
@@ -244,23 +297,32 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
       const validLeads = allLeads.filter(lead => lead && lead.id);
       const uniqueLeads = dedupeLeadsById(validLeads);
       
+      // Get current week range for filtering
+      const weekRange = getCurrentWeekRange();
+      
       // Show board immediately with first page of leads
-      // Populate columns
+      // Populate columns with current week filter (except for "sent_to_kelly" status)
       const populatedColumns = columnDefinitions.map(column => ({
         ...column,
-        leads: uniqueLeads.filter(lead => column.statuses.includes(lead.status)),
+        leads: uniqueLeads.filter(lead => 
+          column.statuses.includes(lead.status) && 
+          isLeadInCurrentWeekOrToQualify(lead, weekRange)
+        ),
       }));
       // No catch-all column for qualifiers
 
       setColumns(populatedColumns);
-      setLoading(false); // Show board immediately
+      if (!silent) {
+        setLoading(false); // Show board immediately
+      }
       
       // Check if there are more pages - use response.next as the primary indicator
       const hasMorePages = !!response.next || (response.count && response.count > allLeads.length);
       const totalCount = response.count || allLeads.length;
       
       // OPTIMIZATION: Load remaining pages in background without blocking UI
-      if (hasMorePages) {
+      if (hasMorePages && !backgroundLoadingInProgress.current) {
+        backgroundLoadingInProgress.current = true;
       // Calculate expected pages from count using actual page size returned
       const pageSize = Math.max(1, response.results?.length || 100);
       const estimatedTotalPages = Math.ceil(totalCount / pageSize);
@@ -283,11 +345,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
               // Create batch of page requests without mutating outer vars inside catch
               for (let pageNum = currentPage; pageNum <= batchEndPage; pageNum++) {
                 batchPromises.push(
-                  leadsAPI.getLeads({ 
-                    page_size: 100, 
-                    page: pageNum.toString(),
-                    ordering: '-created_at'
-                  })
+                  (userRole === 'agent' 
+                    ? leadsAPI.getMyLeads({ page_size: 100, page: pageNum.toString() })
+                    : leadsAPI.getLeads({ page_size: 100, page: pageNum.toString(), ordering: '-created_at' })
+                  )
                   .then((res) => ({ data: res, had404: false, isError: false }))
                   .catch((err: any) => {
                     const had404 = err?.response?.status === 404 || err?.response?.status === 400;
@@ -344,26 +405,52 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
             // Final update with all loaded leads
             const validLeads = allLeads.filter(lead => lead && lead.id);
             const uniqueLeads = dedupeLeadsById(validLeads);
+            
+            // Get current week range for filtering
+            const weekRange = getCurrentWeekRange();
+            
             const populatedColumns = columnDefinitions.map(column => ({
               ...column,
-              leads: uniqueLeads.filter(lead => column.statuses.includes(lead.status)),
+              leads: uniqueLeads.filter(lead => 
+                column.statuses.includes(lead.status) && 
+                isLeadInCurrentWeekOrToQualify(lead, weekRange)
+              ),
             }));
             // No catch-all column for qualifiers
             setColumns(populatedColumns);
+            backgroundLoadingInProgress.current = false;
           } catch (error) {
             // Background loading errors are handled silently
             // We already have the first page showing, so board still works
+            backgroundLoadingInProgress.current = false;
           }
         })();
       }
     } catch (error) {
-      toast.error('Failed to fetch leads');
-      setLoading(false);
+      if (!silent) {
+        toast.error('Failed to fetch leads');
+        setLoading(false);
+      }
     }
-  }, [userRole]);
+  }, [userRole, getCurrentWeekRange, isLeadInCurrentWeekOrToQualify]);
+  
+  // LocalStorage events for real-time communication
+  useLocalStorageEvents('lead_updates', useCallback((message) => {
+    if (message.type === 'NEW_LEAD' || message.type === 'LEAD_UPDATED') {
+      // Refresh leads when a new lead is created or updated
+      fetchLeads(true); // Silent refresh
+    }
+  }, [fetchLeads]));
 
   useEffect(() => {
     fetchLeads();
+    
+    // Set up auto-refresh every 60 seconds
+    const refreshInterval = setInterval(() => {
+      fetchLeads(true); // Silent refresh
+    }, 60000);
+    
+    return () => clearInterval(refreshInterval);
   }, [userRole, fetchLeads]);
 
   const getStatusBadgeColor = (status: string) => {
@@ -494,10 +581,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
         onLeadUpdate(updatedLead);
       }
       
+      // Refresh leads to get the latest data
+      fetchLeads(true); // Silent refresh
+      
       toast.success(`Lead moved to ${targetColumn.title}`);
     } catch (err) {
       toast.error('Failed to update lead status');
-      fetchLeads();
+      // Refresh on error to restore correct state
+      fetchLeads(true);
     }
   };
 
@@ -563,6 +654,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
         onClose={handleCloseModal}
         userRole={userRole}
         onLeadUpdated={(updatedLead) => {
+          // Refresh leads to get the latest data
+          fetchLeads(true); // Silent refresh
+          
           // Update the lead and move it to the correct column based on its new status
           setColumns(prev => {
             const newColumns = [...prev];

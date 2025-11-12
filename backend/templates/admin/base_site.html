@@ -8,11 +8,12 @@
 <style>
 /* Margav theme variables + dark mode */
 :root {
-    --brand-bg: #1f2937; /* slate-800 */
-    --brand-accent: #16a34a; /* green-600 */
-    --brand-accent-2: #2563eb; /* blue-600 */
-    --brand-surface: #ffffff;
-    --brand-text: #111827;
+    --brand-bg: #000000; /* Margav black */
+    --brand-accent: #66cc66; /* Margav green gradient start */
+    --brand-accent-2: #3333cc; /* Margav blue */
+    --brand-gradient: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%); /* Margav green gradient */
+    --brand-surface: #ffffff; /* Margav white */
+    --brand-text: #000000; /* Margav black */
 }
 .theme-dark {
     --brand-bg: #0b1220;
@@ -49,12 +50,31 @@ body, .dashboard #content, .module caption, .module h2, .breadcrumbs, .grp-heade
     display: none !important;
 }
 
-/* Custom Navigation Menu */
+/* Custom Navigation Menu - Full width at top */
 .custom-nav-menu {
-    background: linear-gradient(90deg, var(--brand-accent) 0%, var(--brand-accent-2) 100%);
+    background: var(--brand-gradient);
     padding: 15px 30px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
+    margin-bottom: 0 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    z-index: 1000 !important;
+    box-sizing: border-box !important;
+}
+
+/* Prevent horizontal scroll from fixed header */
+html, body {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+}
+
+/* Override Django admin's default layout to ensure header is on top */
+body > #container {
+    display: block !important;
+    margin-top: 70px !important;
 }
 
 .nav-container {
@@ -107,6 +127,7 @@ body, .dashboard #content, .module caption, .module h2, .breadcrumbs, .grp-heade
 .nav-link.active {
     background: white;
     color: var(--brand-accent-2);
+    font-weight: 600;
 }
 
 .user-info {
@@ -153,6 +174,181 @@ body, .dashboard #content, .module caption, .module h2, .breadcrumbs, .grp-heade
 /* Main content padding adjustment */
 #content {
     padding: 20px 30px;
+    margin-top: 0 !important;
+}
+
+/* Ensure sidebar is positioned correctly below header */
+#nav-sidebar,
+aside[aria-label="Sidebar"],
+.sticky {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+/* Ensure the main wrapper (sidebar + content) starts below the header */
+body > #container {
+    margin-top: 70px !important;
+}
+
+/* Make sure content area accounts for sidebar */
+#content {
+    flex: 1 !important;
+    margin-left: 0 !important;
+}
+
+/* Sidebar Navigation Styling - Margav Colors */
+#nav-sidebar,
+.sticky,
+aside[aria-label="Sidebar"] {
+    background: #ffffff !important;
+    border-right: 2px solid #3333cc !important;
+}
+
+/* Sidebar search box */
+#nav-sidebar input[type="text"],
+#nav-sidebar input[type="search"],
+aside[aria-label="Sidebar"] input[type="text"],
+aside[aria-label="Sidebar"] input[type="search"] {
+    border: 2px solid #3333cc !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+}
+
+#nav-sidebar input[type="text"]:focus,
+#nav-sidebar input[type="search"]:focus,
+aside[aria-label="Sidebar"] input[type="text"]:focus,
+aside[aria-label="Sidebar"] input[type="search"]:focus {
+    border-color: #66cc66 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(102, 204, 102, 0.1) !important;
+}
+
+/* App sections (Users, Tokens, Groups, etc.) */
+#nav-sidebar .module,
+#nav-sidebar [class*="app-"],
+aside[aria-label="Sidebar"] .module,
+aside[aria-label="Sidebar"] [class*="app-"] {
+    border-bottom: 1px solid #e0e0e0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* App section captions/headers */
+#nav-sidebar .module caption,
+#nav-sidebar [class*="app-"] caption,
+aside[aria-label="Sidebar"] .module caption,
+aside[aria-label="Sidebar"] [class*="app-"] caption {
+    background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    padding: 12px 15px !important;
+    border-radius: 6px 6px 0 0 !important;
+    margin: 0 !important;
+}
+
+/* Model links (Users, Tokens, Groups, Dialer User Links, etc.) */
+#nav-sidebar .module a,
+#nav-sidebar [class*="model-"] a,
+#nav-sidebar a,
+aside[aria-label="Sidebar"] .module a,
+aside[aria-label="Sidebar"] [class*="model-"] a,
+aside[aria-label="Sidebar"] a {
+    color: #000000 !important;
+    padding: 8px 15px !important;
+    display: block !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+    border-left: 3px solid transparent !important;
+}
+
+/* Model links hover */
+#nav-sidebar .module a:hover,
+#nav-sidebar [class*="model-"] a:hover,
+#nav-sidebar a:hover,
+aside[aria-label="Sidebar"] .module a:hover,
+aside[aria-label="Sidebar"] [class*="model-"] a:hover,
+aside[aria-label="Sidebar"] a:hover {
+    background: rgba(51, 51, 204, 0.1) !important;
+    color: #3333cc !important;
+    border-left-color: #3333cc !important;
+    text-decoration: none !important;
+}
+
+/* Selected/Active model link */
+#nav-sidebar .module.selected a,
+#nav-sidebar [class*="model-"].selected a,
+#nav-sidebar .selected a,
+#nav-sidebar a.selected,
+#nav-sidebar .module a.selected,
+aside[aria-label="Sidebar"] .module.selected a,
+aside[aria-label="Sidebar"] [class*="model-"].selected a,
+aside[aria-label="Sidebar"] .selected a,
+aside[aria-label="Sidebar"] a.selected,
+aside[aria-label="Sidebar"] .module a.selected {
+    background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    border-left-color: #3333cc !important;
+}
+
+/* Add buttons in sidebar */
+#nav-sidebar .addlink,
+#nav-sidebar .addlink *,
+aside[aria-label="Sidebar"] .addlink,
+aside[aria-label="Sidebar"] .addlink * {
+    color: #3333cc !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+}
+
+#nav-sidebar .addlink:hover,
+#nav-sidebar .addlink:hover *,
+aside[aria-label="Sidebar"] .addlink:hover,
+aside[aria-label="Sidebar"] .addlink:hover * {
+    color: #00cc99 !important;
+    text-decoration: underline !important;
+}
+
+/* Sidebar section headers */
+#nav-sidebar h2,
+#nav-sidebar h3,
+aside[aria-label="Sidebar"] h2,
+aside[aria-label="Sidebar"] h3 {
+    color: #000000 !important;
+    font-weight: 600 !important;
+}
+
+/* Sidebar divider lines */
+#nav-sidebar hr,
+aside[aria-label="Sidebar"] hr {
+    border-color: #e0e0e0 !important;
+}
+
+/* Ensure sidebar text is readable */
+#nav-sidebar,
+aside[aria-label="Sidebar"] {
+    color: #000000 !important;
+}
+
+/* Sidebar scrollbar styling */
+#nav-sidebar::-webkit-scrollbar,
+aside[aria-label="Sidebar"]::-webkit-scrollbar {
+    width: 8px;
+}
+
+#nav-sidebar::-webkit-scrollbar-track,
+aside[aria-label="Sidebar"]::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+#nav-sidebar::-webkit-scrollbar-thumb,
+aside[aria-label="Sidebar"]::-webkit-scrollbar-thumb {
+    background: #3333cc;
+    border-radius: 4px;
+}
+
+#nav-sidebar::-webkit-scrollbar-thumb:hover,
+aside[aria-label="Sidebar"]::-webkit-scrollbar-thumb:hover {
+    background: #00cc99;
 }
 </style>
 {% endblock %}

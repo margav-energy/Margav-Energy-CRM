@@ -93,9 +93,17 @@ class Lead(SoftDeleteModel):
     )
     assigned_agent = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='assigned_leads',
         help_text='Agent assigned to this lead'
+    )
+    assigned_agent_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Name of the assigned agent (preserved even if agent is deleted)'
     )
     notes = models.TextField(blank=True, null=True, help_text='Additional notes about the lead')
     appointment_date = models.DateTimeField(
@@ -219,6 +227,116 @@ class Lead(SoftDeleteModel):
         blank=True,
         null=True,
         help_text='Details about previous quotes if any'
+    )
+    
+    # Contact Information
+    preferred_contact_time = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Preferred contact time'
+    )
+    
+    # Property Information
+    property_ownership = models.CharField(
+        max_length=10,
+        blank=True,
+        null=True,
+        choices=[
+            ('yes', 'Yes'),
+            ('no', 'No'),
+        ],
+        help_text='Do you own the property?'
+    )
+    lives_with_partner = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Do you live there with a partner?'
+    )
+    age_range_18_74 = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Are you between 18-74 years old?'
+    )
+    moving_within_5_years = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Are you planning on moving within the next 5 years?'
+    )
+    
+    # Roof and Property Condition
+    loft_conversions = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Any loft conversions?'
+    )
+    velux_windows = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Any velux windows?'
+    )
+    dormers = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Any dormers?'
+    )
+    dormas_shading_windows = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Any dormas shading windows?'
+    )
+    spray_foam_roof = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Any spray foam in the roof?'
+    )
+    building_work_roof = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Are you planning any building work on your roof?'
+    )
+    
+    # Financial and Employment Status
+    monthly_electricity_spend = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text='Current monthly electricity spend (over £60)'
+    )
+    employment_status = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        choices=[
+            ('employed', 'Employed'),
+            ('unemployed', 'Unemployed'),
+            ('self-employed', 'Self-Employed'),
+            ('retired', 'Retired'),
+        ],
+        help_text='Employment status'
+    )
+    debt_management_bankruptcy = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Are you or a partner currently under a Debt Management Plan or Bankruptcy?'
+    )
+    government_grants_aware = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Are you aware there are no government grants for solar?'
+    )
+    
+    # Appointment Booking
+    assessment_date_preference = models.DateField(
+        blank=True,
+        null=True,
+        help_text='Date preference for assessment'
+    )
+    assessment_time_preference = models.TimeField(
+        blank=True,
+        null=True,
+        help_text='Time preference for assessment'
     )
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -388,12 +506,19 @@ class Lead(SoftDeleteModel):
             return False
     
     def save(self, *args, **kwargs):
-        """Override save to generate lead number and log audit trail"""
+        """Override save to generate lead number, preserve agent name, and log audit trail"""
         is_new = self.pk is None
         
         # Generate lead number for new leads only if not already set
         if is_new and not self.lead_number:
             self.lead_number = self.generate_lead_number()
+        
+        # Preserve agent name when agent is assigned or updated
+        if self.assigned_agent:
+            # Update the stored name from the agent object
+            self.assigned_agent_name = self.assigned_agent.get_full_name() or self.assigned_agent.username
+        # If agent is removed but we have a stored name, keep it (for accountability)
+        # Only clear if explicitly setting to None and no name exists
         
         # Check if this is an audit logging save (to prevent infinite loops)
         skip_audit = kwargs.pop('skip_audit', False)

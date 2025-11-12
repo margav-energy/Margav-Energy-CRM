@@ -1,6 +1,167 @@
 {% extends "admin/change_list.html" %}
 {% load i18n admin_urls static admin_list %}
 
+{% block extrahead %}
+{{ block.super }}
+<style>
+  /* Fix horizontal scroll on leads page */
+  body {
+    overflow-x: hidden !important;
+  }
+  
+  #content {
+    overflow-x: auto !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Ensure table container doesn't cause overflow */
+  .results,
+  #result_list,
+  .changelist-results {
+    overflow-x: auto !important;
+    max-width: 100% !important;
+  }
+  
+  /* Make table responsive */
+  .results table,
+  #result_list table,
+  .changelist-results table {
+    width: 100% !important;
+    table-layout: auto !important;
+    min-width: 800px !important;
+  }
+  
+  /* Style object-tools as badges - positioned at top above table */
+  .object-tools {
+    position: relative !important;
+    margin: 0 0 15px 0 !important;
+    padding: 0 !important;
+    list-style: none !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: flex-end !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    clear: both !important;
+    float: none !important;
+  }
+  
+  .object-tools li {
+    display: inline-block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    visibility: visible !important;
+  }
+  
+  /* Badge-style buttons */
+  .object-tools a,
+  .object-tools .addlink {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%) !important;
+    color: white !important;
+    padding: 6px 12px !important;
+    border-radius: 20px !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    font-size: 0.85rem !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+  }
+  
+  .object-tools a:hover,
+  .object-tools .addlink:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(102, 204, 102, 0.4) !important;
+    color: white !important;
+    text-decoration: none !important;
+  }
+  
+  /* Ensure changelist header contains the object-tools properly */
+  #changelist .changelist-tools,
+  .changelist-tools {
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 15px !important;
+    overflow: visible !important;
+    clear: both !important;
+  }
+  
+  /* Ensure results/table are visible */
+  #changelist .results,
+  #changelist #result_list,
+  #changelist .changelist-results {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    clear: both !important;
+    margin-top: 0 !important;
+  }
+  
+  /* Ensure filter sidebar doesn't cause overflow */
+  #changelist-filter {
+    max-width: 250px !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* Fix main content area - ensure proper layout without separate columns */
+  #changelist {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    display: block !important;
+  }
+  
+  /* Ensure changelist content flows properly and is visible */
+  #changelist {
+    display: block !important;
+  }
+  
+  #changelist .results,
+  #changelist #result_list {
+    clear: both !important;
+    margin-top: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  /* Ensure the changelist form and table are visible */
+  #changelist-form,
+  #result_list {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 100% !important;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 1200px) {
+    .object-tools {
+      flex-direction: column !important;
+    }
+    
+    .object-tools li {
+      width: 100% !important;
+    }
+    
+    .object-tools a {
+      display: block !important;
+      width: 100% !important;
+      text-align: center !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block object-tools %}
     <ul class="object-tools">
         <li>

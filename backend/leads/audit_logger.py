@@ -56,7 +56,7 @@ def prepare_lead_data_for_audit(lead: Lead) -> Dict[str, Any]:
         'state': lead.state or '',
         'postal_code': lead.postal_code or '',
         'status': lead.status or '',
-        'assigned_agent_name': lead.assigned_agent.get_full_name() if lead.assigned_agent else '',
+        'assigned_agent_name': lead.assigned_agent.get_full_name() if lead.assigned_agent else (lead.assigned_agent_name or ''),
         'field_sales_rep_name': lead.field_sales_rep.get_full_name() if lead.field_sales_rep else '',
         'created_at': lead.created_at.astimezone().strftime('%Y-%m-%d %H:%M:%S') if lead.created_at else '',
         'updated_at': lead.updated_at.astimezone().strftime('%Y-%m-%d %H:%M:%S') if lead.updated_at else '',

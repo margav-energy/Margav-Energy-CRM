@@ -33,11 +33,23 @@ class LeadSerializer(serializers.ModelSerializer):
     """
     Serializer for Lead model.
     """
-    assigned_agent_name = serializers.CharField(source='assigned_agent.get_full_name', read_only=True)
-    assigned_agent_username = serializers.CharField(source='assigned_agent.username', read_only=True)
-    field_sales_rep_name = serializers.CharField(source='field_sales_rep.get_full_name', read_only=True)
-    field_sales_rep_username = serializers.CharField(source='field_sales_rep.username', read_only=True)
+    assigned_agent_name = serializers.SerializerMethodField()
+    assigned_agent_username = serializers.SerializerMethodField()
+    field_sales_rep_name = serializers.CharField(source='field_sales_rep.get_full_name', read_only=True, allow_null=True)
+    field_sales_rep_username = serializers.CharField(source='field_sales_rep.username', read_only=True, allow_null=True)
     field_submission_data = serializers.SerializerMethodField()
+    
+    def get_assigned_agent_name(self, obj):
+        """Get assigned agent name, using stored name if agent is deleted."""
+        # If agent exists, use current name
+        if obj.assigned_agent:
+            return obj.assigned_agent.get_full_name() or obj.assigned_agent.username
+        # If agent is deleted but we have stored name, use that for accountability
+        return obj.assigned_agent_name
+    
+    def get_assigned_agent_username(self, obj):
+        """Get assigned agent username, handling null case."""
+        return obj.assigned_agent.username if obj.assigned_agent else None
     
     def get_field_submission_data(self, obj):
         """Get field submission data if it exists."""
@@ -74,6 +86,18 @@ class LeadSerializer(serializers.ModelSerializer):
             # Energy section fields
             'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 
             'has_previous_quotes', 'previous_quotes_details',
+            # Contact Information
+            'preferred_contact_time',
+            # Property Information
+            'property_ownership', 'lives_with_partner', 'age_range_18_74', 'moving_within_5_years',
+            # Roof and Property Condition
+            'loft_conversions', 'velux_windows', 'dormers', 'dormas_shading_windows', 
+            'spray_foam_roof', 'building_work_roof',
+            # Financial and Employment Status
+            'monthly_electricity_spend', 'employment_status', 'debt_management_bankruptcy', 
+            'government_grants_aware',
+            # Appointment Booking
+            'assessment_date_preference', 'assessment_time_preference',
             # Field submission data
             'field_submission_data',
             'created_at', 'updated_at'
@@ -92,7 +116,23 @@ class LeadCreateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Lead
-        fields = ['id', 'full_name', 'phone', 'email', 'address1', 'city', 'postal_code', 'status', 'notes', 'appointment_date', 'assigned_agent', 'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 'has_previous_quotes', 'previous_quotes_details', 'lead_number']
+        fields = [
+            'id', 'full_name', 'phone', 'email', 'address1', 'city', 'postal_code', 'status', 'notes', 
+            'appointment_date', 'assigned_agent', 'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 
+            'has_previous_quotes', 'previous_quotes_details', 'lead_number',
+            # Contact Information
+            'preferred_contact_time',
+            # Property Information
+            'property_ownership', 'lives_with_partner', 'age_range_18_74', 'moving_within_5_years',
+            # Roof and Property Condition
+            'loft_conversions', 'velux_windows', 'dormers', 'dormas_shading_windows', 
+            'spray_foam_roof', 'building_work_roof',
+            # Financial and Employment Status
+            'monthly_electricity_spend', 'employment_status', 'debt_management_bankruptcy', 
+            'government_grants_aware',
+            # Appointment Booking
+            'assessment_date_preference', 'assessment_time_preference',
+        ]
         read_only_fields = ['id', 'is_deleted', 'deleted_at', 'deleted_by', 'deletion_reason', 'assigned_agent', 'lead_number']
         extra_kwargs = {
             'email': {'required': False, 'allow_blank': True},
@@ -182,9 +222,22 @@ class LeadUpdateSerializer(serializers.ModelSerializer):
             'full_name', 'phone', 'email', 'status', 'disposition', 
             'notes', 'appointment_date', 'field_sales_rep', 'sale_amount',
             # Address fields
+            'address1', 'city', 'postal_code',
             # Energy section fields
             'energy_bill_amount', 'has_ev_charger', 'day_night_rate', 
-            'has_previous_quotes', 'previous_quotes_details'
+            'has_previous_quotes', 'previous_quotes_details',
+            # Contact Information
+            'preferred_contact_time',
+            # Property Information
+            'property_ownership', 'lives_with_partner', 'age_range_18_74', 'moving_within_5_years',
+            # Roof and Property Condition
+            'loft_conversions', 'velux_windows', 'dormers', 'dormas_shading_windows', 
+            'spray_foam_roof', 'building_work_roof',
+            # Financial and Employment Status
+            'monthly_electricity_spend', 'employment_status', 'debt_management_bankruptcy', 
+            'government_grants_aware',
+            # Appointment Booking
+            'assessment_date_preference', 'assessment_time_preference',
         ]
 
 

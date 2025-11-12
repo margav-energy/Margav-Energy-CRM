@@ -528,11 +528,18 @@ def qualify_lead(request, lead_id):
             notification_type='status_update'
         )
         
+        # Get agent name, using stored name if agent is deleted
+        agent_name = 'N/A'
+        if updated_lead.assigned_agent:
+            agent_name = updated_lead.assigned_agent.get_full_name() or updated_lead.assigned_agent.username
+        elif updated_lead.assigned_agent_name:
+            agent_name = updated_lead.assigned_agent_name
+        
         return Response({
             'lead': LeadSerializer(updated_lead).data,
             'notification': {
                 'message': notification_message,
-                'agent': updated_lead.assigned_agent.get_full_name(),
+                'agent': agent_name,
                 'status': updated_lead.get_status_display()
             },
             'calendar_synced': calendar_synced

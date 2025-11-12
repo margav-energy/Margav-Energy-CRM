@@ -80,19 +80,36 @@ interface ExtendedLeadFormData {
   
   // Property Information
   property_ownership: string;
+  lives_with_partner: string;
+  age_range_18_74: string;
+  moving_within_5_years: string;
   property_type: string;
   number_of_bedrooms: string;
   roof_type: string;
   roof_material: string;
   
+  // Roof and Property Condition
+  loft_conversions: string;
+  velux_windows: string;
+  dormers: string;
+  dormas_shading_windows: string;
+  spray_foam_roof: string;
+  building_work_roof: string;
+  
   // Energy Usage
   average_monthly_electricity_bill: string;
   energy_bill_amount: string;
+  monthly_electricity_spend: string;
   has_ev_charger: string;
   day_night_rate: string;
   current_energy_supplier: string;
   electric_heating_appliances: string;
   energy_details: string;
+  
+  // Financial and Employment Status
+  employment_status: string;
+  debt_management_bankruptcy: string;
+  government_grants_aware: string;
   
   // Timeframe & Interest
   timeframe: string;
@@ -100,6 +117,10 @@ interface ExtendedLeadFormData {
   timeframe_details: string;
   has_previous_quotes: string;
   previous_quotes_details: string;
+  
+  // Appointment Booking
+  assessment_date_preference: string;
+  assessment_time_preference: string;
   
   // Notes
   notes: string;
@@ -229,20 +250,37 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
     preferred_contact_time: parsedData.preferred_contact_time || '',
     
     // Property Information
-    property_ownership: parsedData.property_ownership || '',
+    property_ownership: lead?.property_ownership || parsedData.property_ownership || '',
+    lives_with_partner: lead?.lives_with_partner !== null && lead?.lives_with_partner !== undefined ? lead.lives_with_partner.toString() : '',
+    age_range_18_74: lead?.age_range_18_74 !== null && lead?.age_range_18_74 !== undefined ? lead.age_range_18_74.toString() : '',
+    moving_within_5_years: lead?.moving_within_5_years !== null && lead?.moving_within_5_years !== undefined ? lead.moving_within_5_years.toString() : '',
     property_type: parsedData.property_type || '',
     number_of_bedrooms: parsedData.number_of_bedrooms || '',
     roof_type: parsedData.roof_type || '',
     roof_material: parsedData.roof_material || '',
     
+    // Roof and Property Condition
+    loft_conversions: lead?.loft_conversions !== null && lead?.loft_conversions !== undefined ? lead.loft_conversions.toString() : '',
+    velux_windows: lead?.velux_windows !== null && lead?.velux_windows !== undefined ? lead.velux_windows.toString() : '',
+    dormers: lead?.dormers !== null && lead?.dormers !== undefined ? lead.dormers.toString() : '',
+    dormas_shading_windows: lead?.dormas_shading_windows !== null && lead?.dormas_shading_windows !== undefined ? lead.dormas_shading_windows.toString() : '',
+    spray_foam_roof: lead?.spray_foam_roof !== null && lead?.spray_foam_roof !== undefined ? lead.spray_foam_roof.toString() : '',
+    building_work_roof: lead?.building_work_roof !== null && lead?.building_work_roof !== undefined ? lead.building_work_roof.toString() : '',
+    
     // Energy Usage
     average_monthly_electricity_bill: parsedData.average_monthly_electricity_bill || '',
     energy_bill_amount: lead?.energy_bill_amount !== null && lead?.energy_bill_amount !== undefined ? lead.energy_bill_amount.toString() : (parsedData.energy_bill_amount || ''),
+    monthly_electricity_spend: lead?.monthly_electricity_spend !== null && lead?.monthly_electricity_spend !== undefined ? lead.monthly_electricity_spend.toString() : '',
     has_ev_charger: lead?.has_ev_charger !== null && lead?.has_ev_charger !== undefined ? lead.has_ev_charger.toString() : (parsedData.has_ev_charger || ''),
     day_night_rate: lead?.day_night_rate || parsedData.day_night_rate || '',
     current_energy_supplier: parsedData.current_energy_supplier || '',
     electric_heating_appliances: parsedData.electric_heating_appliances || '',
     energy_details: parsedData.energy_details || '',
+    
+    // Financial and Employment Status
+    employment_status: lead?.employment_status || '',
+    debt_management_bankruptcy: lead?.debt_management_bankruptcy !== null && lead?.debt_management_bankruptcy !== undefined ? lead.debt_management_bankruptcy.toString() : '',
+    government_grants_aware: lead?.government_grants_aware !== null && lead?.government_grants_aware !== undefined ? lead.government_grants_aware.toString() : '',
     
     // Timeframe & Interest
     timeframe: parsedData.timeframe || '',
@@ -250,6 +288,10 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
     timeframe_details: parsedData.timeframe_details || '',
     has_previous_quotes: lead?.has_previous_quotes !== null && lead?.has_previous_quotes !== undefined ? lead.has_previous_quotes.toString() : (parsedData.has_previous_quotes || ''),
     previous_quotes_details: lead?.previous_quotes_details || parsedData.previous_quotes_details || '',
+    
+    // Appointment Booking
+    assessment_date_preference: lead?.assessment_date_preference || '',
+    assessment_time_preference: lead?.assessment_time_preference || '',
     
     // Notes - combine dialer comments with existing notes
     notes: (() => {
@@ -290,6 +332,23 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         day_night_rate: lead.day_night_rate || '',
         has_previous_quotes: lead.has_previous_quotes !== null && lead.has_previous_quotes !== undefined ? lead.has_previous_quotes.toString() : '',
         previous_quotes_details: lead.previous_quotes_details || '',
+        preferred_contact_time: lead.preferred_contact_time || '',
+        property_ownership: lead.property_ownership || '',
+        lives_with_partner: lead.lives_with_partner !== null && lead.lives_with_partner !== undefined ? lead.lives_with_partner.toString() : '',
+        age_range_18_74: lead.age_range_18_74 !== null && lead.age_range_18_74 !== undefined ? lead.age_range_18_74.toString() : '',
+        moving_within_5_years: lead.moving_within_5_years !== null && lead.moving_within_5_years !== undefined ? lead.moving_within_5_years.toString() : '',
+        loft_conversions: lead.loft_conversions !== null && lead.loft_conversions !== undefined ? lead.loft_conversions.toString() : '',
+        velux_windows: lead.velux_windows !== null && lead.velux_windows !== undefined ? lead.velux_windows.toString() : '',
+        dormers: lead.dormers !== null && lead.dormers !== undefined ? lead.dormers.toString() : '',
+        dormas_shading_windows: lead.dormas_shading_windows !== null && lead.dormas_shading_windows !== undefined ? lead.dormas_shading_windows.toString() : '',
+        spray_foam_roof: lead.spray_foam_roof !== null && lead.spray_foam_roof !== undefined ? lead.spray_foam_roof.toString() : '',
+        building_work_roof: lead.building_work_roof !== null && lead.building_work_roof !== undefined ? lead.building_work_roof.toString() : '',
+        monthly_electricity_spend: lead.monthly_electricity_spend !== null && lead.monthly_electricity_spend !== undefined ? lead.monthly_electricity_spend.toString() : '',
+        employment_status: lead.employment_status || '',
+        debt_management_bankruptcy: lead.debt_management_bankruptcy !== null && lead.debt_management_bankruptcy !== undefined ? lead.debt_management_bankruptcy.toString() : '',
+        government_grants_aware: lead.government_grants_aware !== null && lead.government_grants_aware !== undefined ? lead.government_grants_aware.toString() : '',
+        assessment_date_preference: lead.assessment_date_preference || '',
+        assessment_time_preference: lead.assessment_time_preference || '',
       }));
     }
   }, [lead]);
@@ -348,9 +407,9 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
 
     // All other fields are optional - no validation needed
 
-    // Energy bill amount validation (if provided)
-    if (formData.energy_bill_amount && isNaN(Number(formData.energy_bill_amount))) {
-      newErrors.energy_bill_amount = 'Energy bill amount must be a valid number';
+    // Monthly electricity spend validation (if provided)
+    if (formData.monthly_electricity_spend && isNaN(Number(formData.monthly_electricity_spend))) {
+      newErrors.monthly_electricity_spend = 'Monthly electricity spend must be a valid number';
     }
 
     setErrors(newErrors);
@@ -386,31 +445,64 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         address1: formData.address,
         city: formData.city,
         postal_code: formData.postcode,
-        energy_bill_amount: formData.energy_bill_amount ? parseFloat(formData.energy_bill_amount) : undefined,
         has_ev_charger: formData.has_ev_charger === 'true' ? true : formData.has_ev_charger === 'false' ? false : undefined,
         day_night_rate: formData.day_night_rate as 'yes' | 'no' | undefined,
         has_previous_quotes: formData.has_previous_quotes === 'true' ? true : formData.has_previous_quotes === 'false' ? false : undefined,
         previous_quotes_details: formData.previous_quotes_details || undefined,
+        // Contact Information
+        preferred_contact_time: formData.preferred_contact_time || undefined,
+        // Property Information
+        property_ownership: formData.property_ownership || undefined,
+        lives_with_partner: formData.lives_with_partner === 'true' ? true : formData.lives_with_partner === 'false' ? false : undefined,
+        age_range_18_74: formData.age_range_18_74 === 'true' ? true : formData.age_range_18_74 === 'false' ? false : undefined,
+        moving_within_5_years: formData.moving_within_5_years === 'true' ? true : formData.moving_within_5_years === 'false' ? false : undefined,
+        // Roof and Property Condition
+        loft_conversions: formData.loft_conversions === 'true' ? true : formData.loft_conversions === 'false' ? false : undefined,
+        velux_windows: formData.velux_windows === 'true' ? true : formData.velux_windows === 'false' ? false : undefined,
+        dormers: formData.dormers === 'true' ? true : formData.dormers === 'false' ? false : undefined,
+        dormas_shading_windows: formData.dormas_shading_windows === 'true' ? true : formData.dormas_shading_windows === 'false' ? false : undefined,
+        spray_foam_roof: formData.spray_foam_roof === 'true' ? true : formData.spray_foam_roof === 'false' ? false : undefined,
+        building_work_roof: formData.building_work_roof === 'true' ? true : formData.building_work_roof === 'false' ? false : undefined,
+        // Financial and Employment Status
+        monthly_electricity_spend: formData.monthly_electricity_spend ? parseFloat(formData.monthly_electricity_spend) : undefined,
+        employment_status: formData.employment_status as 'employed' | 'unemployed' | 'self-employed' | 'retired' | undefined,
+        debt_management_bankruptcy: formData.debt_management_bankruptcy === 'true' ? true : formData.debt_management_bankruptcy === 'false' ? false : undefined,
+        government_grants_aware: formData.government_grants_aware === 'true' ? true : formData.government_grants_aware === 'false' ? false : undefined,
+        // Appointment Booking
+        assessment_date_preference: formData.assessment_date_preference || undefined,
+        assessment_time_preference: formData.assessment_time_preference || undefined,
         // Ensure we don't duplicate an existing detailed section
         notes: `${(formData.notes || '').split('--- DETAILED LEAD INFORMATION ---')[0].trim()}\n\n--- DETAILED LEAD INFORMATION ---\n` +
                `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                `Property Ownership: ${formData.property_ownership}\n` +
+               `Lives with Partner: ${formData.lives_with_partner === 'true' ? 'Yes' : formData.lives_with_partner === 'false' ? 'No' : 'Not specified'}\n` +
+               `Age Range 18-74: ${formData.age_range_18_74 === 'true' ? 'Yes' : formData.age_range_18_74 === 'false' ? 'No' : 'Not specified'}\n` +
+               `Moving Within 5 Years: ${formData.moving_within_5_years === 'true' ? 'Yes' : formData.moving_within_5_years === 'false' ? 'No' : 'Not specified'}\n` +
                `Property Type: ${formData.property_type}\n` +
                `Number of Bedrooms: ${formData.number_of_bedrooms}\n` +
                `Roof Type: ${formData.roof_type}\n` +
                `Roof Material: ${formData.roof_material}\n` +
-               `Average Monthly Electricity Bill: ${formData.average_monthly_electricity_bill}\n` +
-               (formData.energy_bill_amount ? `Specific Energy Bill Amount: £${formData.energy_bill_amount}\n` : '') +
+               `Loft Conversions: ${formData.loft_conversions === 'true' ? 'Yes' : formData.loft_conversions === 'false' ? 'No' : 'Not specified'}\n` +
+               `Velux Windows: ${formData.velux_windows === 'true' ? 'Yes' : formData.velux_windows === 'false' ? 'No' : 'Not specified'}\n` +
+               `Dormers: ${formData.dormers === 'true' ? 'Yes' : formData.dormers === 'false' ? 'No' : 'Not specified'}\n` +
+               `Dormas Shading Windows: ${formData.dormas_shading_windows === 'true' ? 'Yes' : formData.dormas_shading_windows === 'false' ? 'No' : 'Not specified'}\n` +
+               `Spray Foam Roof: ${formData.spray_foam_roof === 'true' ? 'Yes' : formData.spray_foam_roof === 'false' ? 'No' : 'Not specified'}\n` +
+               `Building Work on Roof: ${formData.building_work_roof === 'true' ? 'Yes' : formData.building_work_roof === 'false' ? 'No' : 'Not specified'}\n` +
+               (formData.monthly_electricity_spend ? `Monthly Electricity Spend: £${formData.monthly_electricity_spend}\n` : '') +
                `Has EV Charger: ${formData.has_ev_charger === 'true' ? 'Yes' : formData.has_ev_charger === 'false' ? 'No' : 'Not specified'}\n` +
                `Day/Night Rate: ${formData.day_night_rate || 'Not specified'}\n` +
                `Current Energy Supplier: ${formData.current_energy_supplier}\n` +
                `Electric Heating/Appliances: ${formData.electric_heating_appliances}\n` +
                `Energy Details: ${formData.energy_details}\n` +
+               `Employment Status: ${formData.employment_status || 'Not specified'}\n` +
+               `Debt Management/Bankruptcy: ${formData.debt_management_bankruptcy === 'true' ? 'Yes' : formData.debt_management_bankruptcy === 'false' ? 'No' : 'Not specified'}\n` +
+               `Government Grants Aware: ${formData.government_grants_aware === 'true' ? 'Yes' : formData.government_grants_aware === 'false' ? 'No' : 'Not specified'}\n` +
                `Timeframe: ${formData.timeframe}\n` +
-               `Moving Properties Next 5 Years: ${formData.moving_properties_next_five_years}\n` +
                `Timeframe Details: ${formData.timeframe_details}\n` +
                `Has Previous Quotes: ${formData.has_previous_quotes === 'true' ? 'Yes' : formData.has_previous_quotes === 'false' ? 'No' : 'Not specified'}\n` +
-               (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '')
+               (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '') +
+               (formData.assessment_date_preference ? `Assessment Date Preference: ${formData.assessment_date_preference}\n` : '') +
+               (formData.assessment_time_preference ? `Assessment Time Preference: ${formData.assessment_time_preference}\n` : '')
       };
       
       // Debug: Log the final form data being sent
@@ -446,30 +538,63 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
         address1: formData.address,
         city: formData.city,
         postal_code: formData.postcode,
-        energy_bill_amount: formData.energy_bill_amount ? parseFloat(formData.energy_bill_amount) : undefined,
         has_ev_charger: formData.has_ev_charger === 'true' ? true : formData.has_ev_charger === 'false' ? false : undefined,
         day_night_rate: formData.day_night_rate as 'yes' | 'no' | undefined,
         has_previous_quotes: formData.has_previous_quotes === 'true' ? true : formData.has_previous_quotes === 'false' ? false : undefined,
         previous_quotes_details: formData.previous_quotes_details || undefined,
+        // Contact Information
+        preferred_contact_time: formData.preferred_contact_time || undefined,
+        // Property Information
+        property_ownership: formData.property_ownership || undefined,
+        lives_with_partner: formData.lives_with_partner === 'true' ? true : formData.lives_with_partner === 'false' ? false : undefined,
+        age_range_18_74: formData.age_range_18_74 === 'true' ? true : formData.age_range_18_74 === 'false' ? false : undefined,
+        moving_within_5_years: formData.moving_within_5_years === 'true' ? true : formData.moving_within_5_years === 'false' ? false : undefined,
+        // Roof and Property Condition
+        loft_conversions: formData.loft_conversions === 'true' ? true : formData.loft_conversions === 'false' ? false : undefined,
+        velux_windows: formData.velux_windows === 'true' ? true : formData.velux_windows === 'false' ? false : undefined,
+        dormers: formData.dormers === 'true' ? true : formData.dormers === 'false' ? false : undefined,
+        dormas_shading_windows: formData.dormas_shading_windows === 'true' ? true : formData.dormas_shading_windows === 'false' ? false : undefined,
+        spray_foam_roof: formData.spray_foam_roof === 'true' ? true : formData.spray_foam_roof === 'false' ? false : undefined,
+        building_work_roof: formData.building_work_roof === 'true' ? true : formData.building_work_roof === 'false' ? false : undefined,
+        // Financial and Employment Status
+        monthly_electricity_spend: formData.monthly_electricity_spend ? parseFloat(formData.monthly_electricity_spend) : undefined,
+        employment_status: formData.employment_status as 'employed' | 'unemployed' | 'self-employed' | 'retired' | undefined,
+        debt_management_bankruptcy: formData.debt_management_bankruptcy === 'true' ? true : formData.debt_management_bankruptcy === 'false' ? false : undefined,
+        government_grants_aware: formData.government_grants_aware === 'true' ? true : formData.government_grants_aware === 'false' ? false : undefined,
+        // Appointment Booking
+        assessment_date_preference: formData.assessment_date_preference || undefined,
+        assessment_time_preference: formData.assessment_time_preference || undefined,
         notes: `${(formData.notes || '').split('--- DETAILED LEAD INFORMATION ---')[0].trim()}\n\n--- DETAILED LEAD INFORMATION ---\n` +
                `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                `Property Ownership: ${formData.property_ownership}\n` +
+               `Lives with Partner: ${formData.lives_with_partner === 'true' ? 'Yes' : formData.lives_with_partner === 'false' ? 'No' : 'Not specified'}\n` +
+               `Age Range 18-74: ${formData.age_range_18_74 === 'true' ? 'Yes' : formData.age_range_18_74 === 'false' ? 'No' : 'Not specified'}\n` +
+               `Moving Within 5 Years: ${formData.moving_within_5_years === 'true' ? 'Yes' : formData.moving_within_5_years === 'false' ? 'No' : 'Not specified'}\n` +
                `Property Type: ${formData.property_type}\n` +
                `Number of Bedrooms: ${formData.number_of_bedrooms}\n` +
                `Roof Type: ${formData.roof_type}\n` +
                `Roof Material: ${formData.roof_material}\n` +
-               `Average Monthly Electricity Bill: ${formData.average_monthly_electricity_bill}\n` +
-               (formData.energy_bill_amount ? `Specific Energy Bill Amount: £${formData.energy_bill_amount}\n` : '') +
+               `Loft Conversions: ${formData.loft_conversions === 'true' ? 'Yes' : formData.loft_conversions === 'false' ? 'No' : 'Not specified'}\n` +
+               `Velux Windows: ${formData.velux_windows === 'true' ? 'Yes' : formData.velux_windows === 'false' ? 'No' : 'Not specified'}\n` +
+               `Dormers: ${formData.dormers === 'true' ? 'Yes' : formData.dormers === 'false' ? 'No' : 'Not specified'}\n` +
+               `Dormas Shading Windows: ${formData.dormas_shading_windows === 'true' ? 'Yes' : formData.dormas_shading_windows === 'false' ? 'No' : 'Not specified'}\n` +
+               `Spray Foam Roof: ${formData.spray_foam_roof === 'true' ? 'Yes' : formData.spray_foam_roof === 'false' ? 'No' : 'Not specified'}\n` +
+               `Building Work on Roof: ${formData.building_work_roof === 'true' ? 'Yes' : formData.building_work_roof === 'false' ? 'No' : 'Not specified'}\n` +
+               (formData.monthly_electricity_spend ? `Monthly Electricity Spend: £${formData.monthly_electricity_spend}\n` : '') +
                `Has EV Charger: ${formData.has_ev_charger === 'true' ? 'Yes' : formData.has_ev_charger === 'false' ? 'No' : 'Not specified'}\n` +
                `Day/Night Rate: ${formData.day_night_rate || 'Not specified'}\n` +
                `Current Energy Supplier: ${formData.current_energy_supplier}\n` +
                `Electric Heating/Appliances: ${formData.electric_heating_appliances}\n` +
                `Energy Details: ${formData.energy_details}\n` +
+               `Employment Status: ${formData.employment_status || 'Not specified'}\n` +
+               `Debt Management/Bankruptcy: ${formData.debt_management_bankruptcy === 'true' ? 'Yes' : formData.debt_management_bankruptcy === 'false' ? 'No' : 'Not specified'}\n` +
+               `Government Grants Aware: ${formData.government_grants_aware === 'true' ? 'Yes' : formData.government_grants_aware === 'false' ? 'No' : 'Not specified'}\n` +
                `Timeframe: ${formData.timeframe}\n` +
-               `Moving Properties Next 5 Years: ${formData.moving_properties_next_five_years}\n` +
                `Timeframe Details: ${formData.timeframe_details}\n` +
                `Has Previous Quotes: ${formData.has_previous_quotes === 'true' ? 'Yes' : formData.has_previous_quotes === 'false' ? 'No' : 'Not specified'}\n` +
-               (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '')
+               (formData.previous_quotes_details ? `Previous Quotes Details: ${formData.previous_quotes_details}\n` : '') +
+               (formData.assessment_date_preference ? `Assessment Date Preference: ${formData.assessment_date_preference}\n` : '') +
+               (formData.assessment_time_preference ? `Assessment Time Preference: ${formData.assessment_time_preference}\n` : '')
       };
       
       await onSendToQualifier(basicFormData);
@@ -505,11 +630,32 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           address1: formData.address,
           city: formData.city,
           postal_code: formData.postcode,
-          energy_bill_amount: formData.energy_bill_amount ? parseFloat(formData.energy_bill_amount) : undefined,
           has_ev_charger: formData.has_ev_charger === 'true' ? true : formData.has_ev_charger === 'false' ? false : undefined,
           day_night_rate: formData.day_night_rate as 'yes' | 'no' | undefined,
-        has_previous_quotes: formData.has_previous_quotes === 'true' ? true : formData.has_previous_quotes === 'false' ? false : undefined,
-        previous_quotes_details: formData.previous_quotes_details || undefined,
+          has_previous_quotes: formData.has_previous_quotes === 'true' ? true : formData.has_previous_quotes === 'false' ? false : undefined,
+          previous_quotes_details: formData.previous_quotes_details || undefined,
+          // Contact Information
+          preferred_contact_time: formData.preferred_contact_time || undefined,
+          // Property Information
+          property_ownership: formData.property_ownership || undefined,
+          lives_with_partner: formData.lives_with_partner === 'true' ? true : formData.lives_with_partner === 'false' ? false : undefined,
+          age_range_18_74: formData.age_range_18_74 === 'true' ? true : formData.age_range_18_74 === 'false' ? false : undefined,
+          moving_within_5_years: formData.moving_within_5_years === 'true' ? true : formData.moving_within_5_years === 'false' ? false : undefined,
+          // Roof and Property Condition
+          loft_conversions: formData.loft_conversions === 'true' ? true : formData.loft_conversions === 'false' ? false : undefined,
+          velux_windows: formData.velux_windows === 'true' ? true : formData.velux_windows === 'false' ? false : undefined,
+          dormers: formData.dormers === 'true' ? true : formData.dormers === 'false' ? false : undefined,
+          dormas_shading_windows: formData.dormas_shading_windows === 'true' ? true : formData.dormas_shading_windows === 'false' ? false : undefined,
+          spray_foam_roof: formData.spray_foam_roof === 'true' ? true : formData.spray_foam_roof === 'false' ? false : undefined,
+          building_work_roof: formData.building_work_roof === 'true' ? true : formData.building_work_roof === 'false' ? false : undefined,
+          // Financial and Employment Status
+          monthly_electricity_spend: formData.monthly_electricity_spend ? parseFloat(formData.monthly_electricity_spend) : undefined,
+          employment_status: formData.employment_status as 'employed' | 'unemployed' | 'self-employed' | 'retired' | undefined,
+          debt_management_bankruptcy: formData.debt_management_bankruptcy === 'true' ? true : formData.debt_management_bankruptcy === 'false' ? false : undefined,
+          government_grants_aware: formData.government_grants_aware === 'true' ? true : formData.government_grants_aware === 'false' ? false : undefined,
+          // Appointment Booking
+          assessment_date_preference: formData.assessment_date_preference || undefined,
+          assessment_time_preference: formData.assessment_time_preference || undefined,
           notes: `${(formData.notes || '').split('--- DETAILED LEAD INFORMATION ---')[0].trim()}\n\n--- DETAILED LEAD INFORMATION ---\n` +
                  `Preferred Contact Time: ${formData.preferred_contact_time}\n` +
                  `Property Ownership: ${formData.property_ownership}\n` +
@@ -731,7 +877,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="property_ownership" className="block text-sm font-medium text-gray-700">
-                Property Ownership
+                Do you own the property?
               </label>
               <select
                 id="property_ownership"
@@ -741,11 +887,63 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
                 disabled={loading}
               >
-                <option value="">Select ownership</option>
-                <option value="owner">Owner</option>
-                <option value="tenant">Tenant</option>
-                <option value="landlord">Landlord</option>
-                <option value="other">Other</option>
+                <option value="">Select</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="lives_with_partner" className="block text-sm font-medium text-gray-700">
+                Do you live there with a partner?
+              </label>
+              <select
+                id="lives_with_partner"
+                name="lives_with_partner"
+                value={formData.lives_with_partner}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="age_range_18_74" className="block text-sm font-medium text-gray-700">
+                Are you between 18-74 years old?
+              </label>
+              <select
+                id="age_range_18_74"
+                name="age_range_18_74"
+                value={formData.age_range_18_74}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="moving_within_5_years" className="block text-sm font-medium text-gray-700">
+                Are you planning on moving within the next 5 years?
+              </label>
+              <select
+                id="moving_within_5_years"
+                name="moving_within_5_years"
+                value={formData.moving_within_5_years}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
               </select>
             </div>
 
@@ -842,46 +1040,20 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           <h4 className="text-lg font-medium text-gray-900 mb-4">⚡ Energy Usage</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="average_monthly_electricity_bill" className="block text-sm font-medium text-gray-700">
-                Average Monthly Electricity Bill
+              <label htmlFor="monthly_electricity_spend" className="block text-sm font-medium text-gray-700">
+                Current Monthly Electricity Spend (over £60)
               </label>
-              <select
-                id="average_monthly_electricity_bill"
-                name="average_monthly_electricity_bill"
-                value={formData.average_monthly_electricity_bill}
+              <input
+                type="number"
+                id="monthly_electricity_spend"
+                name="monthly_electricity_spend"
+                value={formData.monthly_electricity_spend}
                 onChange={handleChange}
                 className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                placeholder="Enter amount in £"
                 disabled={loading}
-              >
-                <option value="">Select bill range</option>
-                <option value="under_50">Under £50</option>
-                <option value="50_100">£50 - £100</option>
-                <option value="100_150">£100 - £150</option>
-                <option value="150_200">£150 - £200</option>
-                <option value="200_300">£200 - £300</option>
-                <option value="over_300">Over £300</option>
-                <option value="unknown">Unknown</option>
-              </select>
+              />
             </div>
-
-            {/* Energy Bill Amount - only show if a range is selected */}
-            {formData.average_monthly_electricity_bill && formData.average_monthly_electricity_bill !== 'unknown' && (
-              <div>
-                <label htmlFor="energy_bill_amount" className="block text-sm font-medium text-gray-700">
-                  Specific Energy Bill Amount (if known)
-                </label>
-                <input
-                  type="number"
-                  id="energy_bill_amount"
-                  name="energy_bill_amount"
-                  value={formData.energy_bill_amount}
-                  onChange={handleChange}
-                  className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
-                  placeholder="Enter specific amount in £"
-                  disabled={loading}
-                />
-              </div>
-            )}
 
             {/* EV Charger */}
             <div>
@@ -995,6 +1167,218 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
           </div>
         </div>
 
+        {/* Roof and Property Condition Section */}
+        <div className="border-b border-gray-200 pb-6">
+          <h4 className="text-lg font-medium text-gray-900 mb-4">🏗️ Roof and Property Condition</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="loft_conversions" className="block text-sm font-medium text-gray-700">
+                Any loft conversions?
+              </label>
+              <select
+                id="loft_conversions"
+                name="loft_conversions"
+                value={formData.loft_conversions}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="velux_windows" className="block text-sm font-medium text-gray-700">
+                Any velux windows?
+              </label>
+              <select
+                id="velux_windows"
+                name="velux_windows"
+                value={formData.velux_windows}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="dormers" className="block text-sm font-medium text-gray-700">
+                Any dormers?
+              </label>
+              <select
+                id="dormers"
+                name="dormers"
+                value={formData.dormers}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="dormas_shading_windows" className="block text-sm font-medium text-gray-700">
+                Any dormas shading windows?
+              </label>
+              <select
+                id="dormas_shading_windows"
+                name="dormas_shading_windows"
+                value={formData.dormas_shading_windows}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="spray_foam_roof" className="block text-sm font-medium text-gray-700">
+                Any spray foam in the roof?
+              </label>
+              <select
+                id="spray_foam_roof"
+                name="spray_foam_roof"
+                value={formData.spray_foam_roof}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="building_work_roof" className="block text-sm font-medium text-gray-700">
+                Are you planning any building work on your roof?
+              </label>
+              <select
+                id="building_work_roof"
+                name="building_work_roof"
+                value={formData.building_work_roof}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Financial and Employment Status Section */}
+        <div className="border-b border-gray-200 pb-6">
+          <h4 className="text-lg font-medium text-gray-900 mb-4">💰 Financial and Employment Status</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="employment_status" className="block text-sm font-medium text-gray-700">
+                Are you employed, unemployed, self-employed, or retired?
+              </label>
+              <select
+                id="employment_status"
+                name="employment_status"
+                value={formData.employment_status}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select status</option>
+                <option value="employed">Employed</option>
+                <option value="unemployed">Unemployed</option>
+                <option value="self-employed">Self-Employed</option>
+                <option value="retired">Retired</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="debt_management_bankruptcy" className="block text-sm font-medium text-gray-700">
+                Are you or a partner currently under a Debt Management Plan or Bankruptcy?
+              </label>
+              <select
+                id="debt_management_bankruptcy"
+                name="debt_management_bankruptcy"
+                value={formData.debt_management_bankruptcy}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="government_grants_aware" className="block text-sm font-medium text-gray-700">
+                Are you aware there are no government grants for solar?
+              </label>
+              <select
+                id="government_grants_aware"
+                name="government_grants_aware"
+                value={formData.government_grants_aware}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              >
+                <option value="">Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Appointment Booking Section */}
+        <div className="border-b border-gray-200 pb-6">
+          <h4 className="text-lg font-medium text-gray-900 mb-4">📅 Appointment Booking</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="assessment_date_preference" className="block text-sm font-medium text-gray-700">
+                Day/Time Preference for Assessment?
+              </label>
+              <input
+                type="date"
+                id="assessment_date_preference"
+                name="assessment_date_preference"
+                value={formData.assessment_date_preference}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="assessment_time_preference" className="block text-sm font-medium text-gray-700">
+                Time of Confirmed Assessment
+              </label>
+              <input
+                type="time"
+                id="assessment_time_preference"
+                name="assessment_time_preference"
+                value={formData.assessment_time_preference}
+                onChange={handleChange}
+                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
+                disabled={loading}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Timeframe & Interest Section */}
         <div className="border-b border-gray-200 pb-6">
           <h4 className="text-lg font-medium text-gray-900 mb-4">⏰ Timeframe & Interest</h4>
@@ -1018,26 +1402,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                 <option value="within_6_months">Within 6 months</option>
                 <option value="within_year">Within a year</option>
                 <option value="just_researching">Just researching</option>
-                <option value="not_sure">Not sure</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="moving_properties_next_five_years" className="block text-sm font-medium text-gray-700">
-                Moving Properties in Next 5 Years?
-              </label>
-              <select
-                id="moving_properties_next_five_years"
-                name="moving_properties_next_five_years"
-                value={formData.moving_properties_next_five_years}
-                onChange={handleChange}
-                className="mt-2 block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-colors duration-200"
-                disabled={loading}
-              >
-                <option value="">Select option</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-                <option value="maybe">Maybe</option>
                 <option value="not_sure">Not sure</option>
               </select>
             </div>

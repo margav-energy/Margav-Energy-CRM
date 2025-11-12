@@ -287,7 +287,7 @@ class GoogleSheetsService:
             lead.city or '',
             lead.postal_code or '',
             lead.status or '',
-            lead.assigned_agent.get_full_name() if lead.assigned_agent else '',
+            lead.assigned_agent.get_full_name() if lead.assigned_agent else (lead.assigned_agent_name or ''),
             lead.field_sales_rep.get_full_name() if lead.field_sales_rep else '',
             lead.created_at.astimezone().strftime('%Y-%m-%d %H:%M:%S') if lead.created_at else '',
             lead.updated_at.astimezone().strftime('%Y-%m-%d %H:%M:%S') if lead.updated_at else '',

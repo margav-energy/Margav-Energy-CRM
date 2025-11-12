@@ -52,6 +52,28 @@ export interface Lead {
   day_night_rate?: 'yes' | 'no';
   has_previous_quotes?: boolean;
   previous_quotes_details?: string;
+  // Contact Information
+  preferred_contact_time?: string;
+  // Property Information
+  property_ownership?: string;
+  lives_with_partner?: boolean;
+  age_range_18_74?: boolean;
+  moving_within_5_years?: boolean;
+  // Roof and Property Condition
+  loft_conversions?: boolean;
+  velux_windows?: boolean;
+  dormers?: boolean;
+  dormas_shading_windows?: boolean;
+  spray_foam_roof?: boolean;
+  building_work_roof?: boolean;
+  // Financial and Employment Status
+  monthly_electricity_spend?: number;
+  employment_status?: 'employed' | 'unemployed' | 'self-employed' | 'retired';
+  debt_management_bankruptcy?: boolean;
+  government_grants_aware?: boolean;
+  // Appointment Booking
+  assessment_date_preference?: string;
+  assessment_time_preference?: string;
   field_submission_data?: {
     id: number;
     canvasser_name: string;
@@ -113,6 +135,28 @@ export interface LeadForm {
   day_night_rate?: 'yes' | 'no';
   has_previous_quotes?: boolean;
   previous_quotes_details?: string;
+  // Contact Information
+  preferred_contact_time?: string;
+  // Property Information
+  property_ownership?: string;
+  lives_with_partner?: boolean;
+  age_range_18_74?: boolean;
+  moving_within_5_years?: boolean;
+  // Roof and Property Condition
+  loft_conversions?: boolean;
+  velux_windows?: boolean;
+  dormers?: boolean;
+  dormas_shading_windows?: boolean;
+  spray_foam_roof?: boolean;
+  building_work_roof?: boolean;
+  // Financial and Employment Status
+  monthly_electricity_spend?: number;
+  employment_status?: 'employed' | 'unemployed' | 'self-employed' | 'retired';
+  debt_management_bankruptcy?: boolean;
+  government_grants_aware?: boolean;
+  // Appointment Booking
+  assessment_date_preference?: string;
+  assessment_time_preference?: string;
   // Add fields needed for updates
   status?: Lead['status'];
   appointment_date?: string;

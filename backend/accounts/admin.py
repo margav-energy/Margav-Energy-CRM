@@ -81,6 +81,7 @@ class UserAdmin(BaseUserAdmin):
         agents_count = User.objects.filter(role='agent').count()
         qualifiers_count = User.objects.filter(role='qualifier').count()
         salesreps_count = User.objects.filter(role='salesrep').count()
+        canvassers_count = User.objects.filter(role='canvasser').count()
         total_users = User.objects.count()
         
         # Add user stats to context
@@ -89,6 +90,7 @@ class UserAdmin(BaseUserAdmin):
             'agents': agents_count,
             'qualifiers': qualifiers_count,
             'salesreps': salesreps_count,
+            'canvassers': canvassers_count,
             'total': total_users,
         }
         

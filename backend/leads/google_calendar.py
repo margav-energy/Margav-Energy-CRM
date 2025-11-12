@@ -73,7 +73,7 @@ Appointment Details:
 - Lead: {lead.full_name}
 - Phone: {lead.phone}
 - Email: {lead.email or 'N/A'}
-- Agent: {lead.assigned_agent.get_full_name()}
+- Agent: {lead.assigned_agent.get_full_name() if lead.assigned_agent else (lead.assigned_agent_name or 'N/A')}
 - Field Sales Rep: {lead.field_sales_rep.get_full_name() if lead.field_sales_rep else 'TBD'}
 - Notes: {lead.notes or 'No additional notes'}
 
@@ -155,7 +155,7 @@ Appointment Details:
 - Lead: {lead.full_name}
 - Phone: {lead.phone}
 - Email: {lead.email or 'N/A'}
-- Agent: {lead.assigned_agent.get_full_name()}
+- Agent: {lead.assigned_agent.get_full_name() if lead.assigned_agent else (lead.assigned_agent_name or 'N/A')}
 - Field Sales Rep: {lead.field_sales_rep.get_full_name() if lead.field_sales_rep else 'TBD'}
 - Notes: {lead.notes or 'No additional notes'}
 
