@@ -201,7 +201,7 @@ body > #container {
 .sticky,
 aside[aria-label="Sidebar"] {
     background: #ffffff !important;
-    border-right: 2px solid #3333cc !important;
+    border-right: none !important;
 }
 
 /* Sidebar search box */
@@ -209,9 +209,18 @@ aside[aria-label="Sidebar"] {
 #nav-sidebar input[type="search"],
 aside[aria-label="Sidebar"] input[type="text"],
 aside[aria-label="Sidebar"] input[type="search"] {
-    border: 2px solid #3333cc !important;
+    border: 1px solid #e0e0e0 !important;
     border-radius: 6px !important;
     padding: 8px 12px !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Search box hover effect */
+#nav-sidebar input[type="text"]:hover,
+#nav-sidebar input[type="search"]:hover,
+aside[aria-label="Sidebar"] input[type="text"]:hover,
+aside[aria-label="Sidebar"] input[type="search"]:hover {
+    border-color: #3333cc !important;
 }
 
 #nav-sidebar input[type="text"]:focus,
@@ -237,12 +246,24 @@ aside[aria-label="Sidebar"] [class*="app-"] {
 #nav-sidebar [class*="app-"] caption,
 aside[aria-label="Sidebar"] .module caption,
 aside[aria-label="Sidebar"] [class*="app-"] caption {
-    background: linear-gradient(135deg, #66cc66 0%, #33cc66 50%, #00cc99 100%) !important;
-    color: white !important;
+    background: #ffffff !important;
+    color: #000000 !important;
     font-weight: 600 !important;
     padding: 12px 15px !important;
-    border-radius: 6px 6px 0 0 !important;
+    border-radius: 0 !important;
     margin: 0 !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+}
+
+/* Hover effect for section headers */
+#nav-sidebar .module caption:hover,
+#nav-sidebar [class*="app-"] caption:hover,
+aside[aria-label="Sidebar"] .module caption:hover,
+aside[aria-label="Sidebar"] [class*="app-"] caption:hover {
+    background: rgba(51, 51, 204, 0.05) !important;
+    color: #3333cc !important;
 }
 
 /* Model links (Users, Tokens, Groups, Dialer User Links, etc.) */

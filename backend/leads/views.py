@@ -528,13 +528,15 @@ def qualify_lead(request, lead_id):
         elif updated_lead.status == 'appointment_set':
             notification_message += " (Calendar sync failed - please check manually)"
         
-        LeadNotification.objects.create(
-            lead=updated_lead,
-            agent=updated_lead.assigned_agent,
-            qualifier=request.user,
-            message=notification_message,
-            notification_type='status_update'
-        )
+        # Only create notification if there's an assigned agent
+        if updated_lead.assigned_agent:
+            LeadNotification.objects.create(
+                lead=updated_lead,
+                agent=updated_lead.assigned_agent,
+                qualifier=request.user,
+                message=notification_message,
+                notification_type='status_update'
+            )
         
         # Get agent name, using stored name if agent is deleted
         agent_name = 'N/A'
