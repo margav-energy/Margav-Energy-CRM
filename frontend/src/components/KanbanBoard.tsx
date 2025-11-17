@@ -274,7 +274,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
         columnDefinitions = [
           { id: 'cold_call', title: 'Cold Calls', statuses: ['cold_call'], color: 'bg-gray-100' },
           { id: 'interested', title: 'Interested', statuses: ['interested'], color: 'bg-blue-100' },
-          { id: 'sent_to_kelly', title: 'Sent to Kelly', statuses: ['sent_to_kelly'], color: 'bg-green-100' },
+          { id: 'sent_to_kelly', title: 'Sent to Qualifier', statuses: ['sent_to_kelly'], color: 'bg-green-100' },
           { id: 'not_interested', title: 'Not Interested', statuses: ['not_interested', 'tenant', 'other_disposition'], color: 'bg-red-100' },
         ];
       } else if (userRole === 'qualifier') {
@@ -480,7 +480,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
     const names: { [key: string]: string } = {
       cold_call: 'Cold Call',
       interested: 'Interested',
-      sent_to_kelly: 'Sent to Kelly',
+      sent_to_kelly: 'Sent to Qualifier',
       qualified: 'Qualified',
       appointment_set: 'Appointment Set',
       appointment_completed: 'Completed',

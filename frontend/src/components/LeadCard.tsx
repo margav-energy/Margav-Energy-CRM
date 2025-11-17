@@ -39,7 +39,7 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onUpdate, onDelete, onSchedul
       'not_interested': 'Not Interested',
       'qualified': 'Qualified',
       'appointment_set': 'Appointment Set',
-      'sent_to_kelly': 'Sent to Kelly',
+      'sent_to_kelly': 'Sent to Qualifier',
       'cold_call': 'Cold Call',
       'appointment_completed': 'Appointment Completed',
       'sale_made': 'Sale Made',

@@ -204,11 +204,6 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.status === 'appointment_set' && !formData.appointment_date) {
-      toast.error('Please select an appointment date and time');
-      return;
-    }
-    
     try {
       setLoading(true);
       
@@ -424,14 +419,14 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             {/* Contact Information Section */}
             <div className="bg-blue-50 rounded-lg p-4">
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name *
+                    Full Name
                   </label>
                   <input
                     type="text"
@@ -439,13 +434,12 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                     name="full_name"
                     value={formData.full_name}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div>
                   <label htmlFor="address1" className="block text-sm font-medium text-gray-700 mb-1">
-                    Address *
+                    Address
                   </label>
                   <input
                     type="text"
@@ -453,13 +447,12 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                     name="address1"
                     value={formData.address1}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div>
                   <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700 mb-1">
-                    Postcode *
+                    Postcode
                   </label>
                   <input
                     type="text"
@@ -467,13 +460,12 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                     name="postal_code"
                     value={formData.postal_code}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number *
+                    Phone Number
                   </label>
                   <input
                     type="tel"
@@ -481,7 +473,6 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
@@ -506,7 +497,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Desktop Roof Check</h4>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Desktop Roof Check Completed? *
+                  Desktop Roof Check Completed?
                 </label>
                 <p className="text-xs text-gray-600 mb-3">
                   Have you reviewed the roof of the property to ensure that the roof is suitable for a minimum of EIGHT panels.
@@ -549,7 +540,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="property_type_qualifier" className="block text-sm font-medium text-gray-700 mb-1">
-                    Property Type? *
+                    Property Type?
                     {agentData.property_type && (
                       <span className="ml-2 text-xs text-green-600">(Agent: {agentData.property_type})</span>
                     )}
@@ -559,7 +550,6 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                     name="property_type_qualifier"
                     value={formData.property_type_qualifier || ''}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     <option value="">Select...</option>
@@ -574,7 +564,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                 </div>
                 <div>
                   <label htmlFor="roof_type_qualifier" className="block text-sm font-medium text-gray-700 mb-1">
-                    Roof Type? *
+                    Roof Type?
                     {agentData.roof_type && (
                       <span className="ml-2 text-xs text-green-600">(Agent: {agentData.roof_type})</span>
                     )}
@@ -584,7 +574,6 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                     name="roof_type_qualifier"
                     value={formData.roof_type_qualifier || ''}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     <option value="">Select...</option>
@@ -602,7 +591,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Are you speaking to the homeowner? *
+                    Are you speaking to the homeowner?
                   </label>
                   <p className="text-xs text-red-600 mb-3">
                     You cannot proceed unless you are speaking to the property owner, or the person you are speaking to can confirm ALL owners of the property will be available on the day of appointment.
@@ -632,7 +621,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               </div>
               <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Will both home owners be present? *
+                    Will both home owners be present?
                   </label>
                   <p className="text-xs text-gray-600 mb-3">
                     This is important to ensure we meet our legal requirements under FCA and EPVS as both homeowners are required to review all figures we produce on the day.
@@ -669,7 +658,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Is the property listed? *
+                    Is the property listed?
                   </label>
                   <p className="text-xs text-red-600 mb-3">
                     If YES you cannot proceed as it is unlikely the customer will get planning permission.
@@ -699,7 +688,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Is the property in a conservation area? *
+                    Is the property in a conservation area?
                   </label>
                   <p className="text-xs text-gray-600 mb-3">
                     If YES please map check and ensure that there is room for at least x1 array with a minimum of 8 panels on a part of the roof NOT visible from a main road.
@@ -729,7 +718,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Do you have any building work ongoing or planning in next 6 months? *
+                    Do you have any building work ongoing or planning in next 6 months?
                   </label>
                   <p className="text-xs text-gray-600 mb-3">
                     If the roof is in a state of disrepair, we MAY not be able to offer an appointment. Find out more information here and offer our range of services (i.e. in roof solar system / quote for repair while on site) Also check if work recently finished as we MAY be able to utilize existing scaffolding (saving customer £500-£1000).
@@ -759,7 +748,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               </div>
               <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Does the property have spray foam? *
+                    Does the property have spray foam?
                   </label>
                   <p className="text-xs text-gray-600 mb-3">
                     We MAY not be able to install where spray foam is present or we MAY have to have the customer sign a disclaimer for any future water ingress. Strongly consider if it is worthwhile booking the appointment.
@@ -789,7 +778,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               </div>
               <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Is the roof shaded or obstructed? *
+                    Is the roof shaded or obstructed?
                   </label>
                   <p className="text-xs text-gray-600 mb-3">
                     Ensure that the EIGHT panels are able to be placed in an area of the roof that is free from obstructions (velux/dormas) and that they will not be completely shaded by nearby trees or properties.
@@ -825,7 +814,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Customer Awareness</h4>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  The customer is aware there are NO grants for solar? *
+                  The customer is aware there are NO grants for solar?
                 </label>
                 <p className="text-xs text-gray-600 mb-3">
                   Ensure that the customer is aware there are NO schemes or grants available to cover the cost of solar. Instead advise them that solar is now cheaper with 0% VAT, we offer no deposit option paid over a maximum of 25 years (to make monthly cost as low as possible) and that we are currently offering a £1500 discount on installations.
@@ -868,7 +857,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="current_electric_bill_type" className="block text-sm font-medium text-gray-700 mb-1">
-                    What is their current electric bill? *
+                    What is their current electric bill?
                     {agentData.day_night_rate && (
                       <span className="ml-2 text-xs text-green-600">(Agent: {agentData.day_night_rate})</span>
                     )}
@@ -884,7 +873,6 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                     name="current_electric_bill_type"
                     value={formData.current_electric_bill_type || ''}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     <option value="">Select...</option>
@@ -895,7 +883,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                 </div>
                 <div>
                   <label htmlFor="customer_age" className="block text-sm font-medium text-gray-700 mb-1">
-                    Age: *
+                    Age:
                   </label>
                   <input
                     type="number"
@@ -905,13 +893,12 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                     onChange={handleChange}
                     min="18"
                     max="70"
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Aged between 18 & 70? *
+                    Aged between 18 & 70?
                     {agentData.age_range_18_74 !== undefined && (
                       <span className="ml-2 text-xs text-green-600">
                         (Agent: {agentData.age_range_18_74 ? 'Yes' : 'No'})
@@ -946,7 +933,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Is the customer currently employed? *
+                    Is the customer currently employed?
                     {agentData.employment_status && (
                       <span className="ml-2 text-xs text-green-600">
                         (Agent: {agentData.employment_status})
@@ -981,7 +968,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Do they have good credit? *
+                    Do they have good credit?
                   </label>
                   <p className="text-xs text-gray-600 mb-3">
                     If NO the customer is unlikely to qualify for finance or lease options. Customer with CCJs, bankruptcy (within 7 years) or CIFAS markers on their credit file can be price conditioned at £10K to £14K as a cash purchase.
@@ -1011,7 +998,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Do you earn over £12K per year? *
+                    Do you earn over £12K per year?
                   </label>
                   <div className="flex gap-4">
                     <label className="flex items-center">
@@ -1038,7 +1025,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Are they planning to move within 5 years? *
+                    Are they planning to move within 5 years?
                     {agentData.moving_within_5_years !== undefined && (
                       <span className="ml-2 text-xs text-green-600">
                         (Agent: {agentData.moving_within_5_years ? 'Yes' : 'No'})
@@ -1073,7 +1060,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Is the customer available for an appointment within the next 3 working days? *
+                    Is the customer available for an appointment within the next 3 working days?
                   </label>
                   <p className="text-xs text-gray-600 mb-3">
                     If NO then please ring to appoint the customer as our calendars are very busy and we can only secure them a surveyor within a 3 working day window.
@@ -1110,17 +1097,16 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-                  Qualification Status *
+                  Qualification Status
                 </label>
                 <select
                   id="status"
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
-                  <option value="sent_to_kelly">📋 Sent to Kelly (Current)</option>
+                  <option value="sent_to_kelly">📋 Sent to Qualifier (Current)</option>
                   <option value="no_contact">📞 No Contact</option>
                   <option value="blow_out">💨 Blow Out</option>
                   <option value="appointment_set">📅 Appointment Set</option>
@@ -1133,7 +1119,7 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                 {formData.status === 'appointment_set' && (
                   <div>
                     <label htmlFor="appointment_date" className="block text-sm font-medium text-gray-700 mb-1">
-                      Appointment Date & Time *
+                      Appointment Date & Time
                     </label>
                     <input
                       type="datetime-local"
@@ -1141,7 +1127,6 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                       name="appointment_date"
                       value={formData.appointment_date || ''}
                       onChange={handleChange}
-                      required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>

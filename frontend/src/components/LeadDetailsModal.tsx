@@ -107,7 +107,7 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
     const names: { [key: string]: string } = {
       'cold_call': 'Cold Call',
       'interested': 'Interested',
-      'sent_to_kelly': 'Sent to Kelly',
+      'sent_to_kelly': 'Sent to Qualifier',
       'qualified': 'Qualified',
       'appointment_set': 'Appointment Set',
       'appointment_completed': 'Completed',

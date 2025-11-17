@@ -82,7 +82,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
                 Lead Notifications
               </h3>
               <p className="text-sm text-gray-600 mt-1">
-                Updates from Kelly about your leads
+                Updates from Qualifier about your leads
               </p>
               {unreadCount > 0 && (
                 <p className="text-sm text-red-600 mt-1">
@@ -121,7 +121,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
                 </div>
                 <p className="text-gray-500 text-lg">No notifications yet</p>
                 <p className="text-gray-400 text-sm mt-2">
-                  You'll receive updates when Kelly reviews your leads
+                  You'll receive updates when Qualifier reviews your leads
                 </p>
               </div>
             ) : (

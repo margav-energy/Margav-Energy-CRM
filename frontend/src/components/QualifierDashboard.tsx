@@ -63,6 +63,22 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
     setSelectedLeadFromFilter(null);
   };
 
+  // Helper function to format filter type display name
+  const getFilterDisplayName = (filterType: string | null): string => {
+    if (!filterType) return '';
+    
+    const displayNames: { [key: string]: string } = {
+      'sent_to_kelly': 'Sent to Qualifier',
+      'blow_out': 'Blow Out',
+      'on_hold': 'On Hold',
+      'qualified': 'Qualified',
+      'appointment_set': 'Appointment Set',
+      'no_contact': 'No Contact',
+    };
+    
+    return displayNames[filterType] || filterType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   // Handle filter clicks - open modal with filtered leads
   const handleFilterClick = (filterType: string) => {
     let filtered: Lead[] = [];
@@ -550,7 +566,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Sent to Kelly</dt>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Sent to Qualifier</dt>
                   <dd className="text-lg font-medium text-gray-900">{statusCounts.sent_to_kelly}</dd>
                 </dl>
               </div>
@@ -691,7 +707,7 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
           <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                Leads - {currentFilterType?.replace('_', ' ').toUpperCase()}
+                Leads - {getFilterDisplayName(currentFilterType)}
               </h3>
               <button
                 onClick={() => {

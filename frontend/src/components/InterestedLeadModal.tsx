@@ -131,7 +131,7 @@ ${formData.notes}
       // Then send to Kelly
       await leadsAPI.sendToKelly(lead.id);
       
-      toast.success('Lead sheet completed and sent to Kelly for qualification!');
+      toast.success('Lead sheet completed and sent to Qualifier for qualification!');
       onSuccess();
     } catch (error) {
       toast.error('Failed to submit lead sheet');
@@ -159,7 +159,7 @@ ${formData.notes}
                 Lead Sheet - Interested Customer
               </h3>
               <p className="text-sm text-gray-600 mt-1">
-                Complete the lead sheet and send to Kelly for qualification
+                Complete the lead sheet and send to Qualifier for qualification
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 Agent: {user?.first_name} {user?.last_name}
@@ -370,7 +370,7 @@ ${formData.notes}
                     Sending...
                   </div>
                 ) : (
-                  'Complete Lead Sheet & Send to Kelly'
+                  'Complete Lead Sheet & Send to Qualifier'
                 )}
               </button>
             </div>
