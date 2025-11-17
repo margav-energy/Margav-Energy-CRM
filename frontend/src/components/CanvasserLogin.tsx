@@ -14,7 +14,7 @@ const CanvasserLogin: React.FC<CanvasserLoginProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [isOffline, setIsOffline] = useState(false);
   const [offlineCheckAttempted, setOfflineCheckAttempted] = useState(false);
-  const { login, checkOfflineLogin, offlineMode } = useAuth();
+  const { login, checkOfflineLogin } = useAuth();
 
   // Check network status and attempt offline login on mount
   useEffect(() => {

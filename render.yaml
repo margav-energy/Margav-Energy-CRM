@@ -3,6 +3,7 @@ services:
     name: margav-crm-backend
     env: python
     plan: starter
+    pythonVersion: "3.12"
     buildCommand: |
       pip install --upgrade pip setuptools wheel
       pip install numpy
