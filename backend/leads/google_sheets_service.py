@@ -2,6 +2,7 @@
 Google Sheets integration service for lead data synchronization and audit logging
 """
 import logging
+import time
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from django.conf import settings
@@ -19,6 +20,10 @@ class GoogleSheetsService:
     
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
     
+    # Rate limiting: Google Sheets allows 60 write requests per minute per user
+    MAX_WRITES_PER_MINUTE = 50  # Stay under the limit with buffer
+    MIN_DELAY_BETWEEN_WRITES = 1.2  # 1.2 seconds = 50 requests per minute
+    
     def __init__(self):
         self.client_id = getattr(settings, 'GOOGLE_CLIENT_ID', '')
         self.client_secret = getattr(settings, 'GOOGLE_CLIENT_SECRET', '')
@@ -26,6 +31,8 @@ class GoogleSheetsService:
         self.spreadsheet_id = getattr(settings, 'GOOGLE_SHEETS_SPREADSHEET_ID', '')
         # Force worksheet name to 'Leads' to match the actual spreadsheet
         self.worksheet_name = 'Leads'
+        self._last_write_time = 0
+        self._headers_setup_done = False
         
     def get_credentials(self) -> Optional[Credentials]:
         """Get Google API credentials"""
@@ -95,8 +102,66 @@ class GoogleSheetsService:
             logger.error(f"Failed to create spreadsheet: {e}")
             return None
     
+    def _rate_limit_wait(self):
+        """Wait if necessary to respect rate limits"""
+        current_time = time.time()
+        time_since_last_write = current_time - self._last_write_time
+        
+        if time_since_last_write < self.MIN_DELAY_BETWEEN_WRITES:
+            wait_time = self.MIN_DELAY_BETWEEN_WRITES - time_since_last_write
+            time.sleep(wait_time)
+        
+        self._last_write_time = time.time()
+    
+    def _execute_with_retry(self, func, max_retries=3, initial_delay=1):
+        """
+        Execute a function with exponential backoff retry logic for rate limit errors.
+        
+        Args:
+            func: Function to execute (should be a lambda or callable)
+            max_retries: Maximum number of retry attempts
+            initial_delay: Initial delay in seconds before retry
+            
+        Returns:
+            Result of the function call, or None if all retries failed
+        """
+        delay = initial_delay
+        
+        for attempt in range(max_retries):
+            try:
+                # Rate limit before each request
+                self._rate_limit_wait()
+                return func()
+            except HttpError as e:
+                error_code = e.resp.status if hasattr(e, 'resp') else None
+                
+                # Check if it's a rate limit error (429)
+                if error_code == 429:
+                    if attempt < max_retries - 1:
+                        wait_time = delay * (2 ** attempt)  # Exponential backoff
+                        logger.warning(f"Rate limit exceeded. Retrying in {wait_time} seconds... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(wait_time)
+                        delay = wait_time
+                        continue
+                    else:
+                        logger.error(f"Rate limit exceeded after {max_retries} attempts: {e}")
+                        raise
+                else:
+                    # For other errors, don't retry
+                    logger.error(f"Google Sheets API error: {e}")
+                    raise
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
+                raise
+        
+        return None
+    
     def setup_headers(self, spreadsheet_id: str) -> bool:
         """Set up column headers in the spreadsheet"""
+        # Only set up headers once per instance
+        if self._headers_setup_done:
+            return True
+            
         service = self.get_service()
         if not service:
             return False
@@ -114,18 +179,25 @@ class GoogleSheetsService:
                 'values': [headers]
             }
             
-            service.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id,
-                range=f'{self.worksheet_name}!A1:R1',
-                valueInputOption='RAW',
-                body=body
-            ).execute()
+            def update_headers():
+                return service.spreadsheets().values().update(
+                    spreadsheetId=spreadsheet_id,
+                    range=f'{self.worksheet_name}!A1:R1',
+                    valueInputOption='RAW',
+                    body=body
+                ).execute()
             
+            self._execute_with_retry(update_headers)
+            
+            self._headers_setup_done = True
             logger.info("Headers set up successfully")
             return True
             
         except HttpError as e:
             logger.error(f"Failed to set up headers: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error setting up headers: {e}")
             return False
     
     def sync_lead_to_sheets(self, lead: Lead) -> bool:
@@ -154,13 +226,15 @@ class GoogleSheetsService:
                     'values': [row_data]
                 }
                 
-                service.spreadsheets().values().update(
-                    spreadsheetId=self.spreadsheet_id,
-                    range=f'{self.worksheet_name}!A{existing_row}:R{existing_row}',
-                    valueInputOption='RAW',
-                    body=body
-                ).execute()
+                def update_row():
+                    return service.spreadsheets().values().update(
+                        spreadsheetId=self.spreadsheet_id,
+                        range=f'{self.worksheet_name}!A{existing_row}:R{existing_row}',
+                        valueInputOption='RAW',
+                        body=body
+                    ).execute()
                 
+                self._execute_with_retry(update_row)
                 logger.info(f"Updated existing lead {lead.id} in Google Sheets at row {existing_row}")
             else:
                 # Add new row
@@ -170,13 +244,15 @@ class GoogleSheetsService:
                     'values': [row_data]
                 }
                 
-                service.spreadsheets().values().update(
-                    spreadsheetId=self.spreadsheet_id,
-                    range=f'{self.worksheet_name}!A{next_row}:R{next_row}',
-                    valueInputOption='RAW',
-                    body=body
-                ).execute()
+                def append_row():
+                    return service.spreadsheets().values().update(
+                        spreadsheetId=self.spreadsheet_id,
+                        range=f'{self.worksheet_name}!A{next_row}:R{next_row}',
+                        valueInputOption='RAW',
+                        body=body
+                    ).execute()
                 
+                self._execute_with_retry(append_row)
                 logger.info(f"Added new lead {lead.id} to Google Sheets at row {next_row}")
             
             logger.info(f"Synced lead {lead.id} to Google Sheets")
@@ -184,6 +260,9 @@ class GoogleSheetsService:
             
         except HttpError as e:
             logger.error(f"Failed to sync lead {lead.id}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error syncing lead {lead.id}: {e}")
             return False
     
     def sync_all_leads_to_sheets(self) -> Dict[str, int]:
@@ -235,25 +314,41 @@ class GoogleSheetsService:
                 else:
                     new_leads.append(lead)
             
-            # Update existing leads in place
-            for lead in existing_leads:
+            # Update existing leads in place (with rate limiting)
+            for i, lead in enumerate(existing_leads):
                 self.sync_lead_to_sheets(lead)
+                # Add a small delay between updates to avoid rate limits
+                if i < len(existing_leads) - 1:  # Don't delay after last item
+                    time.sleep(0.1)
             
-            # Add new leads
+            # Add new leads in batches to avoid rate limits
             if new_leads:
                 new_rows_data = [self.lead_to_row(lead) for lead in new_leads]
                 next_row = self.get_next_empty_row(service, self.spreadsheet_id)
                 
-                body = {
-                    'values': new_rows_data
-                }
+                # Batch writes: Google Sheets allows up to 10,000 rows per request
+                # But we'll batch in smaller chunks to be safe and respect rate limits
+                batch_size = 50  # Process 50 leads at a time
                 
-                service.spreadsheets().values().update(
-                    spreadsheetId=self.spreadsheet_id,
-                    range=f'{self.worksheet_name}!A{next_row}:R{next_row + len(new_rows_data) - 1}',
-                    valueInputOption='RAW',
-                    body=body
-                ).execute()
+                for i in range(0, len(new_rows_data), batch_size):
+                    batch = new_rows_data[i:i + batch_size]
+                    body = {
+                        'values': batch
+                    }
+                    
+                    start_row = next_row + i
+                    end_row = start_row + len(batch) - 1
+                    
+                    def update_batch():
+                        return service.spreadsheets().values().update(
+                            spreadsheetId=self.spreadsheet_id,
+                            range=f'{self.worksheet_name}!A{start_row}:R{end_row}',
+                            valueInputOption='RAW',
+                            body=body
+                        ).execute()
+                    
+                    self._execute_with_retry(update_batch)
+                    logger.info(f"Added batch of {len(batch)} leads to Google Sheets (rows {start_row}-{end_row})")
             
             total_synced = len(existing_leads) + len(new_leads)
             logger.info(f"Synced {total_synced} leads to Google Sheets ({len(existing_leads)} updated, {len(new_leads)} new)")
@@ -403,12 +498,15 @@ class GoogleSheetsService:
                 'values': [row_data]
             }
             
-            service.spreadsheets().values().update(
-                spreadsheetId=self.spreadsheet_id,
-                range=range_name,
-                valueInputOption='RAW',
-                body=body
-            ).execute()
+            def update_audit_row():
+                return service.spreadsheets().values().update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=range_name,
+                    valueInputOption='RAW',
+                    body=body
+                ).execute()
+            
+            self._execute_with_retry(update_audit_row)
             
             logger.info(f"Lead {action.lower()}: {record_data.get('id', 'unknown')} - {'Updated existing row' if action == 'UPDATED' and existing_row else 'Added new row'}")
             return True
