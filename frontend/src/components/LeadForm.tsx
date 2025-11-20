@@ -1469,7 +1469,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
             {pendingCallback ? '✅ Callback Scheduled' : '📞 Schedule Callback'}
           </button>
 
-          {lead && onSendToQualifier && (
+          {onSendToQualifier && (
             <button
               type="button"
               onClick={handleSendToQualifier}
@@ -1482,7 +1482,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ lead, onSubmit, onCancel, loading =
                   Sending...
                 </div>
               ) : (
-                'Send to Qualifier'
+                lead ? 'Send to Qualifier' : 'Create & Send to Qualifier'
               )}
             </button>
           )}

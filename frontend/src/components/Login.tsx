@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import Logo from './Logo';
@@ -14,6 +14,10 @@ const Login: React.FC = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Get redirect path from URL parameters
+  const redirectPath = searchParams.get('redirect') || '/dashboard';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -29,7 +33,8 @@ const Login: React.FC = () => {
     try {
       await login(formData.username, formData.password);
       toast.success('Login successful!');
-      navigate('/dashboard');
+      // Redirect to the original path (preserves URL parameters for agent-form)
+      navigate(redirectPath);
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Login failed');
     } finally {

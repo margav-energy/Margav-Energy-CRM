@@ -9,6 +9,7 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import AgentDashboard from './components/AgentDashboard';
 import CanvasserPortal from './components/CanvasserPortal';
+import AgentFormPage from './components/AgentFormPage';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -22,7 +23,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    // Preserve the current URL (including query parameters) when redirecting to login
+    const currentPath = window.location.pathname + window.location.search;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(currentPath)}`} replace />;
+  }
+
+  return <>{children}</>;
 };
 
 // Public Route Component (redirects to dashboard if already authenticated)
@@ -70,6 +77,16 @@ const AppContent: React.FC = () => {
               <ProtectedRoute>
                 <Layout>
                   <AgentDashboard />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/agent-form" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AgentFormPage />
                 </Layout>
               </ProtectedRoute>
             } 
