@@ -129,7 +129,9 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
     return {
       status: lead.status,
       notes: lead.notes || '',
+      qualifier_notes: lead.qualifier_notes || '',
       appointment_date: lead.appointment_date ? formatDateForInput(lead.appointment_date) : '',
+      qualifier_callback_date: lead.qualifier_callback_date ? formatDateForInput(lead.qualifier_callback_date) : '',
       field_sales_rep: lead.field_sales_rep || null,
       // Contact Information (editable)
       full_name: lead.full_name || '',
@@ -219,6 +221,16 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
           }
           return null;
         })() : null,
+        qualifier_callback_date: formData.qualifier_callback_date ? (() => {
+          try {
+            const date = new Date(formData.qualifier_callback_date);
+            if (!isNaN(date.getTime())) {
+              return date.toISOString();
+            }
+          } catch (error) {
+          }
+          return null;
+        })() : null,
         field_sales_rep: formData.field_sales_rep || null,
       };
       
@@ -244,7 +256,9 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
           const savedFormData = {
             status: response.lead.status,
             notes: response.lead.notes || prev.notes,
+            qualifier_notes: response.lead.qualifier_notes || prev.qualifier_notes,
             appointment_date: response.lead.appointment_date ? formatDateForInput(response.lead.appointment_date) : prev.appointment_date,
+            qualifier_callback_date: response.lead.qualifier_callback_date ? formatDateForInput(response.lead.qualifier_callback_date) : prev.qualifier_callback_date,
             field_sales_rep: response.lead.field_sales_rep || prev.field_sales_rep,
             full_name: response.lead.full_name || prev.full_name,
             phone: response.lead.phone || prev.phone,
@@ -1131,6 +1145,23 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
                     />
                   </div>
                 )}
+                {formData.status === 'qualifier_callback' && (
+                  <div>
+                    <label htmlFor="qualifier_callback_date" className="block text-sm font-medium text-gray-700 mb-1">
+                      Callback Date & Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      id="qualifier_callback_date"
+                      name="qualifier_callback_date"
+                      value={formData.qualifier_callback_date || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">You will receive a notification when it's time to call back.</p>
+                  </div>
+                )}
                 {formData.status === 'appointment_set' && (
                 <div>
                   <label htmlFor="field_sales_rep" className="block text-sm font-medium text-gray-700 mb-1">
@@ -1152,21 +1183,40 @@ const QualifierLeadModal: React.FC<QualifierLeadModalProps> = ({
               </div>
             </div>
 
-            {/* Qualifier Notes */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Qualifier Notes</h4>
+            {/* General Notes (Agent/System Notes) */}
+            {lead.notes && (
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">General Notes</h4>
+                <div className="bg-white rounded-lg p-3 border border-blue-200">
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{lead.notes}</p>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">These notes are from the agent or system. They are read-only.</p>
+              </div>
+            )}
+
+            {/* Qualifier's Notes Section */}
+            <div className="bg-green-50 rounded-lg p-4 border-l-4 border-green-500">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Qualifier's Notes
+              </h4>
               <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-                  Additional Notes
+                <label htmlFor="qualifier_notes" className="block text-sm font-medium text-gray-700 mb-1">
+                  Your Qualification Notes
                 </label>
+                <p className="text-xs text-gray-600 mb-2">
+                  Add your specific notes about this qualification. These notes will be visible separately from general notes.
+                </p>
                 <textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
+                  id="qualifier_notes"
+                  name="qualifier_notes"
+                  value={formData.qualifier_notes}
                   onChange={handleChange}
-                  rows={4}
+                  rows={6}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Add any additional notes about this qualification..."
+                  placeholder="Enter your qualification notes here... (e.g., customer concerns, special requirements, follow-up actions, etc.)"
                 />
               </div>
             </div>

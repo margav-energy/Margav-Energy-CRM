@@ -106,10 +106,16 @@ class Lead(SoftDeleteModel):
         help_text='Name of the assigned agent (preserved even if agent is deleted)'
     )
     notes = models.TextField(blank=True, null=True, help_text='Additional notes about the lead')
+    qualifier_notes = models.TextField(blank=True, null=True, help_text='Qualifier-specific notes about the lead qualification')
     appointment_date = models.DateTimeField(
         blank=True,
         null=True,
         help_text='Scheduled appointment date and time'
+    )
+    qualifier_callback_date = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='Scheduled qualifier callback date and time'
     )
     google_calendar_event_id = models.CharField(
         max_length=255,

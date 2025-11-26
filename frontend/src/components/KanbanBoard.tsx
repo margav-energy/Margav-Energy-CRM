@@ -654,6 +654,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
         onClose={handleCloseModal}
         userRole={userRole}
         onLeadUpdated={(updatedLead) => {
+          // Update selectedLead if it's the same lead being updated
+          if (selectedLead && selectedLead.id === updatedLead.id) {
+            setSelectedLead(updatedLead);
+          }
+          
           // Refresh leads to get the latest data
           fetchLeads(true); // Silent refresh
           

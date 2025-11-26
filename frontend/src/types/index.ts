@@ -20,7 +20,7 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'agent' | 'qualifier' | 'salesrep' | 'admin' | 'canvasser' | 'staff4dshire';
+  role: 'agent' | 'qualifier' | 'salesrep' | 'admin' | 'canvasser' | 'staff4dshire' | 'ai_agent';
   phone?: string;
   date_joined: string;
 }
@@ -44,7 +44,9 @@ export interface Lead {
   field_sales_rep_name?: string;
   field_sales_rep_username?: string;
   notes?: string;
+  qualifier_notes?: string;
   appointment_date?: string;
+  qualifier_callback_date?: string;
   google_calendar_event_id?: string;
   sale_amount?: number;
   energy_bill_amount?: number;
@@ -165,6 +167,10 @@ export interface LeadForm {
   lives_with_partner?: boolean;
   age_range_18_74?: boolean;
   moving_within_5_years?: boolean;
+  property_type?: string;
+  number_of_bedrooms?: string;
+  roof_type?: string;
+  roof_material?: string;
   // Roof and Property Condition
   loft_conversions?: boolean;
   velux_windows?: boolean;
@@ -181,6 +187,9 @@ export interface LeadForm {
   current_energy_supplier?: string;
   electric_heating_appliances?: string;
   energy_details?: string;
+  // Timeframe & Interest
+  timeframe?: string;
+  timeframe_details?: string;
   // Appointment Booking
   assessment_date_preference?: string;
   assessment_time_preference?: string;
@@ -193,7 +202,9 @@ export interface LeadUpdateForm {
   status?: Lead['status'];
   disposition?: Lead['disposition'];
   notes?: string;
+  qualifier_notes?: string;
   appointment_date?: string | null;
+  qualifier_callback_date?: string | null;
   field_sales_rep?: number | null;
   sale_amount?: number;
   energy_bill_amount?: number;

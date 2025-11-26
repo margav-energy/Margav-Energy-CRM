@@ -71,7 +71,7 @@ class LeadSerializer(serializers.ModelSerializer):
             'id', 'full_name', 'phone', 'email', 'status', 'disposition',
             'assigned_agent', 'assigned_agent_name', 'assigned_agent_username',
             'field_sales_rep', 'field_sales_rep_name', 'field_sales_rep_username',
-            'notes', 'appointment_date', 'google_calendar_event_id', 'sale_amount',
+            'notes', 'qualifier_notes', 'appointment_date', 'qualifier_callback_date', 'google_calendar_event_id', 'sale_amount',
             # Address fields
             'address1', 'city',
             # Dialer-specific fields
@@ -227,7 +227,7 @@ class LeadUpdateSerializer(serializers.ModelSerializer):
         model = Lead
         fields = [
             'full_name', 'phone', 'email', 'status', 'disposition', 
-            'notes', 'appointment_date', 'field_sales_rep', 'sale_amount',
+            'notes', 'qualifier_notes', 'appointment_date', 'qualifier_callback_date', 'field_sales_rep', 'sale_amount',
             # Address fields
             'address1', 'city', 'postal_code',
             # Energy section fields

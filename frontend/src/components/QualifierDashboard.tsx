@@ -317,6 +317,131 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
   }, [playNotificationSound]);
 
 
+  // Track which notifications have been shown to prevent duplicates
+  const shownNotificationsRef = useRef<Set<string>>(new Set());
+
+  // Check for callback notifications
+  useEffect(() => {
+    const checkCallbackNotifications = () => {
+      const now = new Date();
+      const callbackLeads = leads.filter(lead => 
+        lead.status === 'qualifier_callback' && 
+        lead.qualifier_callback_date
+      );
+
+      // Clean up old notification keys (older than 2 hours) to prevent memory leaks
+      const twoHoursAgo = now.getTime() - (2 * 60 * 60 * 1000);
+      const keysToRemove: string[] = [];
+      shownNotificationsRef.current.forEach(key => {
+        const parts = key.split('-');
+        if (parts.length >= 3) {
+          const leadId = parseInt(parts[1]);
+          const lead = callbackLeads.find(l => l.id === leadId);
+          if (lead && lead.qualifier_callback_date) {
+            const callbackDate = new Date(lead.qualifier_callback_date);
+            if (callbackDate.getTime() < twoHoursAgo) {
+              keysToRemove.push(key);
+            }
+          }
+        }
+      });
+      keysToRemove.forEach(key => shownNotificationsRef.current.delete(key));
+
+      callbackLeads.forEach(lead => {
+        if (!lead.qualifier_callback_date) return;
+        
+        const callbackDate = new Date(lead.qualifier_callback_date);
+        const timeDiff = callbackDate.getTime() - now.getTime();
+        const minutesUntilCallback = timeDiff / (1000 * 60);
+        
+        // Check if callback is due (within 15 minutes) or overdue (up to 60 minutes past)
+        if (minutesUntilCallback <= 15 && minutesUntilCallback >= -60) {
+          // Create a unique key for this notification (per lead, per 5-minute window)
+          // This ensures we show a notification every 5 minutes if still in range
+          const windowIndex = Math.floor(minutesUntilCallback / 5);
+          const notificationKey = `callback-${lead.id}-${windowIndex}`;
+          
+          // Only show notification if we haven't shown it for this time window
+          if (!shownNotificationsRef.current.has(notificationKey)) {
+            // Request notification permission if not already granted
+            if ('Notification' in window) {
+              if (Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                  if (permission === 'granted') {
+                    showCallbackNotification(lead, minutesUntilCallback, notificationKey);
+                  }
+                });
+              } else if (Notification.permission === 'granted') {
+                showCallbackNotification(lead, minutesUntilCallback, notificationKey);
+              } else {
+                // Permission denied, still show toast
+                showCallbackNotification(lead, minutesUntilCallback, notificationKey);
+              }
+            } else {
+              // Notifications not supported, show toast only
+              showCallbackNotification(lead, minutesUntilCallback, notificationKey);
+            }
+          }
+        }
+      });
+    };
+
+    const showCallbackNotification = (lead: Lead, minutesUntilCallback: number, notificationKey: string) => {
+      const isOverdue = minutesUntilCallback < 0;
+      
+      // Mark as shown first to prevent duplicates
+      shownNotificationsRef.current.add(notificationKey);
+      
+      // Play sound only (banner will show the visual reminder)
+      playNotificationSound();
+      
+      // Show browser notification if permission is granted (banner handles visual display)
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          const notification = new Notification(
+            isOverdue ? '⚠️ Callback Overdue' : '⏰ Callback Due',
+            {
+              body: `Time to call back ${lead.full_name} (${lead.phone})`,
+              icon: '/favicon.ico',
+              tag: `callback-${lead.id}`, // Browser-level duplicate prevention
+              requireInteraction: isOverdue, // Keep overdue notifications visible
+              badge: '/favicon.ico',
+            }
+          );
+          
+          // Handle notification click - open the lead
+          notification.onclick = () => {
+            window.focus();
+            setUpdatingLead(lead);
+            notification.close();
+          };
+          
+          // Auto-close after 10 seconds if not overdue
+          if (!isOverdue) {
+            setTimeout(() => {
+              notification.close();
+            }, 10000);
+          }
+        } catch (error) {
+          console.error('Error showing browser notification:', error);
+        }
+      }
+    };
+
+    // Check immediately and then every minute
+    if (leads.length > 0) {
+      checkCallbackNotifications();
+    }
+    
+    const notificationInterval = setInterval(() => {
+      if (leads.length > 0) {
+        checkCallbackNotifications();
+      }
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(notificationInterval);
+  }, [leads, playNotificationSound]);
+
   useEffect(() => {
     fetchLeads();
     
@@ -502,6 +627,34 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
   };
 
 
+  // Get due qualifier callbacks (similar to AgentDashboard logic)
+  const getDueQualifierCallbacks = useCallback(() => {
+    const now = new Date();
+    return leads.filter(lead => {
+      if (lead.status !== 'qualifier_callback' || !lead.qualifier_callback_date) {
+        return false;
+      }
+      
+      const callbackDate = new Date(lead.qualifier_callback_date);
+      const timeDiff = callbackDate.getTime() - now.getTime();
+      const minutesUntilCallback = timeDiff / (1000 * 60);
+      
+      // Due if within 15 minutes or overdue (up to 60 minutes past)
+      return minutesUntilCallback <= 15 && minutesUntilCallback >= -60;
+    }).sort((a, b) => {
+      // Sort by callback date (earliest first)
+      const dateA = a.qualifier_callback_date ? new Date(a.qualifier_callback_date).getTime() : 0;
+      const dateB = b.qualifier_callback_date ? new Date(b.qualifier_callback_date).getTime() : 0;
+      return dateA - dateB;
+    });
+  }, [leads]);
+
+  const dueQualifierCallbacks = getDueQualifierCallbacks();
+
+  const handleQualifierCallbackClick = (lead: Lead) => {
+    setUpdatingLead(lead);
+  };
+
   const statusCounts = getStatusCounts(leads);
 
   if (loading) {
@@ -550,6 +703,55 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
         </div>
       </div>
 
+      {/* Qualifier Callback Reminders */}
+      {dueQualifierCallbacks.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <span className="text-2xl">⏰</span>
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-orange-800">
+                Qualifier Callback Reminders ({dueQualifierCallbacks.length})
+              </h3>
+              <div className="mt-2 text-sm text-orange-700">
+                {dueQualifierCallbacks.slice(0, 3).map((lead) => {
+                  const callbackDate = lead.qualifier_callback_date ? new Date(lead.qualifier_callback_date) : null;
+                  const now = new Date();
+                  const timeDiff = callbackDate ? callbackDate.getTime() - now.getTime() : 0;
+                  const minutesUntilCallback = timeDiff / (1000 * 60);
+                  const isOverdue = minutesUntilCallback < 0;
+                  const timeText = isOverdue 
+                    ? `${Math.abs(Math.floor(minutesUntilCallback))} minutes ago`
+                    : `in ${Math.floor(minutesUntilCallback)} minutes`;
+                  
+                  return (
+                    <div key={lead.id} className="flex items-center justify-between mb-2">
+                      <div className="flex-1">
+                        <span className="font-medium">{lead.full_name}</span>
+                        <span className="ml-2 text-orange-600">
+                          {callbackDate ? callbackDate.toLocaleString() : 'No date set'} ({timeText})
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleQualifierCallbackClick(lead)}
+                        className="ml-2 px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors"
+                      >
+                        Open Lead
+                      </button>
+                    </div>
+                  );
+                })}
+                {dueQualifierCallbacks.length > 3 && (
+                  <div className="text-orange-600 font-medium">
+                    +{dueQualifierCallbacks.length - 3} more callbacks
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
