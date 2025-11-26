@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Lead } from '../types';
 import { leadsAPI } from '../api';
 import { toast } from 'react-toastify';
@@ -319,15 +319,19 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
 
   // Track which notifications have been shown to prevent duplicates
   const shownNotificationsRef = useRef<Set<string>>(new Set());
+  
+  // Memoize callback leads to avoid recalculating on every render
+  const callbackLeads = useMemo(() => {
+    return leads.filter(lead => 
+      lead.status === 'qualifier_callback' && 
+      lead.qualifier_callback_date
+    );
+  }, [leads]);
 
   // Check for callback notifications
   useEffect(() => {
     const checkCallbackNotifications = () => {
       const now = new Date();
-      const callbackLeads = leads.filter(lead => 
-        lead.status === 'qualifier_callback' && 
-        lead.qualifier_callback_date
-      );
 
       // Clean up old notification keys (older than 2 hours) to prevent memory leaks
       const twoHoursAgo = now.getTime() - (2 * 60 * 60 * 1000);
@@ -428,33 +432,46 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       }
     };
 
-    // Check immediately and then every minute
-    if (leads.length > 0) {
-      checkCallbackNotifications();
+    // Check immediately and then every minute (only if there are callback leads)
+    if (callbackLeads.length > 0) {
+      // Delay initial check slightly to avoid blocking initial render
+      const initialTimeout = setTimeout(() => {
+        checkCallbackNotifications();
+      }, 1000);
+      
+      const notificationInterval = setInterval(() => {
+        checkCallbackNotifications();
+      }, 60000); // Check every minute
+      
+      return () => {
+        clearTimeout(initialTimeout);
+        clearInterval(notificationInterval);
+      };
     }
     
-    const notificationInterval = setInterval(() => {
-      if (leads.length > 0) {
-        checkCallbackNotifications();
-      }
-    }, 60000); // Check every minute
-    
-    return () => clearInterval(notificationInterval);
-  }, [leads, playNotificationSound]);
+  }, [callbackLeads, playNotificationSound]);
 
   useEffect(() => {
+    // Initial load
     fetchLeads();
     
     // Auto-refresh every 30 seconds silently (no screen flicker)
     // Skip if background loading is in progress to prevent interference
-    const interval = setInterval(() => {
-      if (!backgroundLoadingInProgress.current) {
-        fetchLeads(true);
-      }
-    }, 30000);
+    // Also add a small delay before starting auto-refresh to avoid immediate second load
+    let interval: NodeJS.Timeout | null = null;
+    const initialDelay = setTimeout(() => {
+      interval = setInterval(() => {
+        if (!backgroundLoadingInProgress.current) {
+          fetchLeads(true);
+        }
+      }, 30000);
+    }, 5000); // Wait 5 seconds before starting auto-refresh
     
     return () => {
-      clearInterval(interval);
+      clearTimeout(initialDelay);
+      if (interval) {
+        clearInterval(interval);
+      }
     };
   }, [fetchLeads]);
 
@@ -627,11 +644,11 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
   };
 
 
-  // Get due qualifier callbacks (similar to AgentDashboard logic)
-  const getDueQualifierCallbacks = useCallback(() => {
+  // Get due qualifier callbacks (similar to AgentDashboard logic) - memoized for performance
+  const dueQualifierCallbacks = useMemo(() => {
     const now = new Date();
-    return leads.filter(lead => {
-      if (lead.status !== 'qualifier_callback' || !lead.qualifier_callback_date) {
+    return callbackLeads.filter(lead => {
+      if (!lead.qualifier_callback_date) {
         return false;
       }
       
@@ -647,15 +664,14 @@ const QualifierDashboard: React.FC<QualifierDashboardProps> = ({ onKanbanLeadUpd
       const dateB = b.qualifier_callback_date ? new Date(b.qualifier_callback_date).getTime() : 0;
       return dateA - dateB;
     });
-  }, [leads]);
-
-  const dueQualifierCallbacks = getDueQualifierCallbacks();
+  }, [callbackLeads]);
 
   const handleQualifierCallbackClick = (lead: Lead) => {
     setUpdatingLead(lead);
   };
 
-  const statusCounts = getStatusCounts(leads);
+  // Memoize status counts to avoid recalculating on every render
+  const statusCounts = useMemo(() => getStatusCounts(leads), [leads]);
 
   if (loading) {
     return (
