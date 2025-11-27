@@ -6,6 +6,7 @@ import { fieldSubmissionsAPI } from '../api';
 interface FieldFormData {
   id?: string;
   backendId?: number; // Backend database ID for synced submissions
+  userId?: number; // User ID to filter submissions by canvasser
   // Canvasser Info (auto-generated)
   canvasserName: string;
   date: string;
@@ -279,7 +280,14 @@ const CanvasserForm: React.FC = () => {
       const checkStore = checkTransaction.objectStore('syncedSubmissions');
       const existingData = await new Promise<FieldFormData[]>((resolve, reject) => {
         const request = checkStore.getAll();
-        request.onsuccess = () => resolve(request.result as FieldFormData[]);
+        request.onsuccess = () => {
+          const data = request.result as FieldFormData[];
+          // Filter by current user ID - only check existing submissions for current user
+          const userFiltered = user?.id 
+            ? data.filter(sub => sub.userId === user.id)
+            : [];
+          resolve(userFiltered);
+        };
         request.onerror = () => reject(request.error);
       });
       
@@ -288,6 +296,7 @@ const CanvasserForm: React.FC = () => {
       const syncedData = userSubmissions.map((submission: any) => ({
         id: `backend_${submission.id}`, // Use backend ID to identify synced submissions
         backendId: submission.id, // Store original backend ID for updates/deletes
+        userId: user?.id || submission.field_agent || submission.field_agent_id, // Store user ID for filtering
         canvasserName: submission.field_agent_name || submission.canvasser_name || user?.first_name || 'Unknown',
         date: submission.created_at 
           ? new Date(submission.created_at).toLocaleDateString('en-GB')
@@ -402,7 +411,7 @@ const CanvasserForm: React.FC = () => {
       const db = await openDB();
       
       
-      // Load pending submissions
+      // Load pending submissions - filter by current user
       const pendingData = await new Promise<FieldFormData[]>((resolve, reject) => {
         const pendingTransaction = db.transaction(['pendingSubmissions'], 'readonly');
         const pendingStore = pendingTransaction.objectStore('pendingSubmissions');
@@ -410,8 +419,13 @@ const CanvasserForm: React.FC = () => {
         
         pendingRequest.onsuccess = () => {
           const data = pendingRequest.result as FieldFormData[];
-          
-          resolve(data);
+          // Filter by current user ID - only show submissions for current user
+          // If user is logged in, only show their submissions
+          // If no user, show nothing (shouldn't happen, but safety check)
+          const userFiltered = user?.id 
+            ? data.filter(sub => sub.userId === user.id)
+            : [];
+          resolve(userFiltered);
         };
         
         pendingRequest.onerror = () => {
@@ -424,7 +438,7 @@ const CanvasserForm: React.FC = () => {
       // This ensures that when a user logs in on a different device, they see all their submissions
       await restoreSyncedSubmissions();
       
-      // Reload synced submissions after backend sync to get the updated data
+      // Reload synced submissions after backend sync to get the updated data - filter by current user
       const updatedSyncedData = await new Promise<FieldFormData[]>((resolve, reject) => {
         const updatedTransaction = db.transaction(['syncedSubmissions'], 'readonly');
         const updatedStore = updatedTransaction.objectStore('syncedSubmissions');
@@ -432,7 +446,13 @@ const CanvasserForm: React.FC = () => {
         
         updatedRequest.onsuccess = () => {
           const data = updatedRequest.result as FieldFormData[];
-          resolve(data);
+          // Filter by current user ID - only show submissions for current user
+          // If user is logged in, only show their submissions
+          // If no user, show nothing (shouldn't happen, but safety check)
+          const userFiltered = user?.id 
+            ? data.filter(sub => sub.userId === user.id)
+            : [];
+          resolve(userFiltered);
         };
         
         updatedRequest.onerror = () => {
@@ -484,6 +504,7 @@ const CanvasserForm: React.FC = () => {
         const submissionData = {
           ...data,
           id: data.id || `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          userId: user?.id || data.userId, // Store user ID for filtering
           timestamp: new Date().toISOString(),
           synced: false
         };
@@ -840,6 +861,7 @@ const CanvasserForm: React.FC = () => {
           const syncedSubmission: FieldFormData = {
             id: `backend_${result.id}`,
             backendId: result.id,
+            userId: user?.id || submissionData.userId, // Store user ID for filtering
             canvasserName: result.field_agent_name || submissionData.canvasserName,
             date: result.assessment_date || submissionData.date,
             time: result.assessment_time || submissionData.time,
@@ -1025,13 +1047,13 @@ const CanvasserForm: React.FC = () => {
         const store = transaction.objectStore('pendingSubmissions');
         
         await new Promise<void>((resolve, reject) => {
-          const request = store.put({ ...submissionData, id: editingSubmissionId });
+          const request = store.put({ ...submissionData, id: editingSubmissionId, userId: user?.id });
           request.onsuccess = () => resolve();
           request.onerror = () => reject(request.error);
         });
         
         setPendingSubmissions(prev => prev.map(s => 
-          s.id === editingSubmissionId ? { ...submissionData, id: editingSubmissionId } : s
+          s.id === editingSubmissionId ? { ...submissionData, id: editingSubmissionId, userId: user?.id } : s
         ));
         
         setSuccessMessage('Form updated offline successfully!');
@@ -1115,17 +1137,6 @@ const CanvasserForm: React.FC = () => {
   };
 
   const submitToServer = async (data: FieldFormData, submissionIdToCheck?: string) => {
-    const API_BASE_URL = process.env.NODE_ENV === 'production' 
-      ? 'https://crm.margav.energy/api' 
-      : 'http://localhost:8000/api';
-    
-    // Get token from localStorage (stored as 'authToken' by AuthContext)
-    const token = localStorage.getItem('authToken');
-    
-    if (!token) {
-      throw new Error('Authentication token not found. Please refresh the page and try again.');
-    }
-    
     // Convert camelCase to snake_case for Django backend and apply UK formatting
     const backendData = {
       canvasser_name: formatName(data.canvasserName),
@@ -1222,45 +1233,38 @@ const CanvasserForm: React.FC = () => {
       }
     }
     
-    const url = isEditing && submissionId
-      ? `${API_BASE_URL}/field-submissions/${submissionId}/`
-      : `${API_BASE_URL}/field-submissions/`;
-    
-    const method = isEditing && submissionId ? 'PATCH' : 'POST';
-    
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Token ${token}`
-      },
-      body: JSON.stringify(backendData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      
-      // Format validation errors
-      if (errorData && typeof errorData === 'object') {
-        const errors = Object.entries(errorData).map(([field, messages]) => {
-          const msgArray = Array.isArray(messages) ? messages : [messages];
-          return `${field}: ${msgArray.join(', ')}`;
-        }).join('\n');
-        throw new Error(errors || `Server error: ${response.status}`);
+    // Use the API instance which handles authentication automatically
+    try {
+      let result;
+      if (isEditing && submissionId) {
+        // Update existing submission
+        result = await fieldSubmissionsAPI.updateFieldSubmission(submissionId, backendData);
+        // Ensure result has the ID
+        if (!result.id) {
+          result.id = submissionId;
+        }
+      } else {
+        // Create new submission
+        result = await fieldSubmissionsAPI.createFieldSubmission(backendData);
       }
       
-      throw new Error(errorData.detail || errorData.error || `Server error: ${response.status}`);
+      return result;
+    } catch (error: any) {
+      // Handle API errors
+      if (error.response) {
+        const errorData = error.response.data;
+        // Format validation errors
+        if (errorData && typeof errorData === 'object') {
+          const errors = Object.entries(errorData).map(([field, messages]) => {
+            const msgArray = Array.isArray(messages) ? messages : [messages];
+            return `${field}: ${msgArray.join(', ')}`;
+          }).join('\n');
+          throw new Error(errors || `Server error: ${error.response.status}`);
+        }
+        throw new Error(errorData.detail || errorData.error || `Server error: ${error.response.status}`);
+      }
+      throw error;
     }
-    
-    const result = await response.json();
-    
-    // If updating, ensure the result has the same ID
-    if (isEditing && submissionId && !result.id) {
-      // If backend doesn't return ID, use the one we sent
-      result.id = submissionId;
-    }
-    
-    return result;
   };
 
   const syncSingleSubmission = async (submission: FieldFormData) => {
@@ -1350,6 +1354,7 @@ const CanvasserForm: React.FC = () => {
               ...submission,
               id: `backend_${result.id}`,
               backendId: result.id,
+              userId: user?.id || submission.userId, // Store user ID for filtering
               synced: true
             };
 

@@ -210,6 +210,19 @@ export const leadsAPI = {
     });
     return response.data;
   },
+
+  getNextLead: async (): Promise<Lead> => {
+    const response: AxiosResponse<Lead> = await api.get('/leads/next/');
+    return response.data;
+  },
+
+  markCallResult: async (leadId: number, notes?: string): Promise<{ message: string; lead: Lead }> => {
+    const response: AxiosResponse<{ message: string; lead: Lead }> = await api.post('/calls/result/', {
+      lead_id: leadId,
+      notes: notes || ''
+    });
+    return response.data;
+  },
 };
 
 // Dialer API
@@ -295,6 +308,11 @@ export const fieldSubmissionsAPI = {
     return response.data;
   },
 
+  createFieldSubmission: async (submissionData: any): Promise<any> => {
+    const response: AxiosResponse<any> = await api.post('/field-submissions/', submissionData);
+    return response.data;
+  },
+
   updateFieldSubmission: async (id: number, submissionData: any): Promise<any> => {
     const response: AxiosResponse<any> = await api.patch(`/field-submissions/${id}/`, submissionData);
     return response.data;
@@ -302,6 +320,62 @@ export const fieldSubmissionsAPI = {
 
   deleteFieldSubmission: async (id: number): Promise<void> => {
     await api.delete(`/field-submissions/${id}/`);
+  },
+};
+
+// AI Lead Assistant API
+export interface AILeadAssistantResponse {
+  lead_fields: {
+    full_name?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    address1?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postal_code?: string | null;
+    campaign_id?: string | null;
+    session_info?: string | null;
+    notes?: string | null;
+  };
+  call_summary: string;
+  lead_score: number;
+  recommended_followup: string | null;
+}
+
+export const aiAPI = {
+  processLeadText: async (rawText: string): Promise<AILeadAssistantResponse> => {
+    try {
+      const response: AxiosResponse<AILeadAssistantResponse> = await api.post('/ai/lead-assistant/', {
+        raw_text: rawText,
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  llamaChat: async (messages: Array<{role: string; content: string}>, temperature?: number, max_tokens?: number, json_mode?: boolean): Promise<{content: any; text: string}> => {
+    try {
+      // Use AI Dashboard API for Llama
+      const aiDashboardToken = localStorage.getItem('aiDashboardToken');
+      const apiInstance = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(aiDashboardToken && { 'Authorization': `Token ${aiDashboardToken}` }),
+        },
+      });
+      
+      const response: AxiosResponse<{content: any; text: string}> = await apiInstance.post('/ai-dashboard/chat/', {
+        messages,
+        temperature: temperature || 0.7,
+        max_tokens: max_tokens || 2000,
+        json_mode: json_mode || false,
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
   },
 };
 
