@@ -1276,7 +1276,10 @@ const CanvasserForm: React.FC = () => {
       return;
     }
 
-    setSyncingSubmissionId(submission.id);
+    // Only set syncingSubmissionId if not already syncing all
+    if (syncingSubmissionId !== 'all') {
+      setSyncingSubmissionId(submission.id);
+    }
 
     try {
       // Submit to server - it will check for backendId to determine if it's an update or create
@@ -1360,10 +1363,17 @@ const CanvasserForm: React.FC = () => {
       } catch (error) {
       console.error('Sync error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to sync submission. Please try again.';
-      setErrorMessage(`Failed to sync: ${errorMessage}`);
-      setShowError(true);
+      // Only show error if not syncing all (errors will be handled in syncAllSubmissions)
+      if (syncingSubmissionId !== 'all') {
+        setErrorMessage(`Failed to sync: ${errorMessage}`);
+        setShowError(true);
+      }
+      throw error; // Re-throw so syncAllSubmissions can catch it
     } finally {
-      setSyncingSubmissionId(null);
+      // Only clear syncingSubmissionId if not syncing all
+      if (syncingSubmissionId !== 'all') {
+        setSyncingSubmissionId(null);
+      }
     }
   };
 
@@ -1389,11 +1399,67 @@ const CanvasserForm: React.FC = () => {
 
     try {
       await syncPendingSubmissions();
+      setSuccessMessage('All pending submissions synced successfully!');
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
-      
       setErrorMessage('Failed to sync submissions. Please try again.');
+      setShowError(true);
+    }
+  };
+
+  const syncAllSubmissions = async () => {
+    if (!formData.isOnline) {
+      setErrorMessage('Cannot sync while offline. Please check your internet connection.');
+      setShowError(true);
+      return;
+    }
+
+    const allSubmissions = [...pendingSubmissions, ...syncedSubmissions];
+    
+    if (allSubmissions.length === 0) {
+      setErrorMessage('No submissions to sync');
+      setShowError(true);
+      return;
+    }
+
+    try {
+      setSyncingSubmissionId('all'); // Use special ID to indicate bulk sync
+      let successCount = 0;
+      let failCount = 0;
+
+      // Sync all submissions (both pending and already synced)
+      for (const submission of allSubmissions) {
+        try {
+          await syncSingleSubmission(submission);
+          successCount++;
+          // Small delay to avoid overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          failCount++;
+          console.error('Error syncing submission:', error);
+        }
+      }
+
+      setSyncingSubmissionId(null);
+
+      // Reload submissions to get updated state
+      await loadPendingSubmissions();
+
+      if (failCount === 0) {
+        setSuccessMessage(`✅ All ${successCount} submissions synced successfully and sent to qualifier!`);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 5000);
+      } else {
+        setSuccessMessage(`✅ ${successCount} submissions synced successfully. ${failCount} failed.`);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 5000);
+        setErrorMessage(`${failCount} submissions failed to sync. Please try again.`);
+        setShowError(true);
+      }
+    } catch (error) {
+      setSyncingSubmissionId(null);
+      setErrorMessage('Failed to sync all submissions. Please try again.');
       setShowError(true);
     }
   };
@@ -2275,7 +2341,28 @@ const CanvasserForm: React.FC = () => {
         {/* Offline Submissions Section */}
         {(pendingSubmissions.length > 0 || (showSyncedSubmissions && actualSyncedCount > 0)) && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">📋 Your Submissions</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">📋 Your Submissions</h2>
+              {formData.isOnline && (pendingSubmissions.length > 0 || actualSyncedCount > 0) && (
+                <button
+                  onClick={syncAllSubmissions}
+                  disabled={syncingSubmissionId === 'all' || editingSubmissionId !== null}
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md"
+                >
+                  {syncingSubmissionId === 'all' ? (
+                    <>
+                      <span className="animate-spin">⏳</span>
+                      <span>Syncing All Submissions...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-lg">🔄</span>
+                      <span>Sync All to Qualifier ({pendingSubmissions.length + actualSyncedCount})</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
             
             {/* Pending Submissions */}
             {pendingSubmissions.length > 0 && (
