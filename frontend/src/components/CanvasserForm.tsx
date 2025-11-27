@@ -138,6 +138,7 @@ const CanvasserForm: React.FC = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [showSyncedSubmissions, setShowSyncedSubmissions] = useState(false);
+  const [showAllSyncedSubmissions, setShowAllSyncedSubmissions] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -2476,7 +2477,7 @@ const CanvasserForm: React.FC = () => {
                   </h3>
                 </div>
                 <div className="space-y-2">
-                  {syncedSubmissions.slice(0, 5).map((submission, index) => (
+                  {(showAllSyncedSubmissions ? syncedSubmissions : syncedSubmissions.slice(0, 5)).map((submission, index) => (
                     <div key={submission.id || index} className="bg-green-50 p-3 rounded-lg border border-green-200">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -2487,6 +2488,14 @@ const CanvasserForm: React.FC = () => {
                         <div className="flex flex-col items-end gap-2">
                           <p className="text-sm text-green-600">✅ Synced</p>
                           <div className="flex gap-2">
+                            <button
+                              onClick={() => syncSingleSubmission(submission)}
+                              disabled={!formData.isOnline || syncingSubmissionId === submission.id || syncingSubmissionId === 'all' || editingSubmissionId !== null}
+                              className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Re-sync to ensure sent to qualifier"
+                            >
+                              {syncingSubmissionId === submission.id ? '⏳ Syncing...' : '🔄 Sync'}
+                            </button>
                             <button
                               onClick={() => loadSubmissionForEdit(submission)}
                               className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
@@ -2505,8 +2514,21 @@ const CanvasserForm: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  {actualSyncedCount > 5 && syncedSubmissions.length > 0 && (
-                    <p className="text-sm text-gray-500 text-center">... and {actualSyncedCount - 5} more</p>
+                  {actualSyncedCount > 5 && syncedSubmissions.length > 0 && !showAllSyncedSubmissions && (
+                    <button
+                      onClick={() => setShowAllSyncedSubmissions(true)}
+                      className="w-full text-sm text-blue-600 hover:text-blue-800 text-center py-2 font-medium hover:underline"
+                    >
+                      ... and {actualSyncedCount - 5} more (click to show all)
+                    </button>
+                  )}
+                  {showAllSyncedSubmissions && actualSyncedCount > 5 && (
+                    <button
+                      onClick={() => setShowAllSyncedSubmissions(false)}
+                      className="w-full text-sm text-blue-600 hover:text-blue-800 text-center py-2 font-medium hover:underline"
+                    >
+                      Show less
+                    </button>
                   )}
                 </div>
               </div>
