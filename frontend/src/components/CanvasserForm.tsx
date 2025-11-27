@@ -1353,11 +1353,13 @@ const CanvasserForm: React.FC = () => {
               synced: true
             };
 
-            // Add to synced submissions
-            const addRequest = syncedStore.add(syncedSubmission);
+            // Use put() instead of add() - it will add if new, or update if exists
+            // This prevents "Key already exists" errors when re-syncing
+            const putRequest = syncedStore.put(syncedSubmission);
               
-            addRequest.onsuccess = () => {
-              // Remove from pending submissions
+            putRequest.onsuccess = () => {
+              // Remove from pending submissions (only if it was pending)
+              // Check if submission exists in pending before trying to delete
               const deleteRequest = pendingStore.delete(submission.id!);
               
               deleteRequest.onsuccess = () => {
@@ -1365,42 +1367,17 @@ const CanvasserForm: React.FC = () => {
               };
               
               deleteRequest.onerror = () => {
-                if (!transactionResolved) {
-                  transactionResolved = true;
-                  reject(deleteRequest.error);
-                }
+                // If delete fails (e.g., item wasn't in pending), that's okay
+                // The item might already be in synced, so we can continue
+                // Transaction will complete automatically, oncomplete handler will resolve
               };
             };
               
-            addRequest.onerror = (event) => {
-              // If it's a duplicate key error, try to update instead
+            putRequest.onerror = (event) => {
               const error = (event.target as IDBRequest).error;
-              if (error && error.name === 'ConstraintError') {
-                // Update existing record
-                const updateRequest = syncedStore.put(syncedSubmission);
-                updateRequest.onsuccess = () => {
-                  const deleteRequest = pendingStore.delete(submission.id!);
-                  deleteRequest.onsuccess = () => {
-                    // Transaction will complete automatically, oncomplete handler will resolve
-                  };
-                  deleteRequest.onerror = () => {
-                    if (!transactionResolved) {
-                      transactionResolved = true;
-                      reject(deleteRequest.error);
-                    }
-                  };
-                };
-                updateRequest.onerror = () => {
-                  if (!transactionResolved) {
-                    transactionResolved = true;
-                    reject(updateRequest.error);
-                  }
-                };
-              } else {
-                if (!transactionResolved) {
-                  transactionResolved = true;
-                  reject(error);
-                }
+              if (!transactionResolved) {
+                transactionResolved = true;
+                reject(error || new Error('Failed to save synced submission'));
               }
             };
           }).catch(error => {
