@@ -1296,65 +1296,113 @@ const CanvasserForm: React.FC = () => {
             const syncedStore = transaction.objectStore('syncedSubmissions');
             const pendingStore = transaction.objectStore('pendingSubmissions');
             
-          // Create synced submission with backend ID
-          const syncedSubmission: FieldFormData = {
-            ...submission,
-            id: `backend_${result.id}`,
-            backendId: result.id,
-            synced: true
-          };
-
-              // Add to synced submissions
-          const addRequest = syncedStore.add(syncedSubmission);
-              
-              addRequest.onsuccess = () => {
-                // Remove from pending submissions
-                const deleteRequest = pendingStore.delete(submission.id!);
+            let transactionResolved = false;
+            
+            // Handle transaction completion
+            transaction.oncomplete = () => {
+              if (!transactionResolved) {
+                transactionResolved = true;
+                // Update React state after transaction completes
+                setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
+                setSyncedSubmissions(prev => {
+                  const existing = prev.find(s => s.id === `backend_${result.id}`);
+                  if (existing) {
+                    return prev.map(s => s.id === `backend_${result.id}` ? {
+                      ...submission,
+                      id: `backend_${result.id}`,
+                      backendId: result.id,
+                      synced: true
+                    } : s);
+                  }
+                  return [...prev, {
+                    ...submission,
+                    id: `backend_${result.id}`,
+                    backendId: result.id,
+                    synced: true
+                  }];
+                });
+                setActualSyncedCount(prev => {
+                  const hasExisting = syncedSubmissions.some(s => s.id === `backend_${result.id}`);
+                  return hasExisting ? prev : prev + 1;
+                });
                 
-                deleteRequest.onsuccess = () => {
-                  // Update React state
-                  setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
-              setSyncedSubmissions(prev => [...prev, syncedSubmission]);
-              setActualSyncedCount(prev => prev + 1);
-              
-              setSuccessMessage(`Submission for ${submission.customerName} synced successfully!`);
-              setShowSuccess(true);
-              setTimeout(() => setShowSuccess(false), 3000);
-                  
-                  resolve();
-                };
-                
-                deleteRequest.onerror = () => {
-                  reject(deleteRequest.error);
-                };
-              };
-              
-          addRequest.onerror = (event) => {
-            // If it's a duplicate key error, try to update instead
-            const error = (event.target as IDBRequest).error;
-            if (error && error.name === 'ConstraintError') {
-              // Update existing record
-              const updateRequest = syncedStore.put(syncedSubmission);
-              updateRequest.onsuccess = () => {
-                const deleteRequest = pendingStore.delete(submission.id!);
-                deleteRequest.onsuccess = () => {
-                  setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
-                  setSyncedSubmissions(prev => {
-                    const filtered = prev.filter(s => s.id !== syncedSubmission.id);
-                    return [...filtered, syncedSubmission];
-                  });
+                // Only show success message if not in bulk sync mode
+                if (syncingSubmissionId !== 'all') {
                   setSuccessMessage(`Submission for ${submission.customerName} synced successfully!`);
                   setShowSuccess(true);
                   setTimeout(() => setShowSuccess(false), 3000);
-                  resolve();
-                };
-                deleteRequest.onerror = () => reject(deleteRequest.error);
+                }
+                
+                resolve();
+              }
+            };
+            
+            transaction.onerror = (event) => {
+              console.error('Transaction error:', event);
+              if (!transactionResolved) {
+                transactionResolved = true;
+                reject((event.target as IDBTransaction).error || new Error('Transaction failed'));
+              }
+            };
+            
+            // Create synced submission with backend ID
+            const syncedSubmission: FieldFormData = {
+              ...submission,
+              id: `backend_${result.id}`,
+              backendId: result.id,
+              synced: true
+            };
+
+            // Add to synced submissions
+            const addRequest = syncedStore.add(syncedSubmission);
+              
+            addRequest.onsuccess = () => {
+              // Remove from pending submissions
+              const deleteRequest = pendingStore.delete(submission.id!);
+              
+              deleteRequest.onsuccess = () => {
+                // Transaction will complete automatically, oncomplete handler will resolve
               };
-              updateRequest.onerror = () => reject(updateRequest.error);
-            } else {
-              reject(error);
-            }
-          };
+              
+              deleteRequest.onerror = () => {
+                if (!transactionResolved) {
+                  transactionResolved = true;
+                  reject(deleteRequest.error);
+                }
+              };
+            };
+              
+            addRequest.onerror = (event) => {
+              // If it's a duplicate key error, try to update instead
+              const error = (event.target as IDBRequest).error;
+              if (error && error.name === 'ConstraintError') {
+                // Update existing record
+                const updateRequest = syncedStore.put(syncedSubmission);
+                updateRequest.onsuccess = () => {
+                  const deleteRequest = pendingStore.delete(submission.id!);
+                  deleteRequest.onsuccess = () => {
+                    // Transaction will complete automatically, oncomplete handler will resolve
+                  };
+                  deleteRequest.onerror = () => {
+                    if (!transactionResolved) {
+                      transactionResolved = true;
+                      reject(deleteRequest.error);
+                    }
+                  };
+                };
+                updateRequest.onerror = () => {
+                  if (!transactionResolved) {
+                    transactionResolved = true;
+                    reject(updateRequest.error);
+                  }
+                };
+              } else {
+                if (!transactionResolved) {
+                  transactionResolved = true;
+                  reject(error);
+                }
+              }
+            };
           }).catch(error => {
             reject(error);
           });
@@ -1429,20 +1477,38 @@ const CanvasserForm: React.FC = () => {
       let failCount = 0;
 
       // Sync all submissions (both pending and already synced)
-      for (const submission of allSubmissions) {
+      // Process one at a time with delays to avoid IndexedDB transaction conflicts
+      for (let i = 0; i < allSubmissions.length; i++) {
+        const submission = allSubmissions[i];
         try {
+          // Wait a bit longer between syncs to ensure previous transaction completes
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+          
           await syncSingleSubmission(submission);
           successCount++;
-          // Small delay to avoid overwhelming the server
-          await new Promise(resolve => setTimeout(resolve, 100));
-        } catch (error) {
+          
+          // Additional delay after successful sync to ensure database operations complete
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (error: any) {
           failCount++;
-          console.error('Error syncing submission:', error);
+          // Check if it's an IndexedDB transaction error
+          if (error?.name === 'AbortError' || error?.message?.includes('transaction was aborted')) {
+            console.warn(`Transaction conflict for submission ${submission.id}, will retry later`);
+            // Wait longer before continuing to next submission
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } else {
+            console.error('Error syncing submission:', error);
+          }
         }
       }
 
       setSyncingSubmissionId(null);
 
+      // Wait a bit before reloading to ensure all transactions are complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Reload submissions to get updated state
       await loadPendingSubmissions();
 
@@ -1454,7 +1520,11 @@ const CanvasserForm: React.FC = () => {
         setSuccessMessage(`✅ ${successCount} submissions synced successfully. ${failCount} failed.`);
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 5000);
-        setErrorMessage(`${failCount} submissions failed to sync. Please try again.`);
+        if (failCount < allSubmissions.length) {
+          setErrorMessage(`${failCount} submissions failed to sync. You can try syncing them individually.`);
+        } else {
+          setErrorMessage('All submissions failed to sync. Please check your connection and try again.');
+        }
         setShowError(true);
       }
     } catch (error) {
