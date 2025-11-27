@@ -81,9 +81,10 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         
         try:
             lead = Lead.objects.create(**lead_data)
-            logger.info(f"Created lead {lead.id} from field submission {submission.id}")
+            logger.info(f"Created lead {lead.id} (status: {lead.status}) from field submission {submission.id} for qualifier review")
         except Exception as e:
-            logger.error(f"Error creating lead from field submission: {e}")
+            logger.error(f"CRITICAL: Error creating lead from field submission {submission.id}: {e}", exc_info=True)
+            logger.error(f"Lead data that failed: {lead_data}")
             # Don't fail the submission if lead creation fails
         
         # Return the submission data
@@ -151,9 +152,10 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                 lead_data['created_at'] = submission.timestamp
                 lead_data['updated_at'] = submission.timestamp
                 lead = Lead.objects.create(**lead_data)
-                logger.info(f"Created lead {lead.id} from updated field submission {submission.id}")
+                logger.info(f"Created lead {lead.id} (status: {lead.status}) from updated field submission {submission.id} for qualifier review")
         except Exception as e:
-            logger.error(f"Error updating/creating lead from field submission: {e}")
+            logger.error(f"CRITICAL: Error updating/creating lead from field submission {submission.id}: {e}", exc_info=True)
+            logger.error(f"Lead data that failed: {lead_data}")
             # Don't fail the submission update if lead update fails
         
         # Return the updated submission data
@@ -407,9 +409,10 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         
         try:
             lead = Lead.objects.create(**lead_data)
-            logger.info(f"Created lead {lead.id} from field submission {submission.id}")
+            logger.info(f"Created lead {lead.id} (status: {lead.status}) from field submission {submission.id} for qualifier review")
         except Exception as e:
-            logger.error(f"Error creating lead from field submission: {e}")
+            logger.error(f"CRITICAL: Error creating lead from field submission {submission.id}: {e}", exc_info=True)
+            logger.error(f"Lead data that failed: {lead_data}")
             # Don't fail the submission if lead creation fails
         
         # Return the submission data
@@ -477,9 +480,10 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                 lead_data['created_at'] = submission.timestamp
                 lead_data['updated_at'] = submission.timestamp
                 lead = Lead.objects.create(**lead_data)
-                logger.info(f"Created lead {lead.id} from updated field submission {submission.id}")
+                logger.info(f"Created lead {lead.id} (status: {lead.status}) from updated field submission {submission.id} for qualifier review")
         except Exception as e:
-            logger.error(f"Error updating/creating lead from field submission: {e}")
+            logger.error(f"CRITICAL: Error updating/creating lead from field submission {submission.id}: {e}", exc_info=True)
+            logger.error(f"Lead data that failed: {lead_data}")
             # Don't fail the submission update if lead update fails
         
         # Return the updated submission data

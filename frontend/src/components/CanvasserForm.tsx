@@ -5,6 +5,7 @@ import { fieldSubmissionsAPI } from '../api';
 
 interface FieldFormData {
   id?: string;
+  backendId?: number; // Backend database ID for synced submissions
   // Canvasser Info (auto-generated)
   canvasserName: string;
   date: string;
@@ -263,72 +264,97 @@ const CanvasserForm: React.FC = () => {
     }
   }, [formData.isOnline, pendingSubmissions.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Function to restore synced submissions from backend
+  // Function to sync submissions from backend (always called to ensure cross-device sync)
   const restoreSyncedSubmissions = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/field-submissions/', {
-        headers: {
-          'Authorization': `Token ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json',
-        },
+      // Fetch all submissions from backend using the proper API
+      const userSubmissions = await fieldSubmissionsAPI.getFieldSubmissions();
+      
+      if (!userSubmissions || userSubmissions.length === 0) {
+        return 0;
+      }
+      
+      const db = await openDB();
+      const checkTransaction = db.transaction(['syncedSubmissions'], 'readonly');
+      const checkStore = checkTransaction.objectStore('syncedSubmissions');
+      const existingData = await new Promise<FieldFormData[]>((resolve, reject) => {
+        const request = checkStore.getAll();
+        request.onsuccess = () => resolve(request.result as FieldFormData[]);
+        request.onerror = () => reject(request.error);
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        const userSubmissions = data.results || data;
-        
-        const db = await openDB();
-        const checkTransaction = db.transaction(['syncedSubmissions'], 'readonly');
-        const checkStore = checkTransaction.objectStore('syncedSubmissions');
-        const existingData = await new Promise<FieldFormData[]>((resolve, reject) => {
-          const request = checkStore.getAll();
-          request.onsuccess = () => resolve(request.result as FieldFormData[]);
-          request.onerror = () => reject(request.error);
-        });
-        
-        const syncedData = userSubmissions.map((submission: any) => ({
-          id: `restored_${submission.id}`,
-          canvasserName: submission.field_agent_name || user?.first_name || 'Unknown',
-          date: new Date(submission.created_at).toLocaleDateString('en-GB'),
-          time: new Date(submission.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          customerName: submission.customer_name || 'Unknown',
-          address: submission.address || '',
-          postalCode: submission.postal_code || '',
-          phone: submission.phone || '',
-          email: submission.email || '',
-          preferredContactTime: submission.preferred_contact_time || '',
-          ownsProperty: submission.property_ownership || '',
-          propertyType: submission.property_type || '',
-          numberOfBedrooms: submission.number_of_bedrooms || '',
-          roofType: submission.roof_type || '',
-          roofMaterial: submission.roof_material || '',
-          roofCondition: submission.roof_condition || '',
-          roofAge: submission.roof_age || '',
-          averageMonthlyBill: submission.average_monthly_bill || '',
-          energyType: submission.energy_type || '',
-          currentEnergySupplier: submission.current_energy_supplier || '',
-          usesElectricHeating: submission.uses_electric_heating || '',
-          electricHeatingDetails: submission.electric_heating_details || '',
-          hasReceivedOtherQuotes: submission.has_received_other_quotes || '',
-          isDecisionMaker: submission.is_decision_maker || '',
-          movingIn5Years: submission.moving_in_5_years || '',
-          photos: submission.photos || { frontRoof: '', rearRoof: '', sideRoof: '', energyBill: '', additional: [] },
-          notes: submission.notes || '',
-          synced: true,
-          timestamp: submission.created_at,
-          isOnline: true
-        }));
-        
-        const existingIds = existingData.map(item => item.id);
-        const newSubmissions = syncedData.filter((submission: FieldFormData) => !existingIds.includes(submission.id));
-        
-        if (newSubmissions.length === 0) {
-          return 0;
+      // Convert backend submissions to FieldFormData format
+      // Use backend ID as the key to ensure proper deduplication
+      const syncedData = userSubmissions.map((submission: any) => ({
+        id: `backend_${submission.id}`, // Use backend ID to identify synced submissions
+        backendId: submission.id, // Store original backend ID for updates/deletes
+        canvasserName: submission.field_agent_name || submission.canvasser_name || user?.first_name || 'Unknown',
+        date: submission.created_at 
+          ? new Date(submission.created_at).toLocaleDateString('en-GB')
+          : new Date().toLocaleDateString('en-GB'),
+        time: submission.created_at
+          ? new Date(submission.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+          : new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        customerName: submission.customer_name || 'Unknown',
+        address: submission.address || '',
+        postalCode: submission.postal_code || '',
+        phone: submission.phone || '',
+        email: submission.email || '',
+        preferredContactTime: submission.preferred_contact_time || '',
+        ownsProperty: submission.property_ownership || '',
+        propertyType: submission.property_type || '',
+        numberOfBedrooms: submission.number_of_bedrooms || '',
+        roofType: submission.roof_type || '',
+        roofMaterial: submission.roof_material || '',
+        roofCondition: submission.roof_condition || '',
+        roofAge: submission.roof_age || '',
+        averageMonthlyBill: submission.average_monthly_bill || '',
+        energyType: submission.energy_type || '',
+        currentEnergySupplier: submission.current_energy_supplier || '',
+        usesElectricHeating: submission.uses_electric_heating || '',
+        electricHeatingDetails: submission.electric_heating_details || '',
+        hasReceivedOtherQuotes: submission.has_received_other_quotes || '',
+        isDecisionMaker: submission.is_decision_maker || '',
+        movingIn5Years: submission.moving_in_5_years || '',
+        photos: submission.photos || { frontRoof: '', rearRoof: '', sideRoof: '', energyBill: '', additional: [] },
+        notes: submission.notes || '',
+        synced: true,
+        timestamp: submission.created_at || new Date().toISOString(),
+        isOnline: true
+      }));
+      
+      // Create a map of existing submissions by backend ID for efficient lookup
+      const existingByBackendId = new Map<string, FieldFormData>();
+      existingData.forEach(item => {
+        const backendId = (item as any).backendId;
+        if (backendId) {
+          existingByBackendId.set(String(backendId), item);
         }
+      });
+      
+      // Find new submissions and updates
+      const newSubmissions: FieldFormData[] = [];
+      const updatedSubmissions: FieldFormData[] = [];
+      
+      syncedData.forEach((submission: FieldFormData) => {
+        const backendId = (submission as any).backendId;
+        const existing = backendId ? existingByBackendId.get(String(backendId)) : null;
         
+        if (!existing) {
+          // New submission from backend
+          newSubmissions.push(submission);
+        } else {
+          // Update existing submission with latest data from backend
+          updatedSubmissions.push(submission);
+        }
+      });
+      
+      // Update IndexedDB with new and updated submissions
+      if (newSubmissions.length > 0 || updatedSubmissions.length > 0) {
         const transaction = db.transaction(['syncedSubmissions'], 'readwrite');
         const store = transaction.objectStore('syncedSubmissions');
         
+        // Add new submissions
         for (const submission of newSubmissions) {
           await new Promise<void>((resolve, reject) => {
             const request = store.put(submission);
@@ -337,15 +363,29 @@ const CanvasserForm: React.FC = () => {
           });
         }
         
-        const allSyncedSubmissions = [...existingData, ...newSubmissions];
-        setSyncedSubmissions(allSyncedSubmissions);
-        setActualSyncedCount(allSyncedSubmissions.length);
-        
-        return newSubmissions.length;
-      } else {
-        return 0;
+        // Update existing submissions
+        for (const submission of updatedSubmissions) {
+          await new Promise<void>((resolve, reject) => {
+            const request = store.put(submission);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+          });
+        }
       }
+      
+      // Merge all submissions: existing (that weren't updated) + new + updated
+      const existingNotUpdated = existingData.filter(item => {
+        const backendId = (item as any).backendId;
+        return backendId && !updatedSubmissions.find(u => (u as any).backendId === backendId);
+      });
+      
+      const allSyncedSubmissions = [...existingNotUpdated, ...newSubmissions, ...updatedSubmissions];
+      setSyncedSubmissions(allSyncedSubmissions);
+      setActualSyncedCount(allSyncedSubmissions.length);
+      
+      return newSubmissions.length + updatedSubmissions.length;
     } catch (error) {
+      console.error('Error syncing submissions from backend:', error);
       return 0;
     }
   };
@@ -380,40 +420,30 @@ const CanvasserForm: React.FC = () => {
         };
       });
       
-      // Load synced submissions
-      const syncedData = await new Promise<FieldFormData[]>((resolve, reject) => {
-        const syncedTransaction = db.transaction(['syncedSubmissions'], 'readonly');
-        const syncedStore = syncedTransaction.objectStore('syncedSubmissions');
-        const syncedRequest = syncedStore.getAll();
+      // Always sync with backend to ensure cross-device data persistence
+      // This ensures that when a user logs in on a different device, they see all their submissions
+      await restoreSyncedSubmissions();
+      
+      // Reload synced submissions after backend sync to get the updated data
+      const updatedSyncedData = await new Promise<FieldFormData[]>((resolve, reject) => {
+        const updatedTransaction = db.transaction(['syncedSubmissions'], 'readonly');
+        const updatedStore = updatedTransaction.objectStore('syncedSubmissions');
+        const updatedRequest = updatedStore.getAll();
         
-        syncedRequest.onsuccess = () => {
-          const data = syncedRequest.result as FieldFormData[];
-          
-          
+        updatedRequest.onsuccess = () => {
+          const data = updatedRequest.result as FieldFormData[];
           resolve(data);
         };
         
-        syncedRequest.onerror = () => {
-          
-          reject(syncedRequest.error);
+        updatedRequest.onerror = () => {
+          reject(updatedRequest.error);
         };
       });
       
-      // Update React state with both datasets
+      // Update React state with both datasets (local pending + synced from backend)
       setPendingSubmissions(pendingData);
-      setSyncedSubmissions(syncedData);
-      setActualSyncedCount(syncedData.length); // Track actual count from localStorage
-      
-      
-      
-      // If no synced submissions found, try to restore from backend
-      if (syncedData.length === 0 && pendingData.length === 0) {
-        
-        const restoredCount = await restoreSyncedSubmissions();
-        if (restoredCount > 0) {
-          
-        }
-      }
+      setSyncedSubmissions(updatedSyncedData);
+      setActualSyncedCount(updatedSyncedData.length);
       
     } catch (error) {
       
@@ -703,9 +733,15 @@ const CanvasserForm: React.FC = () => {
     if (deleteTarget.synced) {
       // Find the submission to get backend ID
       const submission = syncedSubmissions.find(s => s.id === deleteTarget.id);
-      const backendId = submission?.id?.startsWith('restored_')
-        ? parseInt(submission.id.replace('restored_', ''))
-        : undefined;
+      // Prefer backendId field, fallback to extracting from ID
+      let backendId: number | undefined = submission?.backendId;
+      if (!backendId && submission?.id) {
+        if (submission.id.startsWith('backend_')) {
+          backendId = parseInt(submission.id.replace('backend_', ''));
+        } else if (submission.id.startsWith('restored_')) {
+          backendId = parseInt(submission.id.replace('restored_', ''));
+        }
+      }
       await deleteSyncedSubmission(deleteTarget.id, backendId);
     } else {
       await deletePendingSubmission(deleteTarget.id);
@@ -802,7 +838,8 @@ const CanvasserForm: React.FC = () => {
         if (result && result.id) {
           // Convert server response (snake_case) to form data format (camelCase)
           const syncedSubmission: FieldFormData = {
-            id: `restored_${result.id}`,
+            id: `backend_${result.id}`,
+            backendId: result.id,
             canvasserName: result.field_agent_name || submissionData.canvasserName,
             date: result.assessment_date || submissionData.date,
             time: result.assessment_time || submissionData.time,
@@ -839,13 +876,19 @@ const CanvasserForm: React.FC = () => {
           const store = transaction.objectStore('syncedSubmissions');
           
           // Always use put to update (or create if doesn't exist)
-          const updateKey = `restored_${result.id}`;
+          const updateKey = `backend_${result.id}`;
+          const oldUpdateKey = `restored_${result.id}`; // For backward compatibility
           await new Promise<void>((resolve, reject) => {
             const request = store.put(syncedSubmission);
             request.onsuccess = () => {
               // Update state - remove old entry if editing, then add updated one
               setSyncedSubmissions(prev => {
-                const filtered = prev.filter(s => s.id !== editingSubmissionId && s.id !== updateKey);
+                const filtered = prev.filter(s => 
+                  s.id !== editingSubmissionId && 
+                  s.id !== updateKey && 
+                  s.id !== oldUpdateKey &&
+                  s.backendId !== result.id
+                );
                 return [...filtered, syncedSubmission];
               });
               
@@ -1071,7 +1114,7 @@ const CanvasserForm: React.FC = () => {
     }
   };
 
-  const submitToServer = async (data: FieldFormData) => {
+  const submitToServer = async (data: FieldFormData, submissionIdToCheck?: string) => {
     const API_BASE_URL = process.env.NODE_ENV === 'production' 
       ? 'https://crm.margav.energy/api' 
       : 'http://localhost:8000/api';
@@ -1115,30 +1158,67 @@ const CanvasserForm: React.FC = () => {
     };
     
     // Check if we're editing an existing submission
-    const isEditing = editingSubmissionId !== null;
+    // Priority: 1) submissionIdToCheck parameter, 2) editingSubmissionId state, 3) data.backendId, 4) data.id
+    const isEditing = editingSubmissionId !== null || !!submissionIdToCheck || !!data.backendId;
     let submissionId: number | undefined;
     
-    if (isEditing && editingSubmissionId) {
-      // Extract backend ID directly from editingSubmissionId
-      // Synced submissions have IDs like "restored_123" where 123 is the backend ID
-      if (editingSubmissionId.startsWith('restored_')) {
+    // First, try to get ID from submissionIdToCheck parameter (for sync operations)
+    if (submissionIdToCheck) {
+      if (submissionIdToCheck.startsWith('backend_')) {
+        submissionId = parseInt(submissionIdToCheck.replace('backend_', ''));
+      } else if (submissionIdToCheck.startsWith('restored_')) {
+        submissionId = parseInt(submissionIdToCheck.replace('restored_', ''));
+      }
+    }
+    
+    // If not found, try data.backendId (preferred method)
+    if (!submissionId && data.backendId) {
+      submissionId = data.backendId;
+    }
+    
+    // If still not found, check editingSubmissionId state
+    if (!submissionId && isEditing && editingSubmissionId) {
+      // Try to find the submission first to get backendId directly
+      const editingSubmission = pendingSubmissions.find(s => s.id === editingSubmissionId) ||
+                               syncedSubmissions.find(s => s.id === editingSubmissionId);
+      
+      // First check if the submission has a backendId field (preferred method)
+      if (editingSubmission?.backendId) {
+        submissionId = editingSubmission.backendId;
+      } else if (editingSubmissionId.startsWith('backend_')) {
+        // New format: backend_123
+        const extractedId = parseInt(editingSubmissionId.replace('backend_', ''));
+        if (!isNaN(extractedId)) {
+          submissionId = extractedId;
+        }
+      } else if (editingSubmissionId.startsWith('restored_')) {
+        // Old format: restored_123 (for backward compatibility)
         const extractedId = parseInt(editingSubmissionId.replace('restored_', ''));
         if (!isNaN(extractedId)) {
           submissionId = extractedId;
         }
-      } else {
-        // For pending submissions, try to find the submission and check if it has a backend ID
-        // But typically pending submissions don't have backend IDs yet
-        const editingSubmission = pendingSubmissions.find(s => s.id === editingSubmissionId) ||
-                                 syncedSubmissions.find(s => s.id === editingSubmissionId);
-        
-        // Check if the submission itself has a backend ID stored
-        if (editingSubmission?.id?.startsWith('restored_')) {
+      } else if (editingSubmission?.id) {
+        // Fallback: check submission's ID field
+        if (editingSubmission.id.startsWith('backend_')) {
+          const extractedId = parseInt(editingSubmission.id.replace('backend_', ''));
+          if (!isNaN(extractedId)) {
+            submissionId = extractedId;
+          }
+        } else if (editingSubmission.id.startsWith('restored_')) {
           const extractedId = parseInt(editingSubmission.id.replace('restored_', ''));
           if (!isNaN(extractedId)) {
             submissionId = extractedId;
           }
         }
+      }
+    }
+    
+    // Final fallback: check data.id directly
+    if (!submissionId && data.id) {
+      if (data.id.startsWith('backend_')) {
+        submissionId = parseInt(data.id.replace('backend_', ''));
+      } else if (data.id.startsWith('restored_')) {
+        submissionId = parseInt(data.id.replace('restored_', ''));
       }
     }
     
@@ -1199,8 +1279,8 @@ const CanvasserForm: React.FC = () => {
     setSyncingSubmissionId(submission.id);
 
     try {
-      // Submit to server
-      const result = await submitToServer(submission);
+      // Submit to server - it will check for backendId to determine if it's an update or create
+      const result = await submitToServer(submission, submission.id);
       
       if (!result || !result.id) {
         throw new Error('Server did not return a valid submission ID');
@@ -1216,7 +1296,8 @@ const CanvasserForm: React.FC = () => {
           // Create synced submission with backend ID
           const syncedSubmission: FieldFormData = {
             ...submission,
-            id: `restored_${result.id}`,
+            id: `backend_${result.id}`,
+            backendId: result.id,
             synced: true
           };
 
