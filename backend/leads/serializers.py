@@ -100,6 +100,22 @@ class LeadSerializer(serializers.ModelSerializer):
             if not assessment_time and submission.timestamp:
                 assessment_time = submission.timestamp.strftime('%H:%M')
             
+            # Check if this is a list view (list action) vs detail view (retrieve action)
+            # For list views, exclude base64 image data to reduce response size
+            view = self.context.get('view')
+            is_list_view = view and hasattr(view, 'action') and view.action == 'list'
+            
+            # If it's a list view, only include photo metadata, not the actual base64 images
+            photos_data = {}
+            if isinstance(submission.photos, dict):
+                if is_list_view:
+                    # For list views, only include photo keys (metadata) without base64 data
+                    # This dramatically reduces response size from ~26MB to a few KB
+                    photos_data = {key: True if value else False for key, value in submission.photos.items() if key != 'assessment_data'}
+                else:
+                    # For detail views, include full photo data
+                    photos_data = submission.photos if 'energyBill' in submission.photos else submission.photos
+            
             return {
                 'id': submission.id,
                 'canvasser_name': getattr(submission.field_agent, 'get_full_name', lambda: getattr(submission.field_agent, 'username', 'Unknown'))(),
@@ -111,7 +127,7 @@ class LeadSerializer(serializers.ModelSerializer):
                 'electric_bill': electric_bill,
                 'has_received_other_quotes': has_received_other_quotes,
                 'preferred_contact_time': preferred_contact_time,
-                'photos': submission.photos if isinstance(submission.photos, dict) and 'energyBill' in submission.photos else (submission.photos if isinstance(submission.photos, dict) else {}),
+                'photos': photos_data,
                 'formatted_notes': formatted_notes,
                 'timestamp': submission.timestamp
             }
