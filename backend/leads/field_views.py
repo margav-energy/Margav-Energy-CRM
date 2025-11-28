@@ -102,17 +102,70 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                 existing_lead.status = 'sent_to_kelly'
                 existing_lead.updated_at = timezone.now()
                 existing_lead.save()
+                # Verify the lead was saved correctly
+                existing_lead.refresh_from_db()
                 logger.info(f"SUCCESS: Updated lead {existing_lead.id} (status: {existing_lead.status}) from field submission {submission.id}")
+                # Verify it's queryable with the correct status
+                verify_lead = Lead.objects.filter(id=existing_lead.id, status='sent_to_kelly').first()
+                if not verify_lead:
+                    logger.error(f"CRITICAL: Lead {existing_lead.id} was updated but not queryable with status 'sent_to_kelly'")
             else:
                 # Create new lead
                 lead_data['created_at'] = submission.timestamp
                 lead_data['updated_at'] = submission.timestamp
-                lead = Lead.objects.create(**lead_data)
-                logger.info(f"SUCCESS: Created lead {lead.id} (status: {lead.status}) from field submission {submission.id} for qualifier review")
-                logger.info(f"Lead details: name={lead.full_name}, phone={lead.phone}, status={lead.status}, assigned_agent={lead.assigned_agent_id}")
-                # Verify the lead was created with correct status
-                if lead.status != 'sent_to_kelly':
-                    logger.error(f"WARNING: Lead {lead.id} was created with status '{lead.status}' instead of 'sent_to_kelly'")
+                
+                # Generate lead_number if not provided (required field)
+                if 'lead_number' not in lead_data or not lead_data.get('lead_number'):
+                    temp_lead = Lead(**lead_data)
+                    lead_data['lead_number'] = temp_lead.generate_lead_number()
+                
+                try:
+                    lead = Lead.objects.create(**lead_data)
+                    # Refresh from DB to ensure we have the latest data
+                    lead.refresh_from_db()
+                    logger.info(f"SUCCESS: Created lead {lead.id} (status: {lead.status}) from field submission {submission.id} for qualifier review")
+                    logger.info(f"Lead details: name={lead.full_name}, phone={lead.phone}, status={lead.status}, assigned_agent={lead.assigned_agent_id}")
+                    # Verify the lead was created with correct status
+                    if lead.status != 'sent_to_kelly':
+                        logger.error(f"WARNING: Lead {lead.id} was created with status '{lead.status}' instead of 'sent_to_kelly'")
+                    # Verify it's queryable with the correct status
+                    verify_lead = Lead.objects.filter(id=lead.id, status='sent_to_kelly').first()
+                    if not verify_lead:
+                        logger.error(f"CRITICAL: Lead {lead.id} was created but not queryable with status 'sent_to_kelly'")
+                    else:
+                        logger.info(f"VERIFIED: Lead {lead.id} is queryable with status 'sent_to_kelly'")
+                except Exception as create_error:
+                    # Handle unique constraint violations (phone number or lead_number)
+                    error_str = str(create_error).lower()
+                    if 'unique_phone_per_lead' in error_str or 'phone' in error_str:
+                        # Phone number already exists - find and update it
+                        logger.warning(f"Lead with phone {submission.phone} already exists, attempting to update...")
+                        existing_by_phone = Lead.objects.filter(phone=submission.phone).first()
+                        if existing_by_phone:
+                            # Update the existing lead
+                            for key, value in lead_data.items():
+                                if key != 'lead_number':  # Don't overwrite lead_number
+                                    setattr(existing_by_phone, key, value)
+                            existing_by_phone.status = 'sent_to_kelly'
+                            existing_by_phone.updated_at = timezone.now()
+                            existing_by_phone.save()
+                            existing_by_phone.refresh_from_db()
+                            logger.info(f"SUCCESS: Updated existing lead {existing_by_phone.id} (status: {existing_by_phone.status}) from field submission {submission.id}")
+                            # Verify it's queryable with the correct status
+                            verify_lead = Lead.objects.filter(id=existing_by_phone.id, status='sent_to_kelly').first()
+                            if not verify_lead:
+                                logger.error(f"CRITICAL: Lead {existing_by_phone.id} was updated but not queryable with status 'sent_to_kelly'")
+                        else:
+                            raise create_error
+                    elif 'lead_number' in error_str:
+                        # Lead number conflict - try again with a new number
+                        logger.warning(f"Lead number conflict, generating new number...")
+                        lead_data['lead_number'] = Lead(**lead_data).generate_lead_number()
+                        lead = Lead.objects.create(**lead_data)
+                        logger.info(f"SUCCESS: Created lead {lead.id} (status: {lead.status}) with new lead_number from field submission {submission.id}")
+                    else:
+                        # Re-raise if it's not a constraint error
+                        raise create_error
         except Exception as e:
             logger.error(f"CRITICAL: Error creating/updating lead from field submission {submission.id}: {e}", exc_info=True)
             logger.error(f"Lead data that failed: {lead_data}")
@@ -198,14 +251,51 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                     existing_lead.status = 'sent_to_kelly'
                 existing_lead.updated_at = timezone.now()
                 existing_lead.save()
-                logger.info(f"Updated lead {existing_lead.id} (status: {existing_lead.status}) from field submission {submission.id}")
+                # Verify the lead was saved correctly
+                existing_lead.refresh_from_db()
+                logger.info(f"SUCCESS: Updated lead {existing_lead.id} (status: {existing_lead.status}) from field submission {submission.id}")
+                # Verify it's queryable with the correct status
+                verify_lead = Lead.objects.filter(id=existing_lead.id, status='sent_to_kelly').first()
+                if not verify_lead:
+                    logger.error(f"CRITICAL: Lead {existing_lead.id} was updated but not queryable with status 'sent_to_kelly'")
             else:
                 # Create new lead if it doesn't exist (edge case - should not happen often)
                 lead_data['status'] = 'sent_to_kelly'
                 lead_data['created_at'] = submission.timestamp
                 lead_data['updated_at'] = submission.timestamp
-                lead = Lead.objects.create(**lead_data)
-                logger.info(f"Created lead {lead.id} (status: {lead.status}) from updated field submission {submission.id} for qualifier review")
+                # Generate lead_number if not provided (required field)
+                if 'lead_number' not in lead_data or not lead_data.get('lead_number'):
+                    temp_lead = Lead(**lead_data)
+                    lead_data['lead_number'] = temp_lead.generate_lead_number()
+                
+                try:
+                    lead = Lead.objects.create(**lead_data)
+                    lead.refresh_from_db()
+                    logger.info(f"SUCCESS: Created lead {lead.id} (status: {lead.status}) from updated field submission {submission.id} for qualifier review")
+                    # Verify it's queryable with the correct status
+                    verify_lead = Lead.objects.filter(id=lead.id, status='sent_to_kelly').first()
+                    if not verify_lead:
+                        logger.error(f"CRITICAL: Lead {lead.id} was created but not queryable with status 'sent_to_kelly'")
+                except Exception as create_error:
+                    # Handle unique constraint violations
+                    error_str = str(create_error).lower()
+                    if 'unique_phone_per_lead' in error_str or 'phone' in error_str:
+                        # Phone number already exists - find and update it
+                        logger.warning(f"Lead with phone {submission.phone} already exists, attempting to update...")
+                        existing_by_phone = Lead.objects.filter(phone=submission.phone).first()
+                        if existing_by_phone:
+                            for key, value in lead_data.items():
+                                if key != 'lead_number':
+                                    setattr(existing_by_phone, key, value)
+                            existing_by_phone.status = 'sent_to_kelly'
+                            existing_by_phone.updated_at = timezone.now()
+                            existing_by_phone.save()
+                            existing_by_phone.refresh_from_db()
+                            logger.info(f"SUCCESS: Updated existing lead {existing_by_phone.id} (status: {existing_by_phone.status}) from field submission {submission.id}")
+                        else:
+                            raise create_error
+                    else:
+                        raise create_error
         except Exception as e:
             logger.error(f"CRITICAL: Error updating/creating lead from field submission {submission.id}: {e}", exc_info=True)
             logger.error(f"Lead data that failed: {lead_data}")
