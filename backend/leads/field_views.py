@@ -134,6 +134,15 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                         logger.error(f"CRITICAL: Lead {lead.id} was created but not queryable with status 'sent_to_kelly'")
                     else:
                         logger.info(f"VERIFIED: Lead {lead.id} is queryable with status 'sent_to_kelly'")
+                        # Also verify it's visible to qualifiers (using the same filter as LeadViewSet)
+                        qualifier_visible = Lead.objects.filter(
+                            id=lead.id,
+                            status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']
+                        ).first()
+                        if qualifier_visible:
+                            logger.info(f"VERIFIED: Lead {lead.id} is visible to qualifiers")
+                        else:
+                            logger.error(f"CRITICAL: Lead {lead.id} is NOT visible to qualifiers despite having status 'sent_to_kelly'")
                 except Exception as create_error:
                     # Handle unique constraint violations (phone number or lead_number)
                     error_str = str(create_error).lower()
@@ -155,6 +164,16 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                             verify_lead = Lead.objects.filter(id=existing_by_phone.id, status='sent_to_kelly').first()
                             if not verify_lead:
                                 logger.error(f"CRITICAL: Lead {existing_by_phone.id} was updated but not queryable with status 'sent_to_kelly'")
+                            else:
+                                # Also verify it's visible to qualifiers
+                                qualifier_visible = Lead.objects.filter(
+                                    id=existing_by_phone.id,
+                                    status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']
+                                ).first()
+                                if qualifier_visible:
+                                    logger.info(f"VERIFIED: Lead {existing_by_phone.id} is visible to qualifiers")
+                                else:
+                                    logger.error(f"CRITICAL: Lead {existing_by_phone.id} is NOT visible to qualifiers despite having status 'sent_to_kelly'")
                         else:
                             raise create_error
                     elif 'lead_number' in error_str:
@@ -258,6 +277,16 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                 verify_lead = Lead.objects.filter(id=existing_lead.id, status='sent_to_kelly').first()
                 if not verify_lead:
                     logger.error(f"CRITICAL: Lead {existing_lead.id} was updated but not queryable with status 'sent_to_kelly'")
+                else:
+                    # Also verify it's visible to qualifiers
+                    qualifier_visible = Lead.objects.filter(
+                        id=existing_lead.id,
+                        status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']
+                    ).first()
+                    if qualifier_visible:
+                        logger.info(f"VERIFIED: Lead {existing_lead.id} is visible to qualifiers")
+                    else:
+                        logger.error(f"CRITICAL: Lead {existing_lead.id} is NOT visible to qualifiers despite having status 'sent_to_kelly'")
             else:
                 # Create new lead if it doesn't exist (edge case - should not happen often)
                 lead_data['status'] = 'sent_to_kelly'
@@ -276,6 +305,16 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                     verify_lead = Lead.objects.filter(id=lead.id, status='sent_to_kelly').first()
                     if not verify_lead:
                         logger.error(f"CRITICAL: Lead {lead.id} was created but not queryable with status 'sent_to_kelly'")
+                    else:
+                        # Also verify it's visible to qualifiers
+                        qualifier_visible = Lead.objects.filter(
+                            id=lead.id,
+                            status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']
+                        ).first()
+                        if qualifier_visible:
+                            logger.info(f"VERIFIED: Lead {lead.id} is visible to qualifiers")
+                        else:
+                            logger.error(f"CRITICAL: Lead {lead.id} is NOT visible to qualifiers despite having status 'sent_to_kelly'")
                 except Exception as create_error:
                     # Handle unique constraint violations
                     error_str = str(create_error).lower()
