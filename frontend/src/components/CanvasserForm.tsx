@@ -20,37 +20,23 @@ interface FieldFormData {
   email: string;
   preferredContactTime: string;
   
-  // Property Information
+  // Property & Decision Making
   ownsProperty: string; // 'yes' | 'no'
-  propertyType: string;
-  numberOfBedrooms: string;
-  roofType: string;
-  roofMaterial: string;
-  roofCondition: string;
-  roofAge: string;
+  isDecisionMaker: string; // 'yes' | 'no' | 'partner'
+  ageRange: string; // '18-74' | 'outside_range'
   
-  // Energy Usage
-  averageMonthlyBill: string;
-  energyType: string; // 'gas' | 'electric' | 'dual'
-  currentEnergySupplier: string;
-  usesElectricHeating: string; // 'yes' | 'no'
-  electricHeatingDetails: string; // EV, heat pump, etc.
+  // Electric Bill
+  electricBill: string; // Electric bill amount
   
-  // Timeframe and Interest
+  // Interest
   hasReceivedOtherQuotes: string; // 'yes' | 'no'
-  isDecisionMaker: string; // 'yes' | 'no'
-  movingIn5Years: string; // 'yes' | 'no'
   
-  // Photos
+  // Photos - only electric bill now
   photos: {
-    frontRoof: string;
-    rearRoof: string;
-    sideRoof: string;
     energyBill: string;
-    additional: string[];
   };
   
-  // Optional
+  // Canvasser Notes
   notes: string;
   
   // System fields
@@ -59,7 +45,7 @@ interface FieldFormData {
   synced: boolean;
 }
 
-type FormStep = 'contact' | 'property' | 'energy' | 'photos' | 'interest' | 'review';
+type FormStep = 'contact' | 'interest' | 'electricBill' | 'photos' | 'notes' | 'review';
 
 const CanvasserForm: React.FC = () => {
   const { user, logout } = useAuth();
@@ -89,37 +75,23 @@ const CanvasserForm: React.FC = () => {
     email: '',
     preferredContactTime: '',
     
-    // Property Information
+    // Property & Decision Making
     ownsProperty: '',
-    propertyType: '',
-    numberOfBedrooms: '',
-    roofType: '',
-    roofMaterial: '',
-    roofCondition: '',
-    roofAge: '',
-    
-    // Energy Usage
-    averageMonthlyBill: '',
-    energyType: '',
-    currentEnergySupplier: '',
-    usesElectricHeating: '',
-    electricHeatingDetails: '',
-    
-    // Timeframe and Interest
-    hasReceivedOtherQuotes: '',
     isDecisionMaker: '',
-    movingIn5Years: '',
+    ageRange: '',
     
-    // Photos
+    // Electric Bill
+    electricBill: '',
+    
+    // Interest
+    hasReceivedOtherQuotes: '',
+    
+    // Photos - only electric bill
     photos: {
-      frontRoof: '',
-      rearRoof: '',
-      sideRoof: '',
-      energyBill: '',
-      additional: []
+      energyBill: ''
     },
     
-    // Optional
+    // Canvasser Notes
     notes: '',
     
     // System
@@ -129,8 +101,7 @@ const CanvasserForm: React.FC = () => {
   });
 
   const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
-  const [currentPhotoType, setCurrentPhotoType] = useState<'frontRoof' | 'rearRoof' | 'sideRoof' | 'energyBill' | 'additional' | null>(null);
-  const [capturingAdditionalIndex, setCapturingAdditionalIndex] = useState<number>(0);
+  const [currentPhotoType, setCurrentPhotoType] = useState<'energyBill' | null>(null);
   const [pendingSubmissions, setPendingSubmissions] = useState<FieldFormData[]>([]);
   const [syncedSubmissions, setSyncedSubmissions] = useState<FieldFormData[]>([]);
   const [actualSyncedCount, setActualSyncedCount] = useState<number>(0);
@@ -184,44 +155,21 @@ const CanvasserForm: React.FC = () => {
           formData.email &&
           formData.preferredContactTime
         );
-      case 'property':
-        return !!(
-          formData.ownsProperty &&
-          formData.propertyType &&
-          formData.numberOfBedrooms &&
-          formData.roofType &&
-          formData.roofMaterial &&
-          formData.roofCondition &&
-          formData.roofAge
-        );
-      case 'energy':
-        const basicEnergyFields = !!(
-          formData.averageMonthlyBill &&
-          formData.energyType &&
-          formData.currentEnergySupplier &&
-          formData.usesElectricHeating
-        );
-        
-        // If yes, electricHeatingDetails is required
-        if (formData.usesElectricHeating === 'yes') {
-          return basicEnergyFields && !!formData.electricHeatingDetails;
-        }
-        
-        return basicEnergyFields;
       case 'interest':
         return !!(
-          formData.hasReceivedOtherQuotes &&
+          (formData.ownsProperty === 'yes' || formData.ownsProperty === 'no') &&
           formData.isDecisionMaker &&
-          formData.movingIn5Years
+          (formData.ageRange === '18-74' || formData.ageRange === 'outside_range') &&
+          (formData.hasReceivedOtherQuotes === 'yes' || formData.hasReceivedOtherQuotes === 'no')
         );
+      case 'electricBill':
+        return !!formData.electricBill;
       case 'photos':
-        // Photos are now required - check all four compulsory photos
-        return !!(
-          formData.photos.frontRoof && 
-          formData.photos.rearRoof && 
-          formData.photos.sideRoof &&
-          formData.photos.energyBill
-        );
+        // Only electric bill photo is required
+        return !!formData.photos.energyBill;
+      case 'notes':
+        // Notes are optional, so always valid
+        return true;
       case 'review':
         return true;
       default:
@@ -230,7 +178,7 @@ const CanvasserForm: React.FC = () => {
   };
 
   const canProceedToStep = (step: FormStep): boolean => {
-    const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'review'];
+    const stepOrder: FormStep[] = ['contact', 'interest', 'electricBill', 'photos', 'notes', 'review'];
     const currentIndex = stepOrder.indexOf(currentStep);
     const targetIndex = stepOrder.indexOf(step);
     
@@ -275,12 +223,12 @@ const CanvasserForm: React.FC = () => {
       if (!userSubmissions || userSubmissions.length === 0) {
         return 0;
       }
-      
-      const db = await openDB();
-      const checkTransaction = db.transaction(['syncedSubmissions'], 'readonly');
-      const checkStore = checkTransaction.objectStore('syncedSubmissions');
-      const existingData = await new Promise<FieldFormData[]>((resolve, reject) => {
-        const request = checkStore.getAll();
+        
+        const db = await openDB();
+        const checkTransaction = db.transaction(['syncedSubmissions'], 'readonly');
+        const checkStore = checkTransaction.objectStore('syncedSubmissions');
+        const existingData = await new Promise<FieldFormData[]>((resolve, reject) => {
+          const request = checkStore.getAll();
         request.onsuccess = () => {
           const data = request.result as FieldFormData[];
           // Filter by current user ID - only check existing submissions for current user
@@ -289,9 +237,9 @@ const CanvasserForm: React.FC = () => {
             : [];
           resolve(userFiltered);
         };
-        request.onerror = () => reject(request.error);
-      });
-      
+          request.onerror = () => reject(request.error);
+        });
+        
       // Convert backend submissions to FieldFormData format
       // Use backend ID as the key to ensure proper deduplication
       const syncedData = userSubmissions.map((submission: any) => ({
@@ -299,40 +247,30 @@ const CanvasserForm: React.FC = () => {
         backendId: submission.id, // Store original backend ID for updates/deletes
         userId: user?.id || submission.field_agent || submission.field_agent_id, // Store user ID for filtering
         canvasserName: submission.field_agent_name || submission.canvasser_name || user?.first_name || 'Unknown',
-        date: submission.created_at 
+        date: submission.assessment_date || (submission.created_at 
           ? new Date(submission.created_at).toLocaleDateString('en-GB')
-          : new Date().toLocaleDateString('en-GB'),
-        time: submission.created_at
+          : new Date().toLocaleDateString('en-GB')),
+        time: submission.assessment_time || (submission.created_at
           ? new Date(submission.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-          : new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          : new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })),
         customerName: submission.customer_name || 'Unknown',
         address: submission.address || '',
         postalCode: submission.postal_code || '',
         phone: submission.phone || '',
         email: submission.email || '',
-        preferredContactTime: submission.preferred_contact_time || '',
-        ownsProperty: submission.property_ownership || '',
-        propertyType: submission.property_type || '',
-        numberOfBedrooms: submission.number_of_bedrooms || '',
-        roofType: submission.roof_type || '',
-        roofMaterial: submission.roof_material || '',
-        roofCondition: submission.roof_condition || '',
-        roofAge: submission.roof_age || '',
-        averageMonthlyBill: submission.average_monthly_bill || '',
-        energyType: submission.energy_type || '',
-        currentEnergySupplier: submission.current_energy_supplier || '',
-        usesElectricHeating: submission.uses_electric_heating || '',
-        electricHeatingDetails: submission.electric_heating_details || '',
-        hasReceivedOtherQuotes: submission.has_received_other_quotes || '',
-        isDecisionMaker: submission.is_decision_maker || '',
-        movingIn5Years: submission.moving_in_5_years || '',
-        photos: submission.photos || { frontRoof: '', rearRoof: '', sideRoof: '', energyBill: '', additional: [] },
+        preferredContactTime: submission.preferred_contact_time ?? '',
+        ownsProperty: submission.owns_property ?? submission.property_ownership ?? '',
+        isDecisionMaker: submission.is_decision_maker ?? '',
+        ageRange: submission.age_range ?? '',
+        electricBill: submission.electric_bill ?? '',
+        hasReceivedOtherQuotes: submission.has_received_other_quotes ?? '',
+        photos: submission.photos || { energyBill: '' },
         notes: submission.notes || '',
         synced: true,
         timestamp: submission.created_at || new Date().toISOString(),
         isOnline: true
       }));
-      
+        
       // Create a map of existing submissions by backend ID for efficient lookup
       const existingByBackendId = new Map<string, FieldFormData>();
       existingData.forEach(item => {
@@ -390,9 +328,9 @@ const CanvasserForm: React.FC = () => {
       });
       
       const allSyncedSubmissions = [...existingNotUpdated, ...newSubmissions, ...updatedSubmissions];
-      setSyncedSubmissions(allSyncedSubmissions);
-      setActualSyncedCount(allSyncedSubmissions.length);
-      
+        setSyncedSubmissions(allSyncedSubmissions);
+        setActualSyncedCount(allSyncedSubmissions.length);
+        
       return newSubmissions.length + updatedSubmissions.length;
     } catch (error) {
       console.error('Error syncing submissions from backend:', error);
@@ -528,12 +466,9 @@ const CanvasserForm: React.FC = () => {
     });
   };
 
-  const capturePhoto = async (photoType: 'frontRoof' | 'rearRoof' | 'sideRoof' | 'energyBill' | 'additional', additionalIndex?: number) => {
+  const capturePhoto = async (photoType: 'energyBill') => {
     try {
       setCurrentPhotoType(photoType);
-      if (photoType === 'additional' && additionalIndex !== undefined) {
-        setCapturingAdditionalIndex(additionalIndex);
-      }
       setIsCapturingPhoto(true);
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -570,19 +505,6 @@ const CanvasserForm: React.FC = () => {
         
         const photoData = canvas.toDataURL('image/jpeg', 0.8);
         if (currentPhotoType) {
-          if (currentPhotoType === 'additional') {
-            setFormData(prev => {
-              const newAdditional = [...prev.photos.additional];
-              newAdditional[capturingAdditionalIndex] = photoData;
-              return {
-                ...prev,
-                photos: {
-                  ...prev.photos,
-                  additional: newAdditional
-                }
-              };
-            });
-          } else {
           setFormData(prev => ({
             ...prev,
             photos: {
@@ -590,7 +512,6 @@ const CanvasserForm: React.FC = () => {
               [currentPhotoType]: photoData
             }
           }));
-          }
         }
         
         // Stop camera
@@ -606,36 +527,12 @@ const CanvasserForm: React.FC = () => {
     setCurrentPhotoType(null);
   };
 
-  const removePhoto = (photoType: 'frontRoof' | 'rearRoof' | 'sideRoof' | 'energyBill' | 'additional', additionalIndex?: number) => {
-    if (photoType === 'additional' && additionalIndex !== undefined) {
-      setFormData(prev => {
-        const newAdditional = [...prev.photos.additional];
-        newAdditional.splice(additionalIndex, 1);
-        return {
-          ...prev,
-          photos: {
-            ...prev.photos,
-            additional: newAdditional
-          }
-        };
-      });
-    } else {
+  const removePhoto = (photoType: 'energyBill') => {
     setFormData(prev => ({
       ...prev,
       photos: {
         ...prev.photos,
         [photoType]: ''
-      }
-    }));
-    }
-  };
-  
-  const addAdditionalPhotoSlot = () => {
-    setFormData(prev => ({
-      ...prev,
-      photos: {
-        ...prev.photos,
-        additional: [...prev.photos.additional, '']
       }
     }));
   };
@@ -651,18 +548,107 @@ const CanvasserForm: React.FC = () => {
 
   const loadSubmissionForEdit = async (submission: FieldFormData) => {
     try {
-      setFormData({
-        ...submission,
-        // Update timestamp and online status
-        timestamp: new Date().toISOString(),
+      // If submission has a backendId, try to fetch fresh data from backend first
+      let freshSubmission: FieldFormData | null = null;
+      if (submission.backendId && formData.isOnline) {
+        try {
+          const backendData = await fieldSubmissionsAPI.getFieldSubmission(submission.backendId);
+          // Helper function to get value from backend or fallback to local submission
+          // Treats empty strings and null/undefined as missing values
+          const getValue = (backendValue: any, localValue: any, defaultValue: any = '') => {
+            // If backend has a non-empty value, use it
+            if (backendValue !== null && backendValue !== undefined && backendValue !== '') {
+              return backendValue;
+            }
+            // Otherwise, use local value if available, or default
+            return localValue ?? defaultValue;
+          };
+          
+          // Convert backend response to FieldFormData format
+          freshSubmission = {
+            id: `backend_${backendData.id}`,
+            backendId: backendData.id,
+            userId: user?.id || submission.userId,
+            canvasserName: backendData.field_agent_name || backendData.canvasser_name || canvasserName,
+            date: backendData.assessment_date || (backendData.created_at ? new Date(backendData.created_at).toLocaleDateString('en-GB') : currentDate),
+            time: backendData.assessment_time || (backendData.created_at ? new Date(backendData.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : currentTime),
+            customerName: backendData.customer_name || submission.customerName || '',
+            address: backendData.address || submission.address || '',
+            postalCode: backendData.postal_code || submission.postalCode || '',
+            phone: backendData.phone || submission.phone || '',
+            email: backendData.email || submission.email || '',
+            preferredContactTime: getValue(backendData.preferred_contact_time, submission.preferredContactTime),
+            ownsProperty: getValue(backendData.owns_property, submission.ownsProperty),
+            isDecisionMaker: getValue(backendData.is_decision_maker, submission.isDecisionMaker),
+            ageRange: getValue(backendData.age_range, submission.ageRange),
+            electricBill: getValue(backendData.electric_bill, submission.electricBill),
+            hasReceivedOtherQuotes: getValue(backendData.has_received_other_quotes, submission.hasReceivedOtherQuotes),
+            photos: backendData.photos || submission.photos || { energyBill: '' },
+            notes: backendData.notes || submission.notes || '',
+            timestamp: backendData.created_at || backendData.timestamp || submission.timestamp || new Date().toISOString(),
+            isOnline: navigator.onLine,
+            synced: true
+          };
+        } catch (error) {
+          console.warn('Failed to fetch fresh data from backend, using local data:', error);
+        }
+      }
+      
+      // Use fresh data if available, otherwise use the submission passed in
+      const sourceSubmission = freshSubmission || submission;
+      
+      // Ensure all fields are properly loaded, especially the ones that might be missing
+      // Create a complete form data object with all fields explicitly set
+      // Use nullish coalescing (??) instead of || to preserve empty strings and falsy values
+      const loadedData: FieldFormData = {
+        id: sourceSubmission.id,
+        backendId: sourceSubmission.backendId,
+        userId: sourceSubmission.userId,
+        // Canvasser Info
+        canvasserName: sourceSubmission.canvasserName ?? canvasserName,
+        date: sourceSubmission.date ?? currentDate,
+        time: sourceSubmission.time ?? currentTime,
+        // Contact Information - preserve empty strings if they exist
+        customerName: sourceSubmission.customerName ?? '',
+        address: sourceSubmission.address ?? '',
+        postalCode: sourceSubmission.postalCode ?? '',
+        phone: sourceSubmission.phone ?? '',
+        email: sourceSubmission.email ?? '',
+        preferredContactTime: sourceSubmission.preferredContactTime ?? '',
+        // Property & Decision Making - preserve empty strings if they exist
+        ownsProperty: sourceSubmission.ownsProperty ?? '',
+        isDecisionMaker: sourceSubmission.isDecisionMaker ?? '',
+        ageRange: sourceSubmission.ageRange ?? '',
+        // Electric Bill - preserve empty strings if they exist
+        electricBill: sourceSubmission.electricBill ?? '',
+        // Interest - preserve empty strings if they exist
+        hasReceivedOtherQuotes: sourceSubmission.hasReceivedOtherQuotes ?? '',
+        // Photos - ensure proper structure
+        photos: sourceSubmission.photos && typeof sourceSubmission.photos === 'object' 
+          ? { energyBill: (sourceSubmission.photos as any).energyBill ?? '' }
+          : { energyBill: '' },
+        // Canvasser Notes - preserve empty strings if they exist
+        notes: sourceSubmission.notes ?? '',
+        // System fields
+        timestamp: sourceSubmission.timestamp ?? new Date().toISOString(),
         isOnline: navigator.onLine,
+        synced: sourceSubmission.synced ?? false
+      };
+      
+      // Log the loaded data for debugging
+      console.log('Loading submission for edit:', {
+        original: submission,
+        fresh: freshSubmission,
+        loaded: loadedData
       });
+      
+      setFormData(loadedData);
       
       // Set editing state
       setEditingSubmissionId(submission.id || null);
       
       // Mark all steps as completed so user can navigate freely
-      const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'review'];
+      const stepOrder: FormStep[] = ['contact', 'interest', 'electricBill', 'photos', 'notes', 'review'];
       setCompletedSteps(new Set(stepOrder));
       
       // Navigate to contact step
@@ -675,6 +661,7 @@ const CanvasserForm: React.FC = () => {
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
+      console.error('Error loading submission for edit:', error);
       setErrorMessage('Failed to load submission for editing.');
       setShowError(true);
     }
@@ -787,25 +774,19 @@ const CanvasserForm: React.FC = () => {
     if (!formData.email) missingFields.push('Email Address');
     if (!formData.preferredContactTime) missingFields.push('Preferred Contact Time');
     
-    // Property information
+    // Property & Decision Making
     if (!formData.ownsProperty) missingFields.push('Property Ownership');
-    if (!formData.propertyType) missingFields.push('Property Type');
-    if (!formData.numberOfBedrooms) missingFields.push('Number of Bedrooms');
-    if (!formData.roofType) missingFields.push('Roof Type');
-    if (!formData.roofMaterial) missingFields.push('Roof Material');
-    if (!formData.roofCondition) missingFields.push('Roof Condition');
-    if (!formData.roofAge) missingFields.push('Roof Age');
+    if (!formData.isDecisionMaker) missingFields.push('Decision Maker');
+    if (!formData.ageRange) missingFields.push('Age Range (18-74 years old)');
     
-    // Energy usage
-    if (!formData.averageMonthlyBill) missingFields.push('Average Monthly Bill');
-    if (!formData.energyType) missingFields.push('Energy Type');
-    if (!formData.currentEnergySupplier) missingFields.push('Current Energy Supplier');
-    if (!formData.usesElectricHeating) missingFields.push('High Electric Usage Items');
+    // Electric Bill
+    if (!formData.electricBill) missingFields.push('Electric Bill Amount');
     
-    // Timeframe and interest
-    if (!formData.hasReceivedOtherQuotes) missingFields.push('Other Quotes Received');
-    if (!formData.isDecisionMaker) missingFields.push('Decision Maker Status');
-    if (!formData.movingIn5Years) missingFields.push('Moving Plans');
+    // Interest
+    if (!formData.hasReceivedOtherQuotes) missingFields.push('Received Other Quotes');
+    
+    // Photos
+    if (!formData.photos.energyBill) missingFields.push('Electric Bill Photo');
     
     if (missingFields.length > 0) {
       setErrorMessage(`Please fill in all required fields: ${missingFields.join(', ')}`);
@@ -858,7 +839,19 @@ const CanvasserForm: React.FC = () => {
         
         // Add/update in synced submissions
         if (result && result.id) {
+          // Log the result from server to debug
+          console.log('Server response after save:', {
+            owns_property: result.owns_property,
+            is_decision_maker: result.is_decision_maker,
+            age_range: result.age_range,
+            electric_bill: result.electric_bill,
+            has_received_other_quotes: result.has_received_other_quotes,
+            preferred_contact_time: result.preferred_contact_time,
+            full_result: result
+          });
+          
           // Convert server response (snake_case) to form data format (camelCase)
+          // Ensure all fields are preserved, especially the new simplified fields
           const syncedSubmission: FieldFormData = {
             id: `backend_${result.id}`,
             backendId: result.id,
@@ -871,24 +864,30 @@ const CanvasserForm: React.FC = () => {
             postalCode: result.postal_code || submissionData.postalCode,
             phone: result.phone || submissionData.phone,
             email: result.email || submissionData.email,
-            preferredContactTime: result.preferred_contact_time || submissionData.preferredContactTime,
-            ownsProperty: result.owns_property || submissionData.ownsProperty,
-            propertyType: result.property_type || submissionData.propertyType,
-            numberOfBedrooms: result.number_of_bedrooms || submissionData.numberOfBedrooms,
-            roofType: result.roof_type || submissionData.roofType,
-            roofMaterial: result.roof_material || submissionData.roofMaterial,
-            roofCondition: result.roof_condition || submissionData.roofCondition,
-            roofAge: result.roof_age || submissionData.roofAge,
-            averageMonthlyBill: result.average_monthly_bill || submissionData.averageMonthlyBill,
-            energyType: result.energy_type || submissionData.energyType,
-            currentEnergySupplier: result.current_energy_supplier || submissionData.currentEnergySupplier,
-            usesElectricHeating: result.uses_electric_heating || submissionData.usesElectricHeating,
-            electricHeatingDetails: result.electric_heating_details || submissionData.electricHeatingDetails,
-            hasReceivedOtherQuotes: result.has_received_other_quotes || submissionData.hasReceivedOtherQuotes,
-            isDecisionMaker: result.is_decision_maker || submissionData.isDecisionMaker,
-            movingIn5Years: result.moving_in_5_years || submissionData.movingIn5Years,
-            photos: result.photos || submissionData.photos,
-            notes: result.notes || submissionData.notes,
+            // Preserve these fields explicitly - use submissionData first, then result, then empty string
+            // Use nullish coalescing to preserve empty strings
+            // Prioritize server response (result) since that's what was just saved
+            // Only fall back to submissionData if result is null/undefined/empty
+            preferredContactTime: (result.preferred_contact_time !== null && result.preferred_contact_time !== undefined && result.preferred_contact_time !== '') 
+              ? result.preferred_contact_time 
+              : (submissionData.preferredContactTime ?? ''),
+            ownsProperty: (result.owns_property !== null && result.owns_property !== undefined && result.owns_property !== '') 
+              ? result.owns_property 
+              : (submissionData.ownsProperty ?? ''),
+            isDecisionMaker: (result.is_decision_maker !== null && result.is_decision_maker !== undefined && result.is_decision_maker !== '') 
+              ? result.is_decision_maker 
+              : (submissionData.isDecisionMaker ?? ''),
+            ageRange: (result.age_range !== null && result.age_range !== undefined && result.age_range !== '') 
+              ? result.age_range 
+              : (submissionData.ageRange ?? ''),
+            electricBill: (result.electric_bill !== null && result.electric_bill !== undefined && result.electric_bill !== '') 
+              ? result.electric_bill 
+              : (submissionData.electricBill ?? ''),
+            hasReceivedOtherQuotes: (result.has_received_other_quotes !== null && result.has_received_other_quotes !== undefined && result.has_received_other_quotes !== '') 
+              ? result.has_received_other_quotes 
+              : (submissionData.hasReceivedOtherQuotes ?? ''),
+            photos: result.photos || submissionData.photos || { energyBill: '' },
+            notes: result.notes || submissionData.notes || '',
             timestamp: result.created_at || result.timestamp || submissionData.timestamp,
             isOnline: navigator.onLine,
             synced: true
@@ -975,37 +974,23 @@ const CanvasserForm: React.FC = () => {
         email: '',
         preferredContactTime: '',
         
-        // Property Information
+        // Property & Decision Making
         ownsProperty: '',
-        propertyType: '',
-        numberOfBedrooms: '',
-        roofType: '',
-        roofMaterial: '',
-        roofCondition: '',
-        roofAge: '',
-        
-        // Energy Usage
-        averageMonthlyBill: '',
-        energyType: '',
-        currentEnergySupplier: '',
-        usesElectricHeating: '',
-        electricHeatingDetails: '',
-        
-        // Timeframe and Interest
-        hasReceivedOtherQuotes: '',
         isDecisionMaker: '',
-        movingIn5Years: '',
+        ageRange: '',
         
-        // Photos
+        // Electric Bill
+        electricBill: '',
+        
+        // Interest
+        hasReceivedOtherQuotes: '',
+        
+        // Photos - only electric bill
         photos: {
-          frontRoof: '',
-          rearRoof: '',
-          sideRoof: '',
-          energyBill: '',
-          additional: []
+          energyBill: ''
         },
         
-        // Optional
+        // Canvasser Notes
         notes: '',
         
         // System
@@ -1082,37 +1067,23 @@ const CanvasserForm: React.FC = () => {
         email: '',
         preferredContactTime: '',
         
-        // Property Information
+        // Property & Decision Making
         ownsProperty: '',
-        propertyType: '',
-        numberOfBedrooms: '',
-        roofType: '',
-        roofMaterial: '',
-        roofCondition: '',
-        roofAge: '',
-        
-        // Energy Usage
-        averageMonthlyBill: '',
-        energyType: '',
-        currentEnergySupplier: '',
-        usesElectricHeating: '',
-        electricHeatingDetails: '',
-        
-        // Timeframe and Interest
-        hasReceivedOtherQuotes: '',
         isDecisionMaker: '',
-        movingIn5Years: '',
+        ageRange: '',
         
-        // Photos
+        // Electric Bill
+        electricBill: '',
+        
+        // Interest
+        hasReceivedOtherQuotes: '',
+        
+        // Photos - only electric bill
         photos: {
-          frontRoof: '',
-          rearRoof: '',
-          sideRoof: '',
-          energyBill: '',
-          additional: []
+          energyBill: ''
         },
         
-        // Optional
+        // Canvasser Notes
         notes: '',
         
         // System
@@ -1139,7 +1110,7 @@ const CanvasserForm: React.FC = () => {
 
   const submitToServer = async (data: FieldFormData, submissionIdToCheck?: string) => {
     // Convert camelCase to snake_case for Django backend and apply UK formatting
-    const backendData = {
+    const backendData: any = {
       canvasser_name: formatName(data.canvasserName),
       assessment_date: data.date,
       assessment_time: data.time,
@@ -1148,26 +1119,42 @@ const CanvasserForm: React.FC = () => {
       email: data.email,
       address: formatAddress(data.address),
       postal_code: formatUKPostcode(data.postalCode),
-      preferred_contact_time: data.preferredContactTime,
-      owns_property: data.ownsProperty,
-      property_type: data.propertyType,
-      number_of_bedrooms: data.numberOfBedrooms,
-      roof_type: data.roofType,
-      roof_material: data.roofMaterial,
-      roof_condition: data.roofCondition,
-      roof_age: data.roofAge,
-      average_monthly_bill: data.averageMonthlyBill,
-      energy_type: data.energyType,
-      current_energy_supplier: data.currentEnergySupplier,
-      uses_electric_heating: data.usesElectricHeating,
-      electric_heating_details: data.electricHeatingDetails,
-      has_received_other_quotes: data.hasReceivedOtherQuotes,
-      is_decision_maker: data.isDecisionMaker,
-      moving_in_5_years: data.movingIn5Years,
       notes: data.notes,
       photos: data.photos,
       timestamp: data.timestamp
     };
+    
+    // Only include simplified form fields if they have values (preserve empty strings for updates)
+    // For updates, we want to send the values even if they're empty strings to clear them
+    if (data.preferredContactTime !== undefined) {
+      backendData.preferred_contact_time = data.preferredContactTime || null;
+    }
+    if (data.ownsProperty !== undefined) {
+      backendData.owns_property = data.ownsProperty || null;
+    }
+    if (data.isDecisionMaker !== undefined) {
+      backendData.is_decision_maker = data.isDecisionMaker || null;
+    }
+    if (data.ageRange !== undefined) {
+      backendData.age_range = data.ageRange || null;
+    }
+    if (data.electricBill !== undefined) {
+      backendData.electric_bill = data.electricBill || null;
+    }
+    if (data.hasReceivedOtherQuotes !== undefined) {
+      backendData.has_received_other_quotes = data.hasReceivedOtherQuotes || null;
+    }
+    
+    // Log what we're sending to debug
+    console.log('Sending to server:', {
+      owns_property: backendData.owns_property,
+      is_decision_maker: backendData.is_decision_maker,
+      age_range: backendData.age_range,
+      electric_bill: backendData.electric_bill,
+      has_received_other_quotes: backendData.has_received_other_quotes,
+      preferred_contact_time: backendData.preferred_contact_time,
+      isEditing: editingSubmissionId !== null || !!submissionIdToCheck || !!data.backendId
+    });
     
     // Check if we're editing an existing submission
     // Priority: 1) submissionIdToCheck parameter, 2) editingSubmissionId state, 3) data.backendId, 4) data.id
@@ -1191,9 +1178,9 @@ const CanvasserForm: React.FC = () => {
     // If still not found, check editingSubmissionId state
     if (!submissionId && isEditing && editingSubmissionId) {
       // Try to find the submission first to get backendId directly
-      const editingSubmission = pendingSubmissions.find(s => s.id === editingSubmissionId) ||
-                               syncedSubmissions.find(s => s.id === editingSubmissionId);
-      
+        const editingSubmission = pendingSubmissions.find(s => s.id === editingSubmissionId) ||
+                                 syncedSubmissions.find(s => s.id === editingSubmissionId);
+        
       // First check if the submission has a backendId field (preferred method)
       if (editingSubmission?.backendId) {
         submissionId = editingSubmission.backendId;
@@ -1254,12 +1241,12 @@ const CanvasserForm: React.FC = () => {
       // Handle API errors
       if (error.response) {
         const errorData = error.response.data;
-        // Format validation errors
-        if (errorData && typeof errorData === 'object') {
-          const errors = Object.entries(errorData).map(([field, messages]) => {
-            const msgArray = Array.isArray(messages) ? messages : [messages];
-            return `${field}: ${msgArray.join(', ')}`;
-          }).join('\n');
+      // Format validation errors
+      if (errorData && typeof errorData === 'object') {
+        const errors = Object.entries(errorData).map(([field, messages]) => {
+          const msgArray = Array.isArray(messages) ? messages : [messages];
+          return `${field}: ${msgArray.join(', ')}`;
+        }).join('\n');
           throw new Error(errors || `Server error: ${error.response.status}`);
         }
         throw new Error(errorData.detail || errorData.error || `Server error: ${error.response.status}`);
@@ -1283,7 +1270,7 @@ const CanvasserForm: React.FC = () => {
 
     // Only set syncingSubmissionId if not already syncing all
     if (syncingSubmissionId !== 'all') {
-      setSyncingSubmissionId(submission.id);
+    setSyncingSubmissionId(submission.id);
     }
 
     try {
@@ -1313,10 +1300,10 @@ const CanvasserForm: React.FC = () => {
                   const existing = prev.find(s => s.id === `backend_${result.id}`);
                   if (existing) {
                     return prev.map(s => s.id === `backend_${result.id}` ? {
-                      ...submission,
+            ...submission,
                       id: `backend_${result.id}`,
                       backendId: result.id,
-                      synced: true
+            synced: true
                     } : s);
                   }
                   return [...prev, {
@@ -1333,12 +1320,12 @@ const CanvasserForm: React.FC = () => {
                 
                 // Only show success message if not in bulk sync mode
                 if (syncingSubmissionId !== 'all') {
-                  setSuccessMessage(`Submission for ${submission.customerName} synced successfully!`);
-                  setShowSuccess(true);
-                  setTimeout(() => setShowSuccess(false), 3000);
+              setSuccessMessage(`Submission for ${submission.customerName} synced successfully!`);
+              setShowSuccess(true);
+              setTimeout(() => setShowSuccess(false), 3000);
                 }
-                
-                resolve();
+                  
+                  resolve();
               }
             };
             
@@ -1366,9 +1353,9 @@ const CanvasserForm: React.FC = () => {
             putRequest.onsuccess = () => {
               // Remove from pending submissions (only if it was pending)
               // Check if submission exists in pending before trying to delete
-              const deleteRequest = pendingStore.delete(submission.id!);
+                const deleteRequest = pendingStore.delete(submission.id!);
               
-              deleteRequest.onsuccess = () => {
+                deleteRequest.onsuccess = () => {
                 // Transaction will complete automatically, oncomplete handler will resolve
               };
               
@@ -1384,8 +1371,8 @@ const CanvasserForm: React.FC = () => {
               if (!transactionResolved) {
                 transactionResolved = true;
                 reject(error || new Error('Failed to save synced submission'));
-              }
-            };
+            }
+          };
           }).catch(error => {
             reject(error);
           });
@@ -1396,14 +1383,14 @@ const CanvasserForm: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to sync submission. Please try again.';
       // Only show error if not syncing all (errors will be handled in syncAllSubmissions)
       if (syncingSubmissionId !== 'all') {
-        setErrorMessage(`Failed to sync: ${errorMessage}`);
-        setShowError(true);
+      setErrorMessage(`Failed to sync: ${errorMessage}`);
+      setShowError(true);
       }
       throw error; // Re-throw so syncAllSubmissions can catch it
     } finally {
       // Only clear syncingSubmissionId if not syncing all
       if (syncingSubmissionId !== 'all') {
-        setSyncingSubmissionId(null);
+      setSyncingSubmissionId(null);
       }
     }
   };
@@ -1519,10 +1506,10 @@ const CanvasserForm: React.FC = () => {
 
   const steps: { key: FormStep; title: string; description: string }[] = [
     { key: 'contact', title: 'Contact Info', description: 'Customer contact details' },
-    { key: 'property', title: 'Property Info', description: 'Property assessment' },
-    { key: 'energy', title: 'Energy Usage', description: 'Energy consumption' },
-    { key: 'photos', title: 'Photos', description: 'Property photos' },
-    { key: 'interest', title: 'Timeframe & Interest', description: 'Decision-making info' },
+    { key: 'interest', title: 'Property & Decision', description: 'Ownership & decision maker' },
+    { key: 'electricBill', title: 'Electric Bill', description: 'Bill amount' },
+    { key: 'photos', title: 'Photo', description: 'Electric bill photo' },
+    { key: 'notes', title: 'Notes', description: 'Canvasser notes' },
     { key: 'review', title: 'Review', description: 'Final review' }
   ];
 
@@ -1650,276 +1637,171 @@ const CanvasserForm: React.FC = () => {
           </div>
         );
 
-      case 'property':
+      case 'interest':
         return (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Property Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Property & Decision Making</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="ownsProperty" className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Do you own the property? <span className="text-red-500">*</span>
                 </label>
-                <select
-                  id="ownsProperty"
-                  name="ownsProperty"
-                  required
-                  value={formData.ownsProperty}
-                  onChange={(e) => setFormData(prev => ({ ...prev, ownsProperty: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select option</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
+                <div className="flex space-x-4">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="ownsProperty"
+                      value="yes"
+                      checked={formData.ownsProperty === 'yes'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, ownsProperty: e.target.value }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <span className="text-sm text-gray-700">Yes</span>
+                  </label>
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="ownsProperty"
+                      value="no"
+                      checked={formData.ownsProperty === 'no'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, ownsProperty: e.target.value }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <span className="text-sm text-gray-700">No</span>
+                  </label>
+                </div>
               </div>
               <div>
-                <label htmlFor="propertyType" className="block text-sm font-medium text-gray-700 mb-1">
-                  Property Type <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Are you the decision maker? <span className="text-red-500">*</span>
                 </label>
-                <select
-                  id="propertyType"
-                  name="propertyType"
-                  required
-                  value={formData.propertyType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, propertyType: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Property Type</option>
-                  <option value="detached">Detached House</option>
-                  <option value="semi-detached">Semi-Detached House</option>
-                  <option value="terraced">Terraced House</option>
-                  <option value="flat">Flat/Apartment</option>
-                  <option value="bungalow">Bungalow</option>
-                </select>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="isDecisionMaker"
+                      value="yes"
+                      checked={formData.isDecisionMaker === 'yes'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <span className="text-sm text-gray-700">Yes</span>
+                  </label>
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="isDecisionMaker"
+                      value="no"
+                      checked={formData.isDecisionMaker === 'no'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <span className="text-sm text-gray-700">No</span>
+                  </label>
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="isDecisionMaker"
+                      value="partner"
+                      checked={formData.isDecisionMaker === 'partner'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <span className="text-sm text-gray-700">Partner</span>
+                  </label>
+                </div>
               </div>
               <div>
-                <label htmlFor="numberOfBedrooms" className="block text-sm font-medium text-gray-700 mb-1">
-                  Number of Bedrooms <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Are you 18-74 years old? <span className="text-red-500">*</span>
                 </label>
-                <select
-                  id="numberOfBedrooms"
-                  name="numberOfBedrooms"
-                  required
-                  value={formData.numberOfBedrooms}
-                  onChange={(e) => setFormData(prev => ({ ...prev, numberOfBedrooms: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select bedrooms</option>
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="5+">5+</option>
-                </select>
+                <div className="flex space-x-4">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="ageRange"
+                      value="18-74"
+                      checked={formData.ageRange === '18-74'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, ageRange: e.target.value }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <span className="text-sm text-gray-700">Yes (18-74 years old)</span>
+                  </label>
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="ageRange"
+                      value="outside_range"
+                      checked={formData.ageRange === 'outside_range'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, ageRange: e.target.value }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <span className="text-sm text-gray-700">No (outside 18-74 range)</span>
+                  </label>
+                </div>
               </div>
               <div>
-                <label htmlFor="roofType" className="block text-sm font-medium text-gray-700 mb-1">
-                  Roof Type <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Have you received other quotes? <span className="text-red-500">*</span>
                 </label>
-                <select
-                  id="roofType"
-                  name="roofType"
-                  required
-                  value={formData.roofType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, roofType: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Roof Type</option>
-                  <option value="pitched">Pitched</option>
-                  <option value="flat">Flat</option>
-                  <option value="mixed">Mixed</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="roofMaterial" className="block text-sm font-medium text-gray-700 mb-1">
-                  Roof Material <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="roofMaterial"
-                  name="roofMaterial"
-                  required
-                  value={formData.roofMaterial}
-                  onChange={(e) => setFormData(prev => ({ ...prev, roofMaterial: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Material</option>
-                  <option value="tiled">Tiled</option>
-                  <option value="slate">Slate</option>
-                  <option value="metal">Metal</option>
-                  <option value="rosemary">Rosemary</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="roofCondition" className="block text-sm font-medium text-gray-700 mb-1">
-                  Roof Condition <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="roofCondition"
-                  name="roofCondition"
-                  required
-                  value={formData.roofCondition}
-                  onChange={(e) => setFormData(prev => ({ ...prev, roofCondition: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Condition</option>
-                  <option value="excellent">Excellent</option>
-                  <option value="good">Good</option>
-                  <option value="fair">Fair</option>
-                  <option value="poor">Poor</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="roofAge" className="block text-sm font-medium text-gray-700 mb-1">
-                  Roof Age <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="roofAge"
-                  name="roofAge"
-                  required
-                  value={formData.roofAge}
-                  onChange={(e) => setFormData(prev => ({ ...prev, roofAge: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Age</option>
-                  <option value="0-5">0-5 years</option>
-                  <option value="6-10">6-10 years</option>
-                  <option value="11-20">11-20 years</option>
-                  <option value="21-30">21-30 years</option>
-                  <option value="30+">30+ years</option>
-                </select>
+                <div className="flex space-x-4">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="hasReceivedOtherQuotes"
+                      value="yes"
+                      checked={formData.hasReceivedOtherQuotes === 'yes'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, hasReceivedOtherQuotes: e.target.value }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <span className="text-sm text-gray-700">Yes</span>
+                  </label>
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="hasReceivedOtherQuotes"
+                      value="no"
+                      checked={formData.hasReceivedOtherQuotes === 'no'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, hasReceivedOtherQuotes: e.target.value }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <span className="text-sm text-gray-700">No</span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
         );
 
-      case 'energy':
+      case 'electricBill':
         return (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Energy Usage</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Electric Bill</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="currentEnergySupplier" className="block text-sm font-medium text-gray-700 mb-1">
-                  Current Energy Supplier <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="currentEnergySupplier"
-                  name="currentEnergySupplier"
-                  required
-                  value={formData.currentEnergySupplier}
-                  onChange={(e) => setFormData(prev => ({ ...prev, currentEnergySupplier: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Supplier</option>
-                  <option value="British Gas">British Gas</option>
-                  <option value="EDF Energy">EDF Energy</option>
-                  <option value="E.ON">E.ON</option>
-                  <option value="Octopus Energy">Octopus Energy</option>
-                  <option value="OVO Energy">OVO Energy</option>
-                  <option value="Scottish Power">Scottish Power</option>
-                  <option value="SSE">SSE</option>
-                  <option value="Bulb Energy">Bulb Energy</option>
-                  <option value="Shell Energy">Shell Energy</option>
-                  <option value="Utility Warehouse">Utility Warehouse</option>
-                  <option value="Npower">Npower</option>
-                  <option value="Together Energy">Together Energy</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="averageMonthlyBill" className="block text-sm font-medium text-gray-700 mb-1">
-                  Average Monthly Bill (£) <span className="text-red-500">*</span>
+                <label htmlFor="electricBill" className="block text-sm font-medium text-gray-700 mb-1">
+                  Electric Bill Amount (£) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
-                  id="averageMonthlyBill"
-                  name="averageMonthlyBill"
+                  id="electricBill"
+                  name="electricBill"
                   required
-                  value={formData.averageMonthlyBill}
-                  onChange={(e) => setFormData(prev => ({ ...prev, averageMonthlyBill: e.target.value }))}
+                  value={formData.electricBill}
+                  onChange={(e) => setFormData(prev => ({ ...prev, electricBill: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter amount"
                 />
               </div>
-              <div>
-                <label htmlFor="energyType" className="block text-sm font-medium text-gray-700 mb-1">
-                  Energy Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="energyType"
-                  name="energyType"
-                  required
-                  value={formData.energyType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, energyType: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select energy type</option>
-                  <option value="gas">Gas Only</option>
-                  <option value="electric">Electric Only</option>
-                  <option value="dual">Dual (Gas & Electric)</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="usesElectricHeating" className="block text-sm font-medium text-gray-700 mb-1">
-                  Do you have high electric usage items? <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="usesElectricHeating"
-                  name="usesElectricHeating"
-                  required
-                  value={formData.usesElectricHeating}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    usesElectricHeating: e.target.value,
-                    electricHeatingDetails: e.target.value === 'no' ? '' : prev.electricHeatingDetails
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select option</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              {formData.usesElectricHeating === 'yes' && (
-                <>
-                  <div>
-                  <label htmlFor="electricHeatingDetails" className="block text-sm font-medium text-gray-700 mb-1">
-                      Please select your high electric usage items <span className="text-red-500">*</span>
-                  </label>
-                    <select
-                    id="electricHeatingDetails"
-                    name="electricHeatingDetails"
-                      required={formData.usesElectricHeating === 'yes'}
-                    value={formData.electricHeatingDetails}
-                    onChange={(e) => setFormData(prev => ({ ...prev, electricHeatingDetails: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select item</option>
-                      <option value="EV Charger">EV Charger</option>
-                      <option value="Hot Tub">Hot Tub</option>
-                      <option value="Electric Storage Heater">Electric Storage Heater</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  {formData.electricHeatingDetails === 'Other' && (
-                    <div>
-                      <label htmlFor="electricHeatingOtherDetails" className="block text-sm font-medium text-gray-700 mb-1">
-                        Please specify <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="electricHeatingOtherDetails"
-                        name="electricHeatingOtherDetails"
-                        required={formData.electricHeatingDetails === 'Other'}
-                        value={formData.electricHeatingDetails}
-                        onChange={(e) => setFormData(prev => ({ ...prev, electricHeatingDetails: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Please specify"
-                  />
-                </div>
-                  )}
-                </>
-              )}
             </div>
           </div>
         );
@@ -1928,119 +1810,23 @@ const CanvasserForm: React.FC = () => {
         return (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-gray-900">
-              Required Photos <span className="text-red-500">*</span>
+              Electric Bill Photo <span className="text-red-500">*</span>
             </h2>
-            <p className="text-sm text-red-600 mb-4">
-              All four photos must be captured before proceeding.
+            <p className="text-sm text-gray-600 mb-4">
+              Please take a photo of the electric bill showing PPKw and annual usage.
             </p>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Front Roof Photo */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <h3 className="font-semibold mb-2">Front Roof Photo <span className="text-red-500">*</span></h3>
-                {formData.photos.frontRoof ? (
-                  <div className="relative">
-                    <img
-                      src={formData.photos.frontRoof}
-                      alt="Front Roof"
-                      className="w-full h-32 object-cover rounded-lg mb-2"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removePhoto('frontRoof')}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ) : (
-                  <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
-                    <span className="text-gray-400">No photo</span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => capturePhoto('frontRoof')}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-                >
-                  📷 Take Front Roof Photo
-                </button>
-              </div>
-
-              {/* Rear Roof Photo */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <h3 className="font-semibold mb-2">Rear Roof Photo <span className="text-red-500">*</span></h3>
-                {formData.photos.rearRoof ? (
-                  <div className="relative">
-                    <img
-                      src={formData.photos.rearRoof}
-                      alt="Rear Roof"
-                      className="w-full h-32 object-cover rounded-lg mb-2"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removePhoto('rearRoof')}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ) : (
-                  <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
-                    <span className="text-gray-400">No photo</span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => capturePhoto('rearRoof')}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-                >
-                  📷 Take Rear Roof Photo
-                </button>
-              </div>
-
-              {/* Side Roof Photo */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <h3 className="font-semibold mb-2">Side Roof Photo <span className="text-red-500">*</span></h3>
-                {formData.photos.sideRoof ? (
-                  <div className="relative">
-                    <img
-                      src={formData.photos.sideRoof}
-                      alt="Side Roof"
-                      className="w-full h-32 object-cover rounded-lg mb-2"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removePhoto('sideRoof')}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ) : (
-                  <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
-                    <span className="text-gray-400">No photo</span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => capturePhoto('sideRoof')}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-                >
-                  📷 Take Side Roof Photo
-                </button>
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4 max-w-md">
               {/* Energy Bill Photo */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <h3 className="font-semibold mb-2">Energy Bill Photo <span className="text-red-500">*</span></h3>
+                <h3 className="font-semibold mb-2">Electric Bill Photo <span className="text-red-500">*</span></h3>
                 <p className="text-sm text-gray-600 mb-2">Show PPKw and annual usage</p>
                 {formData.photos.energyBill ? (
                   <div className="relative">
                     <img
                       src={formData.photos.energyBill}
                       alt="Energy bill"
-                      className="w-full h-32 object-cover rounded-lg mb-2"
+                      className="w-full h-64 object-contain rounded-lg mb-2"
                     />
                     <button
                       type="button"
@@ -2051,7 +1837,7 @@ const CanvasserForm: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
+                  <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
                     <span className="text-gray-400">No photo</span>
                   </div>
                 )}
@@ -2060,122 +1846,30 @@ const CanvasserForm: React.FC = () => {
                   onClick={() => capturePhoto('energyBill')}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
                 >
-                  📷 Take Energy Bill Photo
+                  📷 Take Electric Bill Photo
                 </button>
               </div>
-            </div>
-
-            {/* Additional Photos Section */}
-            <div className="mt-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Additional Photos (Optional)</h3>
-                {formData.photos.additional.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={addAdditionalPhotoSlot}
-                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
-                  >
-                    + Add Photo ({formData.photos.additional.length}/5)
-                  </button>
-                )}
-              </div>
-              
-              {formData.photos.additional.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {formData.photos.additional.map((photo, index) => (
-                    <div key={index} className="border-2 border-dashed border-green-300 rounded-lg p-4 text-center">
-                      <h3 className="font-semibold mb-2 text-sm text-gray-600">Additional Photo {index + 1}</h3>
-                      {photo ? (
-                        <div className="relative">
-                          <img
-                            src={photo}
-                            alt={`Additional ${index + 1}`}
-                            className="w-full h-32 object-cover rounded-lg mb-2"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removePhoto('additional', index)}
-                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
-                          <span className="text-gray-400">No photo</span>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => capturePhoto('additional', index)}
-                        className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
-                      >
-                        📷 Take Photo
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         );
 
-      case 'interest':
+      case 'notes':
         return (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Timeframe and Interest</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h2 className="text-xl font-semibold text-gray-900">Canvasser Notes</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Add any additional observations, concerns, or special requirements (optional).
+            </p>
               <div>
-                <label htmlFor="hasReceivedOtherQuotes" className="block text-sm font-medium text-gray-700 mb-1">
-                  Have you received other quotes? <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="hasReceivedOtherQuotes"
-                  name="hasReceivedOtherQuotes"
-                  required
-                  value={formData.hasReceivedOtherQuotes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, hasReceivedOtherQuotes: e.target.value }))}
+              <textarea
+                id="notes"
+                name="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                rows={8}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select option</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="isDecisionMaker" className="block text-sm font-medium text-gray-700 mb-1">
-                  Are you the decision maker? <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="isDecisionMaker"
-                  name="isDecisionMaker"
-                  required
-                  value={formData.isDecisionMaker}
-                  onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select option</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div className="md:col-span-2">
-                <label htmlFor="movingIn5Years" className="block text-sm font-medium text-gray-700 mb-1">
-                  Are you planning to move in the next 5 years? <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="movingIn5Years"
-                  name="movingIn5Years"
-                  required
-                  value={formData.movingIn5Years}
-                  onChange={(e) => setFormData(prev => ({ ...prev, movingIn5Years: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select option</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
+                placeholder="Enter any additional notes or observations..."
+              />
             </div>
           </div>
         );
@@ -2204,63 +1898,43 @@ const CanvasserForm: React.FC = () => {
               <p><strong>Preferred Contact Time:</strong> {formData.preferredContactTime}</p>
             </div>
             
-            {/* Property Details */}
+            {/* Property & Decision Making */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="font-semibold mb-2">Property Information</h3>
+              <h3 className="font-semibold mb-2">Property & Decision Making</h3>
               <p><strong>Owns Property:</strong> {formData.ownsProperty}</p>
-              <p><strong>Property Type:</strong> {formData.propertyType}</p>
-              <p><strong>Number of Bedrooms:</strong> {formData.numberOfBedrooms}</p>
-              <p><strong>Roof Type:</strong> {formData.roofType}</p>
-              <p><strong>Roof Material:</strong> {formData.roofMaterial}</p>
-              <p><strong>Roof Condition:</strong> {formData.roofCondition}</p>
-              <p><strong>Roof Age:</strong> {formData.roofAge}</p>
+              <p><strong>Decision Maker:</strong> {formData.isDecisionMaker}</p>
+              <p><strong>Age Range:</strong> {formData.ageRange === '18-74' ? 'Yes (18-74 years old)' : formData.ageRange === 'outside_range' ? 'No (outside 18-74 range)' : 'Not specified'}</p>
+              <p><strong>Received Other Quotes:</strong> {formData.hasReceivedOtherQuotes}</p>
             </div>
 
-            {/* Energy Usage */}
+            {/* Electric Bill */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="font-semibold mb-2">Energy Usage</h3>
-              <p><strong>Current Energy Supplier:</strong> {formData.currentEnergySupplier}</p>
-              <p><strong>Average Monthly Bill:</strong> £{formData.averageMonthlyBill}</p>
-              <p><strong>Energy Type:</strong> {formData.energyType}</p>
-              <p><strong>High Electric Usage Items:</strong> {formData.usesElectricHeating}</p>
-              {formData.electricHeatingDetails && (
-                <p><strong>Electric Heating Details:</strong> {formData.electricHeatingDetails}</p>
+              <h3 className="font-semibold mb-2">Electric Bill</h3>
+              <p><strong>Electric Bill Amount:</strong> £{formData.electricBill}</p>
+            </div>
+
+            {/* Photo */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <h3 className="font-semibold mb-2">Electric Bill Photo</h3>
+              <p><strong>Status:</strong> {formData.photos.energyBill ? '✅ Captured' : '❌ Missing'}</p>
+              {formData.photos.energyBill && (
+                <div className="mt-2">
+                  <img
+                    src={formData.photos.energyBill}
+                    alt="Electric bill"
+                    className="max-w-full h-48 object-contain rounded-lg border border-gray-300"
+                  />
+            </div>
               )}
             </div>
 
-            {/* Timeframe and Interest */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="font-semibold mb-2">Timeframe & Interest</h3>
-              <p><strong>Has Received Other Quotes:</strong> {formData.hasReceivedOtherQuotes}</p>
-              <p><strong>Is Decision Maker:</strong> {formData.isDecisionMaker}</p>
-              <p><strong>Moving in 5 Years:</strong> {formData.movingIn5Years}</p>
-            </div>
-            
-            {/* Photos */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="font-semibold mb-2">Photos</h3>
-              <p><strong>Front Roof Photo:</strong> {formData.photos.frontRoof ? '✅ Captured' : '❌ Missing'}</p>
-              <p><strong>Rear Roof Photo:</strong> {formData.photos.rearRoof ? '✅ Captured' : '❌ Missing'}</p>
-              <p><strong>Side Roof Photo:</strong> {formData.photos.sideRoof ? '✅ Captured' : '❌ Missing'}</p>
-              <p><strong>Energy Bill Photo:</strong> {formData.photos.energyBill ? '✅ Captured' : '❌ Missing'}</p>
-              {formData.photos.additional && formData.photos.additional.length > 0 && (
-                <p><strong>Additional Photos:</strong> {formData.photos.additional.filter(p => p).length} captured</p>
-              )}
-            </div>
-
-            {/* Optional Notes */}
+            {/* Canvasser Notes */}
+            {formData.notes && (
             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-              <h3 className="font-semibold mb-2 text-yellow-900">Additional Notes (Optional)</h3>
-              <textarea
-                id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Add any additional observations, concerns, or special requirements..."
-              />
+                <h3 className="font-semibold mb-2 text-yellow-900">Canvasser Notes</h3>
+                <p className="whitespace-pre-wrap">{formData.notes}</p>
             </div>
+            )}
 
             {/* Submit Buttons */}
             <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
@@ -2316,7 +1990,7 @@ const CanvasserForm: React.FC = () => {
                 </button>
                 
                 <button
-                  onClick={() => setCurrentStep('interest')}
+                  onClick={() => setCurrentStep('notes')}
                   className="flex-1 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2"
                 >
                   <span>←</span>
@@ -2606,7 +2280,7 @@ const CanvasserForm: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'review'];
+                const stepOrder: FormStep[] = ['contact', 'interest', 'electricBill', 'photos', 'notes', 'review'];
                 const currentIndex = stepOrder.indexOf(currentStep);
                 if (currentIndex > 0) {
                   setCurrentStep(stepOrder[currentIndex - 1]);
@@ -2634,7 +2308,7 @@ const CanvasserForm: React.FC = () => {
                 type="button"
                 onClick={() => {
                   markStepCompleted(currentStep);
-                    const stepOrder: FormStep[] = ['contact', 'property', 'energy', 'photos', 'interest', 'review'];
+                    const stepOrder: FormStep[] = ['contact', 'interest', 'electricBill', 'photos', 'notes', 'review'];
                   const currentIndex = stepOrder.indexOf(currentStep);
                   if (currentIndex < stepOrder.length - 1) {
                     setCurrentStep(stepOrder[currentIndex + 1]);

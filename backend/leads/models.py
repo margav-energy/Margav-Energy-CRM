@@ -811,9 +811,9 @@ class FieldSubmission(SoftDeleteModel):
     )
     
     # Canvasser Info
-    canvasser_name = models.CharField(max_length=255, blank=True, default='', help_text='Canvasser full name')
-    assessment_date = models.CharField(max_length=50, blank=True, default='', help_text='Date of assessment')
-    assessment_time = models.CharField(max_length=50, blank=True, default='', help_text='Time of assessment')
+    canvasser_name = models.CharField(max_length=255, blank=True, null=True, help_text='Canvasser full name')
+    assessment_date = models.CharField(max_length=50, blank=True, null=True, help_text='Date of assessment')
+    assessment_time = models.CharField(max_length=50, blank=True, null=True, help_text='Time of assessment')
     
     # Customer information
     customer_name = models.CharField(max_length=255, help_text='Customer full name')
@@ -821,10 +821,10 @@ class FieldSubmission(SoftDeleteModel):
     email = models.EmailField(blank=True, null=True, help_text='Customer email address')
     address = models.TextField(help_text='Property address')
     postal_code = models.CharField(max_length=20, help_text='Postal code')
-    preferred_contact_time = models.CharField(max_length=50, blank=True, help_text='Preferred contact time')
+    preferred_contact_time = models.CharField(max_length=20, blank=True, null=True, help_text='Preferred contact time')
     
     # Property Information
-    owns_property = models.CharField(max_length=10, blank=True, help_text='Does customer own property? (yes/no)')
+    owns_property = models.CharField(max_length=10, blank=True, null=True, help_text='Does customer own property? (yes/no)')
     property_type = models.CharField(
         max_length=20,
         choices=PROPERTY_TYPE_CHOICES,
@@ -865,9 +865,13 @@ class FieldSubmission(SoftDeleteModel):
     electric_heating_details = models.TextField(blank=True, help_text='Electric heating details')
     
     # Timeframe and Interest
-    has_received_other_quotes = models.CharField(max_length=10, blank=True, help_text='Has received other quotes? (yes/no)')
-    is_decision_maker = models.CharField(max_length=10, blank=True, help_text='Is decision maker? (yes/no)')
+    has_received_other_quotes = models.CharField(max_length=10, blank=True, null=True, help_text='Has received other quotes? (yes/no)')
+    is_decision_maker = models.CharField(max_length=20, blank=True, null=True, help_text='Is customer the decision maker? (yes/no/partner)')
     moving_in_5_years = models.CharField(max_length=10, blank=True, help_text='Moving in 5 years? (yes/no)')
+    
+    # Simplified form fields (new)
+    age_range = models.CharField(max_length=20, blank=True, null=True, help_text='Age range (18-74/outside_range)')
+    electric_bill = models.CharField(max_length=50, blank=True, null=True, help_text='Electric bill amount')
     
     # Additional information
     notes = models.TextField(blank=True, help_text='Additional notes and observations')
@@ -927,7 +931,7 @@ class FieldSubmission(SoftDeleteModel):
         return 0
     
     def get_formatted_notes(self):
-        """Get formatted notes for display."""
+        """Get formatted notes for display (simplified format)."""
         # Helper function to safely format values
         def safe_value(value):
             if not value:
@@ -936,40 +940,41 @@ class FieldSubmission(SoftDeleteModel):
                 return 'Not specified'
             return value
         
-        notes = f"Canvas Assessment by {safe_value(self.canvasser_name)}\n"
-        notes += f"Date: {safe_value(self.assessment_date)} at {safe_value(self.assessment_time)}\n\n"
+        # Get field values with safe defaults
+        canvasser_name = safe_value(getattr(self, 'canvasser_name', None))
+        assessment_date = safe_value(getattr(self, 'assessment_date', None))
+        assessment_time = safe_value(getattr(self, 'assessment_time', None))
+        owns_property = safe_value(getattr(self, 'owns_property', None))
+        is_decision_maker = safe_value(getattr(self, 'is_decision_maker', None))
+        age_range = safe_value(getattr(self, 'age_range', None))
+        electric_bill = safe_value(getattr(self, 'electric_bill', None))
+        has_received_other_quotes = safe_value(getattr(self, 'has_received_other_quotes', None))
+        preferred_contact_time = safe_value(getattr(self, 'preferred_contact_time', None))
         
-        # Property Information
+        notes = f"Canvas Assessment by {canvasser_name}\n"
+        notes += f"Date: {assessment_date} at {assessment_time}\n\n"
+        
+        # Property & Decision Making
         notes += "Property Information:\n"
-        notes += f"- Owns Property: {safe_value(self.owns_property)}\n"
-        notes += f"- Type: {self.get_property_type_display() if self.property_type else 'Not specified'}\n"
-        notes += f"- Bedrooms: {safe_value(self.number_of_bedrooms)}\n"
-        notes += f"- Roof Type: {self.get_roof_type_display() if self.roof_type else 'Not specified'}\n"
-        notes += f"- Roof Material: {self.get_roof_material_display() if self.roof_material else 'Not specified'}\n"
-        notes += f"- Roof Condition: {self.get_roof_condition_display() if self.roof_condition else 'Not specified'}\n"
-        notes += f"- Roof Age: {safe_value(self.roof_age)}\n\n"
+        notes += f"- Owns Property: {owns_property}\n"
+        notes += f"- Decision Maker: {is_decision_maker}\n"
+        notes += f"- Age Range: {age_range}\n\n"
         
-        # Energy Information
+        # Electric Bill
         notes += "Energy Information:\n"
-        notes += f"- Supplier: {safe_value(self.current_energy_supplier)}\n"
-        notes += f"- Monthly Bill: £{safe_value(self.average_monthly_bill)}\n"
-        notes += f"- Energy Type: {self.get_energy_type_display() if self.energy_type else 'Not specified'}\n"
-        notes += f"- Electric Heating: {safe_value(self.uses_electric_heating)}\n"
-        if self.electric_heating_details and self.electric_heating_details.strip():
-            notes += f"- Heating Details: {self.electric_heating_details}\n"
-        notes += "\n"
+        notes += f"- Electric Bill: £{electric_bill}\n\n"
         
         # Customer Interest
         notes += "Customer Interest:\n"
-        notes += f"- Other Quotes: {safe_value(self.has_received_other_quotes)}\n"
-        notes += f"- Decision Maker: {safe_value(self.is_decision_maker)}\n"
-        notes += f"- Moving in 5 Years: {safe_value(self.moving_in_5_years)}\n"
-        notes += f"- Preferred Contact: {safe_value(self.preferred_contact_time)}\n\n"
+        notes += f"- Other Quotes: {has_received_other_quotes}\n"
+        notes += f"- Preferred Contact: {preferred_contact_time}\n\n"
         
+        # Canvasser Notes
         if self.notes and self.notes.strip():
             notes += f"Additional Notes:\n{self.notes}\n\n"
         
-        notes += f"Photos: {self.get_photo_count()} captured\n"
+        # Photos
+        notes += f"Photos: {self.get_photo_count()} captured"
         
         return notes
 

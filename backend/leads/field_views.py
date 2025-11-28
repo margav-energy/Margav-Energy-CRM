@@ -22,6 +22,9 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return FieldSubmissionCreateSerializer
+        elif self.request.method in ['PUT', 'PATCH']:
+            # Use create serializer for updates so we can write to all fields
+            return FieldSubmissionCreateSerializer
         return FieldSubmissionSerializer
     
     def get_queryset(self):
@@ -51,6 +54,7 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         submission_data['field_agent'] = request.user
         
         # Create the field submission
+        # The serializer will handle all fields including the new simplified form fields
         submission = serializer.save(**submission_data)
         
         # Automatically create a lead for qualifier review
@@ -71,7 +75,7 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
             'address1': submission.address,
             'city': parsed_city,  # Extract city from address
             'postal_code': submission.postal_code,
-            'notes': self._format_submission_notes(submission),
+            'notes': self._format_submission_notes(submission, request.data),
             'status': 'sent_to_kelly',  # Send directly to qualifier
             'assigned_agent': submission.field_agent,  # Assign to the canvasser who submitted
             'field_submission': submission,
@@ -101,8 +105,19 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         
+        # Log the data being saved for debugging
+        logger.info(f"Updating field submission {instance.id} with request.data: {request.data}")
+        logger.info(f"Updating field submission {instance.id} with validated_data: {serializer.validated_data}")
+        
         # Update the field submission
+        # The serializer will handle all fields including the new simplified form fields
         submission = serializer.save()
+        
+        # Refresh from database to ensure we have the latest values
+        submission.refresh_from_db()
+        
+        # Log the saved values for debugging
+        logger.info(f"Field submission {submission.id} after save - owns_property: {getattr(submission, 'owns_property', 'NOT IN MODEL')}, age_range: {getattr(submission, 'age_range', 'NOT IN MODEL')}, electric_bill: {getattr(submission, 'electric_bill', 'NOT IN MODEL')}")
         
         # Update or create the associated lead
         # Parse city from address if it follows the format "Street, City, Postcode"
@@ -127,7 +142,7 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
             'address1': submission.address,
             'city': parsed_city,
             'postal_code': submission.postal_code,
-            'notes': self._format_submission_notes(submission),
+            'notes': self._format_submission_notes(submission, request.data),
             'assigned_agent': submission.field_agent,
             'field_submission': submission,
         }
@@ -162,52 +177,56 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         response_serializer = FieldSubmissionSerializer(submission)
         return Response(response_serializer.data)
     
-    def _format_submission_notes(self, submission):
-        """Format field submission data into notes for the lead."""
-        notes = f"Canvas Team Assessment by {submission.canvasser_name}\n"
-        notes += f"Date: {submission.assessment_date} at {submission.assessment_time}\n\n"
+    def _format_submission_notes(self, submission, request_data=None):
+        """Format field submission data into notes for the lead (simplified format)."""
+        # Helper to get field from request_data first, then submission object, then default
+        def get_field(field_name, default='Not specified'):
+            if request_data and field_name in request_data:
+                value = request_data[field_name]
+                return value if value else default
+            return getattr(submission, field_name, None) or default
         
-        # Property Information
-        notes += "PROPERTY INFORMATION:\n"
-        notes += f"Owns Property: {submission.owns_property or 'Not specified'}\n"
-        notes += f"Property Type: {submission.property_type or 'Not specified'}\n"
-        notes += f"Number of Bedrooms: {submission.number_of_bedrooms or 'Not specified'}\n"
-        notes += f"Roof Type: {submission.roof_type or 'Not specified'}\n"
-        notes += f"Roof Material: {submission.roof_material or 'Not specified'}\n"
-        notes += f"Roof Condition: {submission.roof_condition or 'Not specified'}\n"
-        notes += f"Roof Age: {submission.roof_age or 'Not specified'}\n\n"
+        # Get field values with safe defaults
+        canvasser_name = get_field('canvasser_name') or getattr(submission.field_agent, 'get_full_name', lambda: getattr(submission.field_agent, 'username', 'Unknown'))()
+        assessment_date = get_field('assessment_date') or (submission.timestamp.strftime('%d/%m/%Y') if hasattr(submission, 'timestamp') else 'Not specified')
+        assessment_time = get_field('assessment_time') or (submission.timestamp.strftime('%H:%M') if hasattr(submission, 'timestamp') else 'Not specified')
+        owns_property = get_field('owns_property')
+        is_decision_maker = get_field('is_decision_maker')
+        age_range = get_field('age_range')
+        electric_bill = get_field('electric_bill')
+        has_received_other_quotes = get_field('has_received_other_quotes')
+        preferred_contact_time = get_field('preferred_contact_time')
         
-        # Energy Usage
-        notes += "ENERGY USAGE:\n"
-        notes += f"Current Supplier: {submission.current_energy_supplier or 'Not specified'}\n"
-        notes += f"Average Monthly Bill: £{submission.average_monthly_bill or 'Not specified'}\n"
-        notes += f"Energy Type: {submission.energy_type or 'Not specified'}\n"
-        notes += f"Uses Electric Heating: {submission.uses_electric_heating or 'Not specified'}\n"
-        if submission.electric_heating_details:
-            notes += f"Electric Heating Details: {submission.electric_heating_details}\n"
-        notes += "\n"
+        notes = f"Canvas Assessment by {canvasser_name}\n"
+        notes += f"Date: {assessment_date} at {assessment_time}\n\n"
         
-        # Timeframe and Interest
-        notes += "CUSTOMER INTEREST:\n"
-        notes += f"Has Received Other Quotes: {submission.has_received_other_quotes or 'Not specified'}\n"
-        notes += f"Is Decision Maker: {submission.is_decision_maker or 'Not specified'}\n"
-        notes += f"Moving in 5 Years: {submission.moving_in_5_years or 'Not specified'}\n\n"
+        # Property & Decision Making
+        notes += "Property Information:\n"
+        notes += f"- Owns Property: {owns_property}\n"
+        notes += f"- Decision Maker: {is_decision_maker}\n"
+        notes += f"- Age Range: {age_range}\n\n"
         
-        # Preferred Contact Time
-        notes += f"Preferred Contact Time: {submission.preferred_contact_time or 'Not specified'}\n\n"
+        # Electric Bill
+        notes += "Energy Information:\n"
+        notes += f"- Electric Bill: £{electric_bill}\n\n"
         
-        # Additional Notes
+        # Customer Interest
+        notes += "Customer Interest:\n"
+        notes += f"- Other Quotes: {has_received_other_quotes}\n"
+        notes += f"- Preferred Contact: {preferred_contact_time}\n\n"
+        
+        # Canvasser Notes
         if submission.notes:
-            notes += f"ADDITIONAL NOTES:\n{submission.notes}\n\n"
+            notes += f"Additional Notes:\n{submission.notes}\n\n"
         
-        # Photos and Signature
+        # Photos
         photo_count = 0
         if isinstance(submission.photos, dict):
             photo_count = sum(1 for v in submission.photos.values() if v)
         elif isinstance(submission.photos, list):
             photo_count = len(submission.photos)
         
-        notes += f"Photos: {photo_count} captured\n"
+        notes += f"Photos: {photo_count} captured"
         
         return notes
 
@@ -303,7 +322,7 @@ def bulk_sync_field_submissions(request):
                 'address1': submission.address,
                 'city': submission.city,
                 'postal_code': submission.postal_code,
-                'notes': f"Field Assessment - {submission.timestamp.strftime('%Y-%m-%d %H:%M')}\n\nProperty Type: {submission.property_type or 'Not specified'}\nRoof Type: {submission.roof_type or 'Not specified'}\nRoof Condition: {submission.roof_condition or 'Not specified'}\nRoof Age: {submission.roof_age or 'Not specified'}\nCurrent Energy Supplier: {submission.current_energy_supplier or 'Not specified'}\nMonthly Bill: {submission.monthly_bill or 'Not specified'}\nHeating Type: {submission.heating_type or 'Not specified'}\nHot Water Type: {submission.hot_water_type or 'Not specified'}\nInsulation Type: {submission.insulation_type or 'Not specified'}\nWindows Type: {submission.windows_type or 'Not specified'}\nProperty Age: {submission.property_age or 'Not specified'}\nOccupancy: {submission.occupancy or 'Not specified'}\n\nAdditional Notes:\n{submission.notes or 'None'}\n\nPhotos: {len(submission.photos)} taken\n",
+                'notes': format_bulk_sync_notes(submission_data, submission),
                 'status': 'sent_to_kelly',
                 'assigned_agent': None,
                 'field_submission': submission,
@@ -350,6 +369,9 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return FieldSubmissionCreateSerializer
+        elif self.request.method in ['PUT', 'PATCH']:
+            # Use create serializer for updates so we can write to all fields
+            return FieldSubmissionCreateSerializer
         return FieldSubmissionSerializer
     
     def get_queryset(self):
@@ -379,6 +401,7 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         submission_data['field_agent'] = request.user
         
         # Create the field submission
+        # The serializer will handle all fields including the new simplified form fields
         submission = serializer.save(**submission_data)
         
         # Automatically create a lead for qualifier review
@@ -399,7 +422,7 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
             'address1': submission.address,
             'city': parsed_city,  # Extract city from address
             'postal_code': submission.postal_code,
-            'notes': self._format_submission_notes(submission),
+            'notes': self._format_submission_notes(submission, request.data),
             'status': 'sent_to_kelly',  # Send directly to qualifier
             'assigned_agent': submission.field_agent,  # Assign to the canvasser who submitted
             'field_submission': submission,
@@ -429,8 +452,19 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         
+        # Log the data being saved for debugging
+        logger.info(f"Updating field submission {instance.id} with request.data: {request.data}")
+        logger.info(f"Updating field submission {instance.id} with validated_data: {serializer.validated_data}")
+        
         # Update the field submission
+        # The serializer will handle all fields including the new simplified form fields
         submission = serializer.save()
+        
+        # Refresh from database to ensure we have the latest values
+        submission.refresh_from_db()
+        
+        # Log the saved values for debugging
+        logger.info(f"Field submission {submission.id} after save - owns_property: {getattr(submission, 'owns_property', 'NOT IN MODEL')}, age_range: {getattr(submission, 'age_range', 'NOT IN MODEL')}, electric_bill: {getattr(submission, 'electric_bill', 'NOT IN MODEL')}")
         
         # Update or create the associated lead
         # Parse city from address if it follows the format "Street, City, Postcode"
@@ -455,7 +489,7 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
             'address1': submission.address,
             'city': parsed_city,
             'postal_code': submission.postal_code,
-            'notes': self._format_submission_notes(submission),
+            'notes': self._format_submission_notes(submission, request.data),
             'assigned_agent': submission.field_agent,
             'field_submission': submission,
         }
@@ -490,52 +524,56 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         response_serializer = FieldSubmissionSerializer(submission)
         return Response(response_serializer.data)
     
-    def _format_submission_notes(self, submission):
-        """Format field submission data into notes for the lead."""
-        notes = f"Canvas Team Assessment by {submission.canvasser_name}\n"
-        notes += f"Date: {submission.assessment_date} at {submission.assessment_time}\n\n"
+    def _format_submission_notes(self, submission, request_data=None):
+        """Format field submission data into notes for the lead (simplified format)."""
+        # Helper to get field from request_data first, then submission object, then default
+        def get_field(field_name, default='Not specified'):
+            if request_data and field_name in request_data:
+                value = request_data[field_name]
+                return value if value else default
+            return getattr(submission, field_name, None) or default
         
-        # Property Information
-        notes += "PROPERTY INFORMATION:\n"
-        notes += f"Owns Property: {submission.owns_property or 'Not specified'}\n"
-        notes += f"Property Type: {submission.property_type or 'Not specified'}\n"
-        notes += f"Number of Bedrooms: {submission.number_of_bedrooms or 'Not specified'}\n"
-        notes += f"Roof Type: {submission.roof_type or 'Not specified'}\n"
-        notes += f"Roof Material: {submission.roof_material or 'Not specified'}\n"
-        notes += f"Roof Condition: {submission.roof_condition or 'Not specified'}\n"
-        notes += f"Roof Age: {submission.roof_age or 'Not specified'}\n\n"
+        # Get field values with safe defaults
+        canvasser_name = get_field('canvasser_name') or getattr(submission.field_agent, 'get_full_name', lambda: getattr(submission.field_agent, 'username', 'Unknown'))()
+        assessment_date = get_field('assessment_date') or (submission.timestamp.strftime('%d/%m/%Y') if hasattr(submission, 'timestamp') else 'Not specified')
+        assessment_time = get_field('assessment_time') or (submission.timestamp.strftime('%H:%M') if hasattr(submission, 'timestamp') else 'Not specified')
+        owns_property = get_field('owns_property')
+        is_decision_maker = get_field('is_decision_maker')
+        age_range = get_field('age_range')
+        electric_bill = get_field('electric_bill')
+        has_received_other_quotes = get_field('has_received_other_quotes')
+        preferred_contact_time = get_field('preferred_contact_time')
         
-        # Energy Usage
-        notes += "ENERGY USAGE:\n"
-        notes += f"Current Supplier: {submission.current_energy_supplier or 'Not specified'}\n"
-        notes += f"Average Monthly Bill: £{submission.average_monthly_bill or 'Not specified'}\n"
-        notes += f"Energy Type: {submission.energy_type or 'Not specified'}\n"
-        notes += f"Uses Electric Heating: {submission.uses_electric_heating or 'Not specified'}\n"
-        if submission.electric_heating_details:
-            notes += f"Electric Heating Details: {submission.electric_heating_details}\n"
-        notes += "\n"
+        notes = f"Canvas Assessment by {canvasser_name}\n"
+        notes += f"Date: {assessment_date} at {assessment_time}\n\n"
         
-        # Timeframe and Interest
-        notes += "CUSTOMER INTEREST:\n"
-        notes += f"Has Received Other Quotes: {submission.has_received_other_quotes or 'Not specified'}\n"
-        notes += f"Is Decision Maker: {submission.is_decision_maker or 'Not specified'}\n"
-        notes += f"Moving in 5 Years: {submission.moving_in_5_years or 'Not specified'}\n\n"
+        # Property & Decision Making
+        notes += "Property Information:\n"
+        notes += f"- Owns Property: {owns_property}\n"
+        notes += f"- Decision Maker: {is_decision_maker}\n"
+        notes += f"- Age Range: {age_range}\n\n"
         
-        # Preferred Contact Time
-        notes += f"Preferred Contact Time: {submission.preferred_contact_time or 'Not specified'}\n\n"
+        # Electric Bill
+        notes += "Energy Information:\n"
+        notes += f"- Electric Bill: £{electric_bill}\n\n"
         
-        # Additional Notes
+        # Customer Interest
+        notes += "Customer Interest:\n"
+        notes += f"- Other Quotes: {has_received_other_quotes}\n"
+        notes += f"- Preferred Contact: {preferred_contact_time}\n\n"
+        
+        # Canvasser Notes
         if submission.notes:
-            notes += f"ADDITIONAL NOTES:\n{submission.notes}\n\n"
+            notes += f"Additional Notes:\n{submission.notes}\n\n"
         
-        # Photos and Signature
+        # Photos
         photo_count = 0
         if isinstance(submission.photos, dict):
             photo_count = sum(1 for v in submission.photos.values() if v)
         elif isinstance(submission.photos, list):
             photo_count = len(submission.photos)
         
-        notes += f"Photos: {photo_count} captured\n"
+        notes += f"Photos: {photo_count} captured"
         
         return notes
 
@@ -631,7 +669,7 @@ def bulk_sync_field_submissions(request):
                 'address1': submission.address,
                 'city': submission.city,
                 'postal_code': submission.postal_code,
-                'notes': f"Field Assessment - {submission.timestamp.strftime('%Y-%m-%d %H:%M')}\n\nProperty Type: {submission.property_type or 'Not specified'}\nRoof Type: {submission.roof_type or 'Not specified'}\nRoof Condition: {submission.roof_condition or 'Not specified'}\nRoof Age: {submission.roof_age or 'Not specified'}\nCurrent Energy Supplier: {submission.current_energy_supplier or 'Not specified'}\nMonthly Bill: {submission.monthly_bill or 'Not specified'}\nHeating Type: {submission.heating_type or 'Not specified'}\nHot Water Type: {submission.hot_water_type or 'Not specified'}\nInsulation Type: {submission.insulation_type or 'Not specified'}\nWindows Type: {submission.windows_type or 'Not specified'}\nProperty Age: {submission.property_age or 'Not specified'}\nOccupancy: {submission.occupancy or 'Not specified'}\n\nAdditional Notes:\n{submission.notes or 'None'}\n\nPhotos: {len(submission.photos)} taken\n",
+                'notes': format_bulk_sync_notes(submission_data, submission),
                 'status': 'sent_to_kelly',
                 'assigned_agent': None,
                 'field_submission': submission,

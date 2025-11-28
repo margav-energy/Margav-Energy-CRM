@@ -54,14 +54,66 @@ class LeadSerializer(serializers.ModelSerializer):
     def get_field_submission_data(self, obj):
         """Get field submission data if it exists."""
         if obj.field_submission:
+            submission = obj.field_submission
+            # Get field values with safe defaults
+            def get_field(field_name, default=None):
+                # First try to get from model attribute
+                value = getattr(submission, field_name, None)
+                if value:
+                    return value
+                # If photos is a dict, check if assessment_data is stored there
+                if isinstance(submission.photos, dict) and 'assessment_data' in submission.photos:
+                    return submission.photos['assessment_data'].get(field_name, default)
+                return default
+            
+            # Extract from formatted notes if not in model
+            # Parse formatted notes to extract key fields
+            formatted_notes = submission.get_formatted_notes()
+            def extract_from_notes(field_label):
+                if not formatted_notes:
+                    return None
+                lines = formatted_notes.split('\n')
+                for line in lines:
+                    # Look for lines like "- Owns Property: yes" or "- Age Range: 18-74"
+                    if field_label in line and ':' in line:
+                        parts = line.split(':')
+                        if len(parts) > 1:
+                            value = parts[1].strip()
+                            # Clean up value (remove £, etc.)
+                            value = value.replace('£', '').strip()
+                            return value if value and value != 'Not specified' else None
+                return None
+            
+            # Try to get from model attributes first, then from notes parsing
+            owns_property = get_field('owns_property') or extract_from_notes('Owns Property')
+            is_decision_maker = get_field('is_decision_maker') or extract_from_notes('Decision Maker')
+            age_range = get_field('age_range') or extract_from_notes('Age Range')
+            electric_bill = get_field('electric_bill') or extract_from_notes('Electric Bill')
+            has_received_other_quotes = get_field('has_received_other_quotes') or extract_from_notes('Other Quotes')
+            preferred_contact_time = get_field('preferred_contact_time') or extract_from_notes('Preferred Contact')
+            
+            # Get assessment date/time
+            assessment_date = get_field('assessment_date')
+            assessment_time = get_field('assessment_time')
+            if not assessment_date and submission.timestamp:
+                assessment_date = submission.timestamp.strftime('%d/%m/%Y')
+            if not assessment_time and submission.timestamp:
+                assessment_time = submission.timestamp.strftime('%H:%M')
+            
             return {
-                'id': obj.field_submission.id,
-                'canvasser_name': obj.field_submission.canvasser_name,
-                'assessment_date': obj.field_submission.assessment_date,
-                'assessment_time': obj.field_submission.assessment_time,
-                'photos': obj.field_submission.photos,
-                'formatted_notes': obj.field_submission.get_formatted_notes(),
-                'timestamp': obj.field_submission.timestamp
+                'id': submission.id,
+                'canvasser_name': getattr(submission.field_agent, 'get_full_name', lambda: getattr(submission.field_agent, 'username', 'Unknown'))(),
+                'assessment_date': assessment_date,
+                'assessment_time': assessment_time,
+                'owns_property': owns_property,
+                'is_decision_maker': is_decision_maker,
+                'age_range': age_range,
+                'electric_bill': electric_bill,
+                'has_received_other_quotes': has_received_other_quotes,
+                'preferred_contact_time': preferred_contact_time,
+                'photos': submission.photos if isinstance(submission.photos, dict) and 'energyBill' in submission.photos else (submission.photos if isinstance(submission.photos, dict) else {}),
+                'formatted_notes': formatted_notes,
+                'timestamp': submission.timestamp
             }
         return None
     
@@ -555,7 +607,17 @@ class FieldSubmissionSerializer(serializers.ModelSerializer):
             'photo_count',
             'formatted_notes',
             'created_at',
-            'updated_at'
+            'updated_at',
+            # Simplified form fields
+            'owns_property',
+            'is_decision_maker',
+            'age_range',
+            'electric_bill',
+            'has_received_other_quotes',
+            'preferred_contact_time',
+            'assessment_date',
+            'assessment_time',
+            'canvasser_name'
         ]
         read_only_fields = [
             'id',
@@ -594,6 +656,10 @@ class FieldSubmissionCreateSerializer(serializers.ModelSerializer):
             'postal_code',
             'preferred_contact_time',
             'owns_property',
+            'is_decision_maker',
+            'age_range',
+            'electric_bill',
+            'has_received_other_quotes',
             'property_type',
             'number_of_bedrooms',
             'roof_type',
@@ -605,13 +671,24 @@ class FieldSubmissionCreateSerializer(serializers.ModelSerializer):
             'energy_type',
             'uses_electric_heating',
             'electric_heating_details',
-            'has_received_other_quotes',
-            'is_decision_maker',
             'moving_in_5_years',
             'notes',
             'photos',
             'timestamp'
         ]
+    
+    def to_internal_value(self, data):
+        """Convert empty strings to None for optional fields."""
+        # Convert empty strings to None for optional simplified form fields
+        optional_fields = [
+            'owns_property', 'is_decision_maker', 'age_range', 'electric_bill',
+            'has_received_other_quotes', 'preferred_contact_time',
+            'assessment_date', 'assessment_time', 'canvasser_name'
+        ]
+        for field in optional_fields:
+            if field in data and data[field] == '':
+                data[field] = None
+        return super().to_internal_value(data)
     
     def validate_customer_name(self, value):
         if not value or not value.strip():
