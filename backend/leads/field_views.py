@@ -102,12 +102,18 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
+        # Log the raw request data before validation
+        simplified_fields = ['owns_property', 'is_decision_maker', 'age_range', 'electric_bill', 
+                           'has_received_other_quotes', 'preferred_contact_time']
+        logger.info(f"Updating field submission {instance.id}")
+        logger.info(f"Raw request.data simplified fields: {[(f, request.data.get(f, 'NOT IN REQUEST')) for f in simplified_fields]}")
+        logger.info(f"Full request.data keys: {list(request.data.keys())}")
+        
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         
         # Log the data being saved for debugging
-        logger.info(f"Updating field submission {instance.id} with request.data: {request.data}")
-        logger.info(f"Updating field submission {instance.id} with validated_data: {serializer.validated_data}")
+        logger.info(f"Updating field submission {instance.id} with validated_data simplified fields: {[(f, serializer.validated_data.get(f, 'NOT IN VALIDATED')) for f in simplified_fields]}")
         
         # Update the field submission
         # The serializer will handle all fields including the new simplified form fields
@@ -229,7 +235,7 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         notes += f"Photos: {photo_count} captured"
         
         return notes
-    
+
     @staticmethod
     def _format_submission_notes_for_bulk(submission_data, submission):
         """Format notes for bulk sync (static method)."""

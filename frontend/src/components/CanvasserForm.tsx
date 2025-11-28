@@ -1124,26 +1124,22 @@ const CanvasserForm: React.FC = () => {
       timestamp: data.timestamp
     };
     
-    // Include simplified form fields - send null for empty strings to match backend null=True
-    // Always include these fields so backend can properly handle them
-    backendData.preferred_contact_time = (data.preferredContactTime !== undefined && data.preferredContactTime !== '') 
-      ? data.preferredContactTime 
-      : null;
-    backendData.owns_property = (data.ownsProperty !== undefined && data.ownsProperty !== '') 
-      ? data.ownsProperty 
-      : null;
-    backendData.is_decision_maker = (data.isDecisionMaker !== undefined && data.isDecisionMaker !== '') 
-      ? data.isDecisionMaker 
-      : null;
-    backendData.age_range = (data.ageRange !== undefined && data.ageRange !== '') 
-      ? data.ageRange 
-      : null;
-    backendData.electric_bill = (data.electricBill !== undefined && data.electricBill !== '') 
-      ? data.electricBill 
-      : null;
-    backendData.has_received_other_quotes = (data.hasReceivedOtherQuotes !== undefined && data.hasReceivedOtherQuotes !== '') 
-      ? data.hasReceivedOtherQuotes 
-      : null;
+    // Include simplified form fields - ALWAYS include them explicitly, even if null
+    // This ensures they're always sent to the backend and can be properly updated
+    // Preserve actual values (including 'no', 'yes', etc.) and only convert empty strings to null
+    const getValue = (val: any) => {
+      if (val === undefined || val === null || val === '') {
+        return null;
+      }
+      return val;
+    };
+    
+    backendData.preferred_contact_time = getValue(data.preferredContactTime);
+    backendData.owns_property = getValue(data.ownsProperty);
+    backendData.is_decision_maker = getValue(data.isDecisionMaker);
+    backendData.age_range = getValue(data.ageRange);
+    backendData.electric_bill = getValue(data.electricBill);
+    backendData.has_received_other_quotes = getValue(data.hasReceivedOtherQuotes);
     
     // Log what we're sending to debug
     console.log('Sending to server:', {
