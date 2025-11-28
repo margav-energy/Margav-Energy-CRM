@@ -68,6 +68,17 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                 # Take the second part as city (index 1)
                 parsed_city = address_parts[1].strip()
         
+        # Check if a lead already exists for this submission or phone number
+        existing_lead = None
+        try:
+            # First, try to find by field_submission (most reliable)
+            existing_lead = Lead.objects.filter(field_submission=submission).first()
+            if not existing_lead and submission.phone:
+                # If not found by submission, check by phone number
+                existing_lead = Lead.objects.filter(phone=submission.phone).first()
+        except Exception as e:
+            logger.warning(f"Error checking for existing lead: {e}")
+        
         lead_data = {
             'full_name': submission.customer_name,
             'phone': submission.phone,
@@ -79,17 +90,34 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
             'status': 'sent_to_kelly',  # Send directly to qualifier
             'assigned_agent': submission.field_agent,  # Assign to the canvasser who submitted
             'field_submission': submission,
-            'created_at': submission.timestamp,
-            'updated_at': submission.timestamp
         }
         
         try:
-            lead = Lead.objects.create(**lead_data)
-            logger.info(f"Created lead {lead.id} (status: {lead.status}) from field submission {submission.id} for qualifier review")
+            if existing_lead:
+                # Update existing lead - ensure it has status 'sent_to_kelly' and links to this submission
+                logger.info(f"Found existing lead {existing_lead.id} for submission {submission.id}, updating...")
+                for key, value in lead_data.items():
+                    setattr(existing_lead, key, value)
+                # Always set status to 'sent_to_kelly' for new submissions from canvassers
+                existing_lead.status = 'sent_to_kelly'
+                existing_lead.updated_at = timezone.now()
+                existing_lead.save()
+                logger.info(f"SUCCESS: Updated lead {existing_lead.id} (status: {existing_lead.status}) from field submission {submission.id}")
+            else:
+                # Create new lead
+                lead_data['created_at'] = submission.timestamp
+                lead_data['updated_at'] = submission.timestamp
+                lead = Lead.objects.create(**lead_data)
+                logger.info(f"SUCCESS: Created lead {lead.id} (status: {lead.status}) from field submission {submission.id} for qualifier review")
+                logger.info(f"Lead details: name={lead.full_name}, phone={lead.phone}, status={lead.status}, assigned_agent={lead.assigned_agent_id}")
+                # Verify the lead was created with correct status
+                if lead.status != 'sent_to_kelly':
+                    logger.error(f"WARNING: Lead {lead.id} was created with status '{lead.status}' instead of 'sent_to_kelly'")
         except Exception as e:
-            logger.error(f"CRITICAL: Error creating lead from field submission {submission.id}: {e}", exc_info=True)
+            logger.error(f"CRITICAL: Error creating/updating lead from field submission {submission.id}: {e}", exc_info=True)
             logger.error(f"Lead data that failed: {lead_data}")
-            # Don't fail the submission if lead creation fails
+            # Don't fail the submission if lead creation fails, but log it as critical
+            # This is a critical error because the qualifier won't see the lead
         
         # Return the submission data
         response_serializer = FieldSubmissionSerializer(submission)
@@ -156,19 +184,23 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         try:
             if existing_lead:
                 # Update existing lead but preserve status if it's been changed by qualifier
-                # Only update status to 'sent_to_kelly' if it's still 'sent_to_kelly'
+                # Only update status to 'sent_to_kelly' if it's still 'sent_to_kelly' or if it was never set
                 # This prevents overwriting status changes made by qualifiers
                 current_status = existing_lead.status
                 for key, value in lead_data.items():
                     setattr(existing_lead, key, value)
                 # Preserve status if qualifier has changed it from 'sent_to_kelly'
-                if current_status != 'sent_to_kelly':
+                # But if status is 'sent_to_kelly' or None/empty, ensure it's set to 'sent_to_kelly'
+                if current_status and current_status != 'sent_to_kelly':
                     existing_lead.status = current_status
+                else:
+                    # Ensure status is 'sent_to_kelly' for new syncs or if it was already 'sent_to_kelly'
+                    existing_lead.status = 'sent_to_kelly'
                 existing_lead.updated_at = timezone.now()
                 existing_lead.save()
-                logger.info(f"Updated lead {existing_lead.id} from field submission {submission.id}")
+                logger.info(f"Updated lead {existing_lead.id} (status: {existing_lead.status}) from field submission {submission.id}")
             else:
-                # Create new lead if it doesn't exist (edge case)
+                # Create new lead if it doesn't exist (edge case - should not happen often)
                 lead_data['status'] = 'sent_to_kelly'
                 lead_data['created_at'] = submission.timestamp
                 lead_data['updated_at'] = submission.timestamp
