@@ -1124,26 +1124,26 @@ const CanvasserForm: React.FC = () => {
       timestamp: data.timestamp
     };
     
-    // Only include simplified form fields if they have values (preserve empty strings for updates)
-    // For updates, we want to send the values even if they're empty strings to clear them
-    if (data.preferredContactTime !== undefined) {
-      backendData.preferred_contact_time = data.preferredContactTime || null;
-    }
-    if (data.ownsProperty !== undefined) {
-      backendData.owns_property = data.ownsProperty || null;
-    }
-    if (data.isDecisionMaker !== undefined) {
-      backendData.is_decision_maker = data.isDecisionMaker || null;
-    }
-    if (data.ageRange !== undefined) {
-      backendData.age_range = data.ageRange || null;
-    }
-    if (data.electricBill !== undefined) {
-      backendData.electric_bill = data.electricBill || null;
-    }
-    if (data.hasReceivedOtherQuotes !== undefined) {
-      backendData.has_received_other_quotes = data.hasReceivedOtherQuotes || null;
-    }
+    // Include simplified form fields - send null for empty strings to match backend null=True
+    // Always include these fields so backend can properly handle them
+    backendData.preferred_contact_time = (data.preferredContactTime !== undefined && data.preferredContactTime !== '') 
+      ? data.preferredContactTime 
+      : null;
+    backendData.owns_property = (data.ownsProperty !== undefined && data.ownsProperty !== '') 
+      ? data.ownsProperty 
+      : null;
+    backendData.is_decision_maker = (data.isDecisionMaker !== undefined && data.isDecisionMaker !== '') 
+      ? data.isDecisionMaker 
+      : null;
+    backendData.age_range = (data.ageRange !== undefined && data.ageRange !== '') 
+      ? data.ageRange 
+      : null;
+    backendData.electric_bill = (data.electricBill !== undefined && data.electricBill !== '') 
+      ? data.electricBill 
+      : null;
+    backendData.has_received_other_quotes = (data.hasReceivedOtherQuotes !== undefined && data.hasReceivedOtherQuotes !== '') 
+      ? data.hasReceivedOtherQuotes 
+      : null;
     
     // Log what we're sending to debug
     console.log('Sending to server:', {
@@ -1238,20 +1238,26 @@ const CanvasserForm: React.FC = () => {
       
       return result;
     } catch (error: any) {
-      // Handle API errors
+      // Handle API errors with better logging
+      console.error('Error submitting to server:', error);
       if (error.response) {
         const errorData = error.response.data;
-      // Format validation errors
-      if (errorData && typeof errorData === 'object') {
-        const errors = Object.entries(errorData).map(([field, messages]) => {
-          const msgArray = Array.isArray(messages) ? messages : [messages];
-          return `${field}: ${msgArray.join(', ')}`;
-        }).join('\n');
+        console.error('Server error response:', errorData);
+        // Format validation errors
+        if (errorData && typeof errorData === 'object') {
+          const errors = Object.entries(errorData).map(([field, messages]) => {
+            const msgArray = Array.isArray(messages) ? messages : [messages];
+            return `${field}: ${msgArray.join(', ')}`;
+          }).join('\n');
           throw new Error(errors || `Server error: ${error.response.status}`);
         }
         throw new Error(errorData.detail || errorData.error || `Server error: ${error.response.status}`);
       }
-      throw error;
+      // Network or other errors
+      if (error.message) {
+        throw new Error(`Network error: ${error.message}`);
+      }
+      throw new Error('Failed to sync submission. Please check your connection and try again.');
     }
   };
 
@@ -1379,11 +1385,11 @@ const CanvasserForm: React.FC = () => {
         });
 
       } catch (error) {
-      console.error('Sync error:', error);
+      console.error('Sync error for submission:', submission.id, error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to sync submission. Please try again.';
       // Only show error if not syncing all (errors will be handled in syncAllSubmissions)
       if (syncingSubmissionId !== 'all') {
-      setErrorMessage(`Failed to sync: ${errorMessage}`);
+      setErrorMessage(`Failed to sync submission: ${errorMessage}`);
       setShowError(true);
       }
       throw error; // Re-throw so syncAllSubmissions can catch it
