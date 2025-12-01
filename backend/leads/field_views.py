@@ -180,8 +180,35 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                         # Lead number conflict - try again with a new number
                         logger.warning(f"Lead number conflict, generating new number...")
                         lead_data['lead_number'] = Lead(**lead_data).generate_lead_number()
-                        lead = Lead.objects.create(**lead_data)
-                        logger.info(f"SUCCESS: Created lead {lead.id} (status: {lead.status}) with new lead_number from field submission {submission.id}")
+                        try:
+                            lead = Lead.objects.create(**lead_data)
+                            lead.refresh_from_db()
+                            logger.info(f"SUCCESS: Created lead {lead.id} (status: {lead.status}) with new lead_number from field submission {submission.id}")
+                            # Verify it's visible to qualifiers
+                            qualifier_visible = Lead.objects.filter(
+                                id=lead.id,
+                                status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']
+                            ).first()
+                            if qualifier_visible:
+                                logger.info(f"VERIFIED: Lead {lead.id} is visible to qualifiers")
+                            else:
+                                logger.error(f"CRITICAL: Lead {lead.id} is NOT visible to qualifiers despite having status 'sent_to_kelly'")
+                        except Exception as retry_error:
+                            # If it still fails, check if a lead with this phone exists
+                            logger.error(f"Failed to create lead even after regenerating lead_number: {retry_error}")
+                            existing_by_phone = Lead.objects.filter(phone=submission.phone).first()
+                            if existing_by_phone:
+                                logger.warning(f"Found existing lead {existing_by_phone.id} by phone, updating instead...")
+                                for key, value in lead_data.items():
+                                    if key != 'lead_number':
+                                        setattr(existing_by_phone, key, value)
+                                existing_by_phone.status = 'sent_to_kelly'
+                                existing_by_phone.updated_at = timezone.now()
+                                existing_by_phone.save()
+                                existing_by_phone.refresh_from_db()
+                                logger.info(f"SUCCESS: Updated existing lead {existing_by_phone.id} (status: {existing_by_phone.status}) from field submission {submission.id}")
+                            else:
+                                raise retry_error
                     else:
                         # Re-raise if it's not a constraint error
                         raise create_error
