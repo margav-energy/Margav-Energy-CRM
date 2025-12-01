@@ -284,19 +284,13 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
         
         try:
             if existing_lead:
-                # Update existing lead but preserve status if it's been changed by qualifier
-                # Only update status to 'sent_to_kelly' if it's still 'sent_to_kelly' or if it was never set
-                # This prevents overwriting status changes made by qualifiers
-                current_status = existing_lead.status
+                # Update existing lead - ALWAYS set status to 'sent_to_kelly' when canvasser updates form
+                # This ensures updated submissions appear on qualifier dashboard for review
                 for key, value in lead_data.items():
                     setattr(existing_lead, key, value)
-                # Preserve status if qualifier has changed it from 'sent_to_kelly'
-                # But if status is 'sent_to_kelly' or None/empty, ensure it's set to 'sent_to_kelly'
-                if current_status and current_status != 'sent_to_kelly':
-                    existing_lead.status = current_status
-                else:
-                    # Ensure status is 'sent_to_kelly' for new syncs or if it was already 'sent_to_kelly'
-                    existing_lead.status = 'sent_to_kelly'
+                # Always set status to 'sent_to_kelly' for canvasser form updates
+                # This ensures the lead appears on qualifier dashboard after any update
+                existing_lead.status = 'sent_to_kelly'
                 existing_lead.updated_at = timezone.now()
                 existing_lead.save()
                 # Verify the lead was saved correctly
