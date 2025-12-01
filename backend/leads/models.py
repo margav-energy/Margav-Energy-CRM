@@ -472,8 +472,13 @@ class Lead(SoftDeleteModel):
     def __str__(self):
         return f"{self.full_name} ({self.get_status_display()})"
     
-    def generate_lead_number(self):
-        """Generate the next custom lead number (ME001, ME002, etc.)"""
+    def generate_lead_number(self, prefix='ME'):
+        """Generate the next custom lead number (ME001, ME002, etc. or MS001, MS002, etc.)
+        
+        Args:
+            prefix: Prefix for the lead number (default: 'ME' for backward compatibility)
+                   Use 'MS' for leads from canvasser forms
+        """
         from django.db.models import Max
         from django.db import transaction
         import time
@@ -481,19 +486,19 @@ class Lead(SoftDeleteModel):
         
         try:
             with transaction.atomic():
-                # Get the highest existing lead number
+                # Get the highest existing lead number with the specified prefix
                 last_lead = Lead.objects.filter(
                     lead_number__isnull=False,
-                    lead_number__startswith='ME'
+                    lead_number__startswith=prefix
                 ).aggregate(Max('lead_number'))
                 
                 
                 if last_lead['lead_number__max']:
                     # Extract the number part and increment
-                    last_number = int(last_lead['lead_number__max'][2:])  # Remove 'ME' prefix
+                    last_number = int(last_lead['lead_number__max'][len(prefix):])  # Remove prefix
                     next_number = last_number + 1
                 else:
-                    # First lead
+                    # First lead with this prefix
                     next_number = 1
                 
                 
@@ -503,7 +508,7 @@ class Lead(SoftDeleteModel):
                     # Add some randomness to avoid race conditions
                     random_offset = random.randint(0, 10)
                     test_number = next_number + random_offset
-                    lead_number = f"ME{test_number:03d}"  # Format as ME001, ME002, etc.
+                    lead_number = f"{prefix}{test_number:03d}"  # Format as ME001, ME002, MS001, MS002, etc.
                     
                     
                     # Check if this lead number already exists
@@ -515,12 +520,12 @@ class Lead(SoftDeleteModel):
                 
                 # If we still haven't found a unique number, use timestamp
                 timestamp = int(time.time())
-                return f"ME{timestamp}"
+                return f"{prefix}{timestamp}"
             
         except Exception as e:
             # If all else fails, use timestamp as fallback
             timestamp = int(time.time())
-            return f"ME{timestamp}"
+            return f"{prefix}{timestamp}"
     
     @property
     def is_interested(self):

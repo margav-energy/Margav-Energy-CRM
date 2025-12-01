@@ -115,9 +115,10 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                 lead_data['updated_at'] = submission.timestamp
                 
                 # Generate lead_number if not provided (required field)
+                # Use 'MS' prefix for all leads from canvasser forms
                 if 'lead_number' not in lead_data or not lead_data.get('lead_number'):
                     temp_lead = Lead(**lead_data)
-                    lead_data['lead_number'] = temp_lead.generate_lead_number()
+                    lead_data['lead_number'] = temp_lead.generate_lead_number(prefix='MS')
                 
                 try:
                     lead = Lead.objects.create(**lead_data)
@@ -178,8 +179,9 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                             raise create_error
                     elif 'lead_number' in error_str:
                         # Lead number conflict - try again with a new number
+                        # Use 'MS' prefix for all leads from canvasser forms
                         logger.warning(f"Lead number conflict, generating new number...")
-                        lead_data['lead_number'] = Lead(**lead_data).generate_lead_number()
+                        lead_data['lead_number'] = Lead(**lead_data).generate_lead_number(prefix='MS')
                         try:
                             lead = Lead.objects.create(**lead_data)
                             lead.refresh_from_db()
@@ -320,9 +322,10 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                 lead_data['created_at'] = submission.timestamp
                 lead_data['updated_at'] = submission.timestamp
                 # Generate lead_number if not provided (required field)
+                # Use 'MS' prefix for all leads from canvasser forms
                 if 'lead_number' not in lead_data or not lead_data.get('lead_number'):
                     temp_lead = Lead(**lead_data)
-                    lead_data['lead_number'] = temp_lead.generate_lead_number()
+                    lead_data['lead_number'] = temp_lead.generate_lead_number(prefix='MS')
                 
                 try:
                     lead = Lead.objects.create(**lead_data)
@@ -376,8 +379,9 @@ class FieldSubmissionViewSet(viewsets.ModelViewSet):
                             raise create_error
                     elif 'lead_number' in error_str:
                         # Lead number conflict - try again with a new number
+                        # Use 'MS' prefix for all leads from canvasser forms
                         logger.warning(f"Lead number conflict, generating new number...")
-                        lead_data['lead_number'] = Lead(**lead_data).generate_lead_number()
+                        lead_data['lead_number'] = Lead(**lead_data).generate_lead_number(prefix='MS')
                         try:
                             lead = Lead.objects.create(**lead_data)
                             lead.refresh_from_db()
