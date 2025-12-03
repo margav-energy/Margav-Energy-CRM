@@ -480,6 +480,10 @@ const AgentDashboard: React.FC = () => {
           ...leadData,
           status: isCallbackLead ? 'callback' as Lead['status'] : 'sent_to_kelly' as Lead['status']
         };
+        
+        // Log the data being sent for debugging
+        console.log('Creating lead with data:', JSON.stringify(leadDataWithStatus, null, 2));
+        
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
         
@@ -518,20 +522,44 @@ const AgentDashboard: React.FC = () => {
       setEditingLead(null);
       setPrepopulatedData(null);
     } catch (error) {
+      // Log full error for debugging
+      console.error('Lead creation/update error:', error);
       
       // Extract error message from response
       let errorMessage = 'Failed to create/update lead';
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as any;
+        console.error('Full error response:', axiosError.response?.data);
+        
         if (axiosError.response?.data) {
           if (typeof axiosError.response.data === 'string') {
             errorMessage = axiosError.response.data;
           } else if (axiosError.response.data.detail) {
             errorMessage = axiosError.response.data.detail;
           } else if (axiosError.response.data.phone) {
-            errorMessage = axiosError.response.data.phone[0];
+            errorMessage = Array.isArray(axiosError.response.data.phone) 
+              ? axiosError.response.data.phone[0] 
+              : axiosError.response.data.phone;
           } else if (axiosError.response.data.full_name) {
-            errorMessage = axiosError.response.data.full_name[0];
+            errorMessage = Array.isArray(axiosError.response.data.full_name) 
+              ? axiosError.response.data.full_name[0] 
+              : axiosError.response.data.full_name;
+          } else if (axiosError.response.data.postal_code) {
+            errorMessage = Array.isArray(axiosError.response.data.postal_code) 
+              ? axiosError.response.data.postal_code[0] 
+              : axiosError.response.data.postal_code;
+          } else if (axiosError.response.data.non_field_errors) {
+            errorMessage = Array.isArray(axiosError.response.data.non_field_errors) 
+              ? axiosError.response.data.non_field_errors[0] 
+              : axiosError.response.data.non_field_errors;
+          } else {
+            // Show all validation errors
+            const errorKeys = Object.keys(axiosError.response.data);
+            if (errorKeys.length > 0) {
+              const firstError = axiosError.response.data[errorKeys[0]];
+              errorMessage = Array.isArray(firstError) ? firstError[0] : String(firstError);
+              console.error('Validation errors:', axiosError.response.data);
+            }
           }
         }
       }
@@ -605,6 +633,10 @@ const AgentDashboard: React.FC = () => {
           ...leadData,
           status: 'sent_to_kelly' as Lead['status']
         };
+        
+        // Log the data being sent for debugging
+        console.log('Creating lead (send to qualifier) with data:', JSON.stringify(leadDataWithStatus, null, 2));
+        
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
         
@@ -618,20 +650,44 @@ const AgentDashboard: React.FC = () => {
       setEditingLead(null);
       setPrepopulatedData(null);
     } catch (error) {
+      // Log full error for debugging
+      console.error('Send to qualifier error:', error);
       
       // Extract error message from response
       let errorMessage = 'Failed to send lead to qualifier';
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as any;
+        console.error('Full error response:', axiosError.response?.data);
+        
         if (axiosError.response?.data) {
           if (typeof axiosError.response.data === 'string') {
             errorMessage = axiosError.response.data;
           } else if (axiosError.response.data.detail) {
             errorMessage = axiosError.response.data.detail;
           } else if (axiosError.response.data.phone) {
-            errorMessage = axiosError.response.data.phone[0];
+            errorMessage = Array.isArray(axiosError.response.data.phone) 
+              ? axiosError.response.data.phone[0] 
+              : axiosError.response.data.phone;
           } else if (axiosError.response.data.full_name) {
-            errorMessage = axiosError.response.data.full_name[0];
+            errorMessage = Array.isArray(axiosError.response.data.full_name) 
+              ? axiosError.response.data.full_name[0] 
+              : axiosError.response.data.full_name;
+          } else if (axiosError.response.data.postal_code) {
+            errorMessage = Array.isArray(axiosError.response.data.postal_code) 
+              ? axiosError.response.data.postal_code[0] 
+              : axiosError.response.data.postal_code;
+          } else if (axiosError.response.data.non_field_errors) {
+            errorMessage = Array.isArray(axiosError.response.data.non_field_errors) 
+              ? axiosError.response.data.non_field_errors[0] 
+              : axiosError.response.data.non_field_errors;
+          } else {
+            // Show all validation errors
+            const errorKeys = Object.keys(axiosError.response.data);
+            if (errorKeys.length > 0) {
+              const firstError = axiosError.response.data[errorKeys[0]];
+              errorMessage = Array.isArray(firstError) ? firstError[0] : String(firstError);
+              console.error('Validation errors:', axiosError.response.data);
+            }
           }
         }
       }

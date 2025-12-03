@@ -138,9 +138,18 @@ export const leadsAPI = {
 
   createLead: async (leadData: LeadForm): Promise<Lead> => {
     try {
+      // Log request data for debugging (especially in production)
+      console.log('Creating lead with data:', JSON.stringify(leadData, null, 2));
       const response: AxiosResponse<Lead> = await api.post('/leads/', leadData);
       return response.data;
     } catch (error: any) {
+      // Log full error for debugging
+      console.error('Create lead error:', error);
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+        console.error('Error response headers:', error.response.headers);
+      }
       throw error;
     }
   },
