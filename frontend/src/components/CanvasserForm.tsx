@@ -165,8 +165,8 @@ const CanvasserForm: React.FC = () => {
       case 'electricBill':
         return !!formData.electricBill;
       case 'photos':
-        // Photos are optional
-        return true;
+        // Electric bill photo is required
+        return !!formData.photos.energyBill;
       case 'notes':
         // Notes are optional, so always valid
         return true;
@@ -785,7 +785,8 @@ const CanvasserForm: React.FC = () => {
     // Interest
     if (!formData.hasReceivedOtherQuotes) missingFields.push('Received Other Quotes');
     
-    // Photos are optional - no validation needed
+    // Photos
+    if (!formData.photos.energyBill) missingFields.push('Electric Bill Photo');
     
     if (missingFields.length > 0) {
       setErrorMessage(`Please fill in all required fields: ${missingFields.join(', ')}`);
@@ -1811,7 +1812,7 @@ const CanvasserForm: React.FC = () => {
         return (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-gray-900">
-              Electric Bill Photo
+              Electric Bill Photo <span className="text-red-500">*</span>
             </h2>
             <p className="text-sm text-gray-600 mb-4">
               Please take a photo of the electric bill showing PPKw and annual usage.
@@ -1820,7 +1821,7 @@ const CanvasserForm: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4 max-w-md">
               {/* Energy Bill Photo */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <h3 className="font-semibold mb-2">Electric Bill Photo</h3>
+                <h3 className="font-semibold mb-2">Electric Bill Photo <span className="text-red-500">*</span></h3>
                 <p className="text-sm text-gray-600 mb-2">Show PPKw and annual usage</p>
                 {formData.photos.energyBill ? (
                   <div className="relative">
