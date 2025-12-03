@@ -457,10 +457,9 @@ const AgentDashboard: React.FC = () => {
       // Check if we're updating an existing lead from dialer
       if (prepopulatedData?.lead_id) {
         // Update existing lead from dialer
-        const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
+        const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
           ...leadData,
-          status: 'sent_to_kelly' as Lead['status'],
-          assigned_agent: user?.id || 0
+          status: 'sent_to_kelly' as Lead['status']
         };
         const updatedLead = await leadsAPI.updateLead(parseInt(prepopulatedData.lead_id), leadDataWithStatus);
         
@@ -572,10 +571,9 @@ const AgentDashboard: React.FC = () => {
       
       if (editingLead) {
         // Update existing lead and send to qualifier
-        const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
+        const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
           ...leadData,
-          status: 'sent_to_kelly' as Lead['status'],
-          assigned_agent: user?.id || 0
+          status: 'sent_to_kelly' as Lead['status']
         };
         const updatedLead = await leadsAPI.updateLead(editingLead.id, leadDataWithStatus);
         setLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
@@ -586,10 +584,9 @@ const AgentDashboard: React.FC = () => {
         toast.success('Lead updated and sent to qualifier!');
       } else if (prepopulatedData?.lead_id) {
         // Update existing lead from dialer and send to qualifier
-        const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
+        const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
           ...leadData,
-          status: 'sent_to_kelly' as Lead['status'],
-          assigned_agent: user?.id || 0
+          status: 'sent_to_kelly' as Lead['status']
         };
         const updatedLead = await leadsAPI.updateLead(parseInt(prepopulatedData.lead_id), leadDataWithStatus);
         setLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
@@ -604,10 +601,9 @@ const AgentDashboard: React.FC = () => {
         lastLeadCreationTimeRef.current = now;
         
         // Create new lead and send to qualifier
-        const leadDataWithStatus: LeadFormType & { status: Lead['status']; assigned_agent: number } = {
+        const leadDataWithStatus: LeadFormType & { status: Lead['status'] } = {
           ...leadData,
-          status: 'sent_to_kelly' as Lead['status'],
-          assigned_agent: user?.id || 0
+          status: 'sent_to_kelly' as Lead['status']
         };
         const newLead = await leadsAPI.createLead(leadDataWithStatus);
         setLeads(prev => [newLead, ...prev]);
