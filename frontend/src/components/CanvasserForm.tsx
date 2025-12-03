@@ -165,8 +165,8 @@ const CanvasserForm: React.FC = () => {
       case 'electricBill':
         return !!formData.electricBill;
       case 'photos':
-        // Only electric bill photo is required
-        return !!formData.photos.energyBill;
+        // Photos are optional
+        return true;
       case 'notes':
         // Notes are optional, so always valid
         return true;
@@ -242,7 +242,7 @@ const CanvasserForm: React.FC = () => {
         
       // Convert backend submissions to FieldFormData format
       // Use backend ID as the key to ensure proper deduplication
-      const syncedData = userSubmissions.map((submission: any) => ({
+        const syncedData = userSubmissions.map((submission: any) => ({
         id: `backend_${submission.id}`, // Use backend ID to identify synced submissions
         backendId: submission.id, // Store original backend ID for updates/deletes
         userId: user?.id || submission.field_agent || submission.field_agent_id, // Store user ID for filtering
@@ -253,11 +253,11 @@ const CanvasserForm: React.FC = () => {
         time: submission.assessment_time || (submission.created_at
           ? new Date(submission.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
           : new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })),
-        customerName: submission.customer_name || 'Unknown',
-        address: submission.address || '',
-        postalCode: submission.postal_code || '',
-        phone: submission.phone || '',
-        email: submission.email || '',
+          customerName: submission.customer_name || 'Unknown',
+          address: submission.address || '',
+          postalCode: submission.postal_code || '',
+          phone: submission.phone || '',
+          email: submission.email || '',
         preferredContactTime: submission.preferred_contact_time ?? '',
         ownsProperty: submission.owns_property ?? submission.property_ownership ?? '',
         isDecisionMaker: submission.is_decision_maker ?? '',
@@ -265,11 +265,11 @@ const CanvasserForm: React.FC = () => {
         electricBill: submission.electric_bill ?? '',
         hasReceivedOtherQuotes: submission.has_received_other_quotes ?? '',
         photos: submission.photos || { energyBill: '' },
-        notes: submission.notes || '',
-        synced: true,
+          notes: submission.notes || '',
+          synced: true,
         timestamp: submission.created_at || new Date().toISOString(),
-        isOnline: true
-      }));
+          isOnline: true
+        }));
         
       // Create a map of existing submissions by backend ID for efficient lookup
       const existingByBackendId = new Map<string, FieldFormData>();
@@ -586,7 +586,7 @@ const CanvasserForm: React.FC = () => {
             photos: backendData.photos || submission.photos || { energyBill: '' },
             notes: backendData.notes || submission.notes || '',
             timestamp: backendData.created_at || backendData.timestamp || submission.timestamp || new Date().toISOString(),
-            isOnline: navigator.onLine,
+        isOnline: navigator.onLine,
             synced: true
           };
         } catch (error) {
@@ -785,8 +785,7 @@ const CanvasserForm: React.FC = () => {
     // Interest
     if (!formData.hasReceivedOtherQuotes) missingFields.push('Received Other Quotes');
     
-    // Photos
-    if (!formData.photos.energyBill) missingFields.push('Electric Bill Photo');
+    // Photos are optional - no validation needed
     
     if (missingFields.length > 0) {
       setErrorMessage(`Please fill in all required fields: ${missingFields.join(', ')}`);
@@ -1239,12 +1238,12 @@ const CanvasserForm: React.FC = () => {
       if (error.response) {
         const errorData = error.response.data;
         console.error('Server error response:', errorData);
-        // Format validation errors
-        if (errorData && typeof errorData === 'object') {
-          const errors = Object.entries(errorData).map(([field, messages]) => {
-            const msgArray = Array.isArray(messages) ? messages : [messages];
-            return `${field}: ${msgArray.join(', ')}`;
-          }).join('\n');
+      // Format validation errors
+      if (errorData && typeof errorData === 'object') {
+        const errors = Object.entries(errorData).map(([field, messages]) => {
+          const msgArray = Array.isArray(messages) ? messages : [messages];
+          return `${field}: ${msgArray.join(', ')}`;
+        }).join('\n');
           throw new Error(errors || `Server error: ${error.response.status}`);
         }
         throw new Error(errorData.detail || errorData.error || `Server error: ${error.response.status}`);
@@ -1652,12 +1651,12 @@ const CanvasserForm: React.FC = () => {
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="radio"
-                      name="ownsProperty"
+                  name="ownsProperty"
                       value="yes"
                       checked={formData.ownsProperty === 'yes'}
                       onChange={(e) => setFormData(prev => ({ ...prev, ownsProperty: e.target.value }))}
                       className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      required
+                  required
                     />
                     <span className="text-sm text-gray-700">Yes</span>
                   </label>
@@ -1667,7 +1666,7 @@ const CanvasserForm: React.FC = () => {
                       name="ownsProperty"
                       value="no"
                       checked={formData.ownsProperty === 'no'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, ownsProperty: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, ownsProperty: e.target.value }))}
                       className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
                       required
                     />
@@ -1688,10 +1687,10 @@ const CanvasserForm: React.FC = () => {
                       checked={formData.isDecisionMaker === 'yes'}
                       onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
                       className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      required
+                  required
                     />
                     <span className="text-sm text-gray-700">Yes</span>
-                  </label>
+                </label>
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="radio"
@@ -1700,10 +1699,10 @@ const CanvasserForm: React.FC = () => {
                       checked={formData.isDecisionMaker === 'no'}
                       onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
                       className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      required
+                  required
                     />
                     <span className="text-sm text-gray-700">No</span>
-                  </label>
+                </label>
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="radio"
@@ -1712,7 +1711,7 @@ const CanvasserForm: React.FC = () => {
                       checked={formData.isDecisionMaker === 'partner'}
                       onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
                       className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      required
+                  required
                     />
                     <span className="text-sm text-gray-700">Partner</span>
                   </label>
@@ -1731,10 +1730,10 @@ const CanvasserForm: React.FC = () => {
                       checked={formData.ageRange === '18-74'}
                       onChange={(e) => setFormData(prev => ({ ...prev, ageRange: e.target.value }))}
                       className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      required
+                  required
                     />
                     <span className="text-sm text-gray-700">Yes (18-74 years old)</span>
-                  </label>
+                </label>
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="radio"
@@ -1743,7 +1742,7 @@ const CanvasserForm: React.FC = () => {
                       checked={formData.ageRange === 'outside_range'}
                       onChange={(e) => setFormData(prev => ({ ...prev, ageRange: e.target.value }))}
                       className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      required
+                  required
                     />
                     <span className="text-sm text-gray-700">No (outside 18-74 range)</span>
                   </label>
@@ -1762,7 +1761,7 @@ const CanvasserForm: React.FC = () => {
                       checked={formData.hasReceivedOtherQuotes === 'yes'}
                       onChange={(e) => setFormData(prev => ({ ...prev, hasReceivedOtherQuotes: e.target.value }))}
                       className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      required
+                  required
                     />
                     <span className="text-sm text-gray-700">Yes</span>
                   </label>
@@ -1812,7 +1811,7 @@ const CanvasserForm: React.FC = () => {
         return (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-gray-900">
-              Electric Bill Photo <span className="text-red-500">*</span>
+              Electric Bill Photo
             </h2>
             <p className="text-sm text-gray-600 mb-4">
               Please take a photo of the electric bill showing PPKw and annual usage.
@@ -1821,7 +1820,7 @@ const CanvasserForm: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4 max-w-md">
               {/* Energy Bill Photo */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <h3 className="font-semibold mb-2">Electric Bill Photo <span className="text-red-500">*</span></h3>
+                <h3 className="font-semibold mb-2">Electric Bill Photo</h3>
                 <p className="text-sm text-gray-600 mb-2">Show PPKw and annual usage</p>
                 {formData.photos.energyBill ? (
                   <div className="relative">

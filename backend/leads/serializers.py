@@ -241,22 +241,32 @@ class LeadCreateSerializer(serializers.ModelSerializer):
         validated_data['assigned_agent'] = self.context['request'].user
         
         # Try to create the lead with retry mechanism for lead number conflicts
-        max_retries = 5
+        max_retries = 10  # Increased retries for better handling of race conditions
+        import time
+        import random
+        
         for attempt in range(max_retries):
             try:
                 # Generate lead number before creating the lead
-                temp_lead = Lead(**validated_data)
-                validated_data['lead_number'] = temp_lead.generate_lead_number()
-                
-                # Debug: Print validated data
+                # If we're retrying, use a timestamp-based approach to avoid collisions
+                if attempt > 0:
+                    # Use timestamp + random for retries to avoid collisions
+                    timestamp = int(time.time() * 1000)  # milliseconds for better uniqueness
+                    random_suffix = random.randint(100, 999)
+                    validated_data['lead_number'] = f"ME{timestamp}{random_suffix}"
+                else:
+                    # First attempt: use normal generation
+                    temp_lead = Lead(**validated_data)
+                    validated_data['lead_number'] = temp_lead.generate_lead_number()
                 
                 lead = Lead.objects.create(**validated_data)
                 return lead
                 
             except Exception as e:
+                error_str = str(e).lower()
                 
                 # Check if it's a duplicate phone number error
-                if 'unique_phone_per_lead' in str(e):
+                if 'unique_phone_per_lead' in error_str or 'phone' in error_str and 'unique' in error_str:
                     # Find the existing lead with this phone number
                     existing_lead = Lead.objects.filter(phone=validated_data['phone']).first()
                     if existing_lead:
@@ -269,22 +279,36 @@ class LeadCreateSerializer(serializers.ModelSerializer):
                         })
                 
                 # Check if it's a duplicate lead number error
-                elif 'leads_lead_lead_number_key' in str(e):
+                elif 'leads_lead_lead_number_key' in error_str or 'lead_number' in error_str and 'unique' in error_str:
                     if attempt < max_retries - 1:
-                        # Remove the lead_number from validated_data and try again
+                        # Remove the lead_number from validated_data and try again with different number
                         validated_data.pop('lead_number', None)
+                        # Add small delay to reduce collision probability
+                        time.sleep(0.01 * (attempt + 1))  # Increasing delay with each retry
                         continue
                     else:
-                        raise serializers.ValidationError({
-                            'non_field_errors': ["Unable to create lead due to a temporary system issue. Please try again."]
-                        })
+                        # Last attempt: use timestamp-based number that's very unlikely to collide
+                        timestamp = int(time.time() * 1000000)  # microseconds
+                        validated_data['lead_number'] = f"ME{timestamp}"
+                        try:
+                            lead = Lead.objects.create(**validated_data)
+                            return lead
+                        except Exception as final_e:
+                            # If even timestamp fails, allow NULL lead_number (can be set later)
+                            validated_data.pop('lead_number', None)
+                            lead = Lead.objects.create(**validated_data)
+                            return lead
                 else:
+                    # For other errors, log and re-raise
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Unexpected error creating lead: {e}")
                     raise e
         
-        # This should never be reached, but just in case
-        raise serializers.ValidationError({
-            'non_field_errors': ["Unable to create lead due to a temporary system issue. Please try again."]
-        })
+        # This should never be reached, but just in case - allow NULL lead_number
+        validated_data.pop('lead_number', None)
+        lead = Lead.objects.create(**validated_data)
+        return lead
 
 
 class LeadUpdateSerializer(serializers.ModelSerializer):
