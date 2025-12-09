@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatUKPostcode, formatName, formatAddress } from '../utils/formatting';
 import { fieldSubmissionsAPI } from '../api';
@@ -31,11 +31,6 @@ interface FieldFormData {
   // Interest
   hasReceivedOtherQuotes: string; // 'yes' | 'no'
   
-  // Photos - only electric bill now
-  photos: {
-    energyBill: string;
-  };
-  
   // Canvasser Notes
   notes: string;
   
@@ -45,12 +40,8 @@ interface FieldFormData {
   synced: boolean;
 }
 
-type FormStep = 'contact' | 'interest' | 'electricBill' | 'photos' | 'notes' | 'review';
-
 const CanvasserForm: React.FC = () => {
   const { user, logout } = useAuth();
-  const [currentStep, setCurrentStep] = useState<FormStep>('contact');
-  const [completedSteps, setCompletedSteps] = useState<Set<FormStep>>(new Set());
   
   // Get current user for canvasser name
   const canvasserName = user?.first_name && user?.last_name 
@@ -86,11 +77,6 @@ const CanvasserForm: React.FC = () => {
     // Interest
     hasReceivedOtherQuotes: '',
     
-    // Photos - only electric bill
-    photos: {
-      energyBill: ''
-    },
-    
     // Canvasser Notes
     notes: '',
     
@@ -100,8 +86,6 @@ const CanvasserForm: React.FC = () => {
     synced: false
   });
 
-  const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
-  const [currentPhotoType, setCurrentPhotoType] = useState<'energyBill' | null>(null);
   const [pendingSubmissions, setPendingSubmissions] = useState<FieldFormData[]>([]);
   const [syncedSubmissions, setSyncedSubmissions] = useState<FieldFormData[]>([]);
   const [actualSyncedCount, setActualSyncedCount] = useState<number>(0);
@@ -117,9 +101,6 @@ const CanvasserForm: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; synced: boolean; customerName: string } | null>(null);
   const [syncingSubmissionId, setSyncingSubmissionId] = useState<string | null>(null);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Check online status
   useEffect(() => {
@@ -143,68 +124,21 @@ const CanvasserForm: React.FC = () => {
   useEffect(() => {
   }, [pendingSubmissions.length, syncedSubmissions.length, actualSyncedCount]);
 
-  // Step validation functions
-  const validateStep = (step: FormStep): boolean => {
-    switch (step) {
-      case 'contact':
-        return !!(
-          formData.customerName && 
-          formData.address && 
-          formData.postalCode && 
-          formData.phone && 
-          formData.email &&
-          formData.preferredContactTime
-        );
-      case 'interest':
-        return !!(
-          (formData.ownsProperty === 'yes' || formData.ownsProperty === 'no') &&
-          formData.isDecisionMaker &&
-          (formData.ageRange === '18-74' || formData.ageRange === 'outside_range') &&
-          (formData.hasReceivedOtherQuotes === 'yes' || formData.hasReceivedOtherQuotes === 'no')
-        );
-      case 'electricBill':
-        return !!formData.electricBill;
-      case 'photos':
-        // Electric bill photo is required
-        return !!formData.photos.energyBill;
-      case 'notes':
-        // Notes are optional, so always valid
-        return true;
-      case 'review':
-        return true;
-      default:
-        return false;
-    }
-  };
-
-  const canProceedToStep = (step: FormStep): boolean => {
-    const stepOrder: FormStep[] = ['contact', 'interest', 'electricBill', 'photos', 'notes', 'review'];
-    const currentIndex = stepOrder.indexOf(currentStep);
-    const targetIndex = stepOrder.indexOf(step);
-    
-    // Can only proceed to next step or go back
-    if (targetIndex > currentIndex + 1) {
-      return false;
-    }
-    
-    // Check if all previous steps are completed
-    for (let i = 0; i < targetIndex; i++) {
-      if (!completedSteps.has(stepOrder[i]) && !validateStep(stepOrder[i])) {
-        return false;
-      }
-    }
-    
-    return true;
-  };
-
-  const markStepCompleted = (step: FormStep) => {
-    if (validateStep(step)) {
-      setCompletedSteps(prev => {
-        const newSet = new Set(prev);
-        newSet.add(step);
-        return newSet;
-      });
-    }
+  // Validate all required fields
+  const validateForm = (): boolean => {
+    return !!(
+      formData.customerName && 
+      formData.address && 
+      formData.postalCode && 
+      formData.phone && 
+      formData.email &&
+      formData.preferredContactTime &&
+      (formData.ownsProperty === 'yes' || formData.ownsProperty === 'no') &&
+      formData.isDecisionMaker &&
+      (formData.ageRange === '18-74' || formData.ageRange === 'outside_range') &&
+      (formData.hasReceivedOtherQuotes === 'yes' || formData.hasReceivedOtherQuotes === 'no') &&
+      formData.electricBill
+    );
   };
 
   // Auto-sync when coming back online
@@ -264,7 +198,6 @@ const CanvasserForm: React.FC = () => {
         ageRange: submission.age_range ?? '',
         electricBill: submission.electric_bill ?? '',
         hasReceivedOtherQuotes: submission.has_received_other_quotes ?? '',
-        photos: submission.photos || { energyBill: '' },
           notes: submission.notes || '',
           synced: true,
         timestamp: submission.created_at || new Date().toISOString(),
@@ -466,76 +399,6 @@ const CanvasserForm: React.FC = () => {
     });
   };
 
-  const capturePhoto = async (photoType: 'energyBill') => {
-    try {
-      setCurrentPhotoType(photoType);
-      setIsCapturingPhoto(true);
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        } 
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-    } catch (error) {
-      
-      setErrorMessage('Unable to access camera. Please check permissions.');
-      setShowError(true);
-      setIsCapturingPhoto(false);
-      setCurrentPhotoType(null);
-    }
-  };
-
-  const takePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      const context = canvas.getContext('2d');
-      
-      if (context) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0);
-        
-        const photoData = canvas.toDataURL('image/jpeg', 0.8);
-        if (currentPhotoType) {
-          setFormData(prev => ({
-            ...prev,
-            photos: {
-              ...prev.photos,
-              [currentPhotoType]: photoData
-            }
-          }));
-        }
-        
-        // Stop camera
-        const stream = video.srcObject as MediaStream;
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-        video.srcObject = null;
-      }
-    }
-    
-    setIsCapturingPhoto(false);
-    setCurrentPhotoType(null);
-  };
-
-  const removePhoto = (photoType: 'energyBill') => {
-    setFormData(prev => ({
-      ...prev,
-      photos: {
-        ...prev.photos,
-        [photoType]: ''
-      }
-    }));
-  };
 
 
   const handleLogout = async () => {
@@ -583,7 +446,6 @@ const CanvasserForm: React.FC = () => {
             ageRange: getValue(backendData.age_range, submission.ageRange),
             electricBill: getValue(backendData.electric_bill, submission.electricBill),
             hasReceivedOtherQuotes: getValue(backendData.has_received_other_quotes, submission.hasReceivedOtherQuotes),
-            photos: backendData.photos || submission.photos || { energyBill: '' },
             notes: backendData.notes || submission.notes || '',
             timestamp: backendData.created_at || backendData.timestamp || submission.timestamp || new Date().toISOString(),
         isOnline: navigator.onLine,
@@ -623,10 +485,6 @@ const CanvasserForm: React.FC = () => {
         electricBill: sourceSubmission.electricBill ?? '',
         // Interest - preserve empty strings if they exist
         hasReceivedOtherQuotes: sourceSubmission.hasReceivedOtherQuotes ?? '',
-        // Photos - ensure proper structure
-        photos: sourceSubmission.photos && typeof sourceSubmission.photos === 'object' 
-          ? { energyBill: (sourceSubmission.photos as any).energyBill ?? '' }
-          : { energyBill: '' },
         // Canvasser Notes - preserve empty strings if they exist
         notes: sourceSubmission.notes ?? '',
         // System fields
@@ -646,13 +504,6 @@ const CanvasserForm: React.FC = () => {
       
       // Set editing state
       setEditingSubmissionId(submission.id || null);
-      
-      // Mark all steps as completed so user can navigate freely
-      const stepOrder: FormStep[] = ['contact', 'interest', 'electricBill', 'photos', 'notes', 'review'];
-      setCompletedSteps(new Set(stepOrder));
-      
-      // Navigate to contact step
-      setCurrentStep('contact');
       
       // Scroll to top of form
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -785,9 +636,6 @@ const CanvasserForm: React.FC = () => {
     // Interest
     if (!formData.hasReceivedOtherQuotes) missingFields.push('Received Other Quotes');
     
-    // Photos
-    if (!formData.photos.energyBill) missingFields.push('Electric Bill Photo');
-    
     if (missingFields.length > 0) {
       setErrorMessage(`Please fill in all required fields: ${missingFields.join(', ')}`);
       setShowError(true);
@@ -886,7 +734,6 @@ const CanvasserForm: React.FC = () => {
             hasReceivedOtherQuotes: (result.has_received_other_quotes !== null && result.has_received_other_quotes !== undefined && result.has_received_other_quotes !== '') 
               ? result.has_received_other_quotes 
               : (submissionData.hasReceivedOtherQuotes ?? ''),
-            photos: result.photos || submissionData.photos || { energyBill: '' },
             notes: result.notes || submissionData.notes || '',
             timestamp: result.created_at || result.timestamp || submissionData.timestamp,
             isOnline: navigator.onLine,
@@ -985,11 +832,6 @@ const CanvasserForm: React.FC = () => {
         // Interest
         hasReceivedOtherQuotes: '',
         
-        // Photos - only electric bill
-        photos: {
-          energyBill: ''
-        },
-        
         // Canvasser Notes
         notes: '',
         
@@ -1001,10 +843,6 @@ const CanvasserForm: React.FC = () => {
       
       // Reset editing state
       setEditingSubmissionId(null);
-      
-      // Reset steps
-      setCurrentStep('contact');
-      setCompletedSteps(new Set());
       
     } catch (error) {
       
@@ -1078,11 +916,6 @@ const CanvasserForm: React.FC = () => {
         // Interest
         hasReceivedOtherQuotes: '',
         
-        // Photos - only electric bill
-        photos: {
-          energyBill: ''
-        },
-        
         // Canvasser Notes
         notes: '',
         
@@ -1094,10 +927,6 @@ const CanvasserForm: React.FC = () => {
       
       // Reset editing state
       setEditingSubmissionId(null);
-      
-      // Reset steps
-      setCurrentStep('contact');
-      setCompletedSteps(new Set());
       
     } catch (error) {
       
@@ -1120,7 +949,7 @@ const CanvasserForm: React.FC = () => {
       address: formatAddress(data.address),
       postal_code: formatUKPostcode(data.postalCode),
       notes: data.notes,
-      photos: data.photos,
+      photos: {}, // Photos removed - no longer required
       timestamp: data.timestamp
     };
     
@@ -1506,512 +1335,378 @@ const CanvasserForm: React.FC = () => {
     }
   };
 
-  const steps: { key: FormStep; title: string; description: string }[] = [
-    { key: 'contact', title: 'Contact Info', description: 'Customer contact details' },
-    { key: 'interest', title: 'Property & Decision', description: 'Ownership & decision maker' },
-    { key: 'electricBill', title: 'Electric Bill', description: 'Bill amount' },
-    { key: 'photos', title: 'Photo', description: 'Electric bill photo' },
-    { key: 'notes', title: 'Notes', description: 'Canvasser notes' },
-    { key: 'review', title: 'Review', description: 'Final review' }
-  ];
+  const renderForm = () => {
+    return (
+      <div className="space-y-8">
+        {/* Canvasser Info - Auto-generated */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="font-semibold mb-2">Canvasser Information</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Canvasser:</span>
+              <p className="font-medium break-words">{formData.canvasserName}</p>
+            </div>
+            <div>
+              <span className="text-gray-600">Date:</span>
+              <p className="font-medium">{formData.date}</p>
+            </div>
+            <div>
+              <span className="text-gray-600">Time:</span>
+              <p className="font-medium">{formData.time}</p>
+            </div>
+          </div>
+        </div>
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 'contact':
-        return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Contact Information</h2>
-            
-            {/* Canvasser Info - Auto-generated */}
-            <div className="bg-gray-50 p-4 rounded-lg mb-4">
-              <h3 className="font-semibold mb-2">Canvasser Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Canvasser:</span>
-                  <p className="font-medium break-words">{formData.canvasserName}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Date:</span>
-                  <p className="font-medium">{formData.date}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Time:</span>
-                  <p className="font-medium">{formData.time}</p>
-                </div>
+        {/* Contact Information Section */}
+        <div className="border-b border-gray-200 pb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">📞 Contact Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.customerName}
+                onChange={(e) => setFormData(prev => ({ ...prev, customerName: formatName(e.target.value) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                required
+                value={formData.phone}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setFormData(prev => ({ ...prev, phone: value }));
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Numbers only"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                Address <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="address"
+                name="address"
+                required
+                value={formData.address}
+                onChange={(e) => setFormData(prev => ({ ...prev, address: formatAddress(e.target.value) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Full property address"
+              />
+            </div>
+            <div>
+              <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-1">
+                Postcode <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="postalCode"
+                name="postalCode"
+                required
+                value={formData.postalCode}
+                onChange={(e) => setFormData(prev => ({ ...prev, postalCode: formatUKPostcode(e.target.value) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="SW1A 1AA"
+              />
+            </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="customer@example.com"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label htmlFor="preferredContactTime" className="block text-sm font-medium text-gray-700 mb-1">
+                Preferred Contact Time <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="preferredContactTime"
+                name="preferredContactTime"
+                required
+                value={formData.preferredContactTime}
+                onChange={(e) => setFormData(prev => ({ ...prev, preferredContactTime: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select preferred time</option>
+                <option value="morning">Morning (9am-12pm)</option>
+                <option value="afternoon">Afternoon (12pm-5pm)</option>
+                <option value="evening">Evening (5pm-8pm)</option>
+                <option value="anytime">Anytime</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Property & Decision Making Section */}
+        <div className="border-b border-gray-200 pb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">🏠 Property & Decision Making</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Do you own the property? <span className="text-red-500">*</span>
+              </label>
+              <div className="flex space-x-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="ownsProperty"
+                    value="yes"
+                    checked={formData.ownsProperty === 'yes'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, ownsProperty: e.target.value }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm text-gray-700">Yes</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="ownsProperty"
+                    value="no"
+                    checked={formData.ownsProperty === 'no'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, ownsProperty: e.target.value }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm text-gray-700">No</span>
+                </label>
               </div>
             </div>
-            
-            <h3 className="text-lg font-semibold text-gray-900 mt-6">Customer Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name <span className="text-red-500">*</span>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Are you the decision maker? <span className="text-red-500">*</span>
+              </label>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="isDecisionMaker"
+                    value="yes"
+                    checked={formData.isDecisionMaker === 'yes'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm text-gray-700">Yes</span>
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.customerName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, customerName: formatName(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="isDecisionMaker"
+                    value="no"
+                    checked={formData.isDecisionMaker === 'no'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm text-gray-700">No</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="isDecisionMaker"
+                    value="partner"
+                    checked={formData.isDecisionMaker === 'partner'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm text-gray-700">Partner</span>
+                </label>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone <span className="text-red-500">*</span>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Are you 18-74 years old? <span className="text-red-500">*</span>
+              </label>
+              <div className="flex space-x-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="ageRange"
+                    value="18-74"
+                    checked={formData.ageRange === '18-74'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, ageRange: e.target.value }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm text-gray-700">Yes (18-74 years old)</span>
                 </label>
-                <input
-                  type="tel"
-                  required
-                  value={formData.phone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setFormData(prev => ({ ...prev, phone: value }));
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Numbers only"
-                />
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="ageRange"
+                    value="outside_range"
+                    checked={formData.ageRange === 'outside_range'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, ageRange: e.target.value }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm text-gray-700">No (outside 18-74 range)</span>
+                </label>
               </div>
-              <div className="md:col-span-2">
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                  Address <span className="text-red-500">*</span>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Have you received other quotes? <span className="text-red-500">*</span>
+              </label>
+              <div className="flex space-x-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="hasReceivedOtherQuotes"
+                    value="yes"
+                    checked={formData.hasReceivedOtherQuotes === 'yes'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, hasReceivedOtherQuotes: e.target.value }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm text-gray-700">Yes</span>
                 </label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  required
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: formatAddress(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Full property address"
-                />
-              </div>
-              <div>
-                <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-1">
-                  Postcode <span className="text-red-500">*</span>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="hasReceivedOtherQuotes"
+                    value="no"
+                    checked={formData.hasReceivedOtherQuotes === 'no'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, hasReceivedOtherQuotes: e.target.value }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm text-gray-700">No</span>
                 </label>
-                <input
-                  type="text"
-                  id="postalCode"
-                  name="postalCode"
-                  required
-                  value={formData.postalCode}
-                  onChange={(e) => setFormData(prev => ({ ...prev, postalCode: formatUKPostcode(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="SW1A 1AA"
-                />
-              </div>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="customer@example.com"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label htmlFor="preferredContactTime" className="block text-sm font-medium text-gray-700 mb-1">
-                  Preferred Contact Time <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="preferredContactTime"
-                  name="preferredContactTime"
-                  required
-                  value={formData.preferredContactTime}
-                  onChange={(e) => setFormData(prev => ({ ...prev, preferredContactTime: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select preferred time</option>
-                  <option value="morning">Morning (9am-12pm)</option>
-                  <option value="afternoon">Afternoon (12pm-5pm)</option>
-                  <option value="evening">Evening (5pm-8pm)</option>
-                  <option value="anytime">Anytime</option>
-                </select>
               </div>
             </div>
           </div>
-        );
+        </div>
 
-      case 'interest':
-        return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Property & Decision Making</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Do you own the property? <span className="text-red-500">*</span>
-                </label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                  name="ownsProperty"
-                      value="yes"
-                      checked={formData.ownsProperty === 'yes'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, ownsProperty: e.target.value }))}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                  required
-                    />
-                    <span className="text-sm text-gray-700">Yes</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="ownsProperty"
-                      value="no"
-                      checked={formData.ownsProperty === 'no'}
-                  onChange={(e) => setFormData(prev => ({ ...prev, ownsProperty: e.target.value }))}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                    <span className="text-sm text-gray-700">No</span>
-                  </label>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Are you the decision maker? <span className="text-red-500">*</span>
-                </label>
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="isDecisionMaker"
-                      value="yes"
-                      checked={formData.isDecisionMaker === 'yes'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                  required
-                    />
-                    <span className="text-sm text-gray-700">Yes</span>
-                </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="isDecisionMaker"
-                      value="no"
-                      checked={formData.isDecisionMaker === 'no'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                  required
-                    />
-                    <span className="text-sm text-gray-700">No</span>
-                </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="isDecisionMaker"
-                      value="partner"
-                      checked={formData.isDecisionMaker === 'partner'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isDecisionMaker: e.target.value }))}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                  required
-                    />
-                    <span className="text-sm text-gray-700">Partner</span>
-                  </label>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Are you 18-74 years old? <span className="text-red-500">*</span>
-                </label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="ageRange"
-                      value="18-74"
-                      checked={formData.ageRange === '18-74'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, ageRange: e.target.value }))}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                  required
-                    />
-                    <span className="text-sm text-gray-700">Yes (18-74 years old)</span>
-                </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="ageRange"
-                      value="outside_range"
-                      checked={formData.ageRange === 'outside_range'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, ageRange: e.target.value }))}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                  required
-                    />
-                    <span className="text-sm text-gray-700">No (outside 18-74 range)</span>
-                  </label>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Have you received other quotes? <span className="text-red-500">*</span>
-                </label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="hasReceivedOtherQuotes"
-                      value="yes"
-                      checked={formData.hasReceivedOtherQuotes === 'yes'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, hasReceivedOtherQuotes: e.target.value }))}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                  required
-                    />
-                    <span className="text-sm text-gray-700">Yes</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="hasReceivedOtherQuotes"
-                      value="no"
-                      checked={formData.hasReceivedOtherQuotes === 'no'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, hasReceivedOtherQuotes: e.target.value }))}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                    <span className="text-sm text-gray-700">No</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'electricBill':
-        return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Electric Bill</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="electricBill" className="block text-sm font-medium text-gray-700 mb-1">
-                  Electric Bill Amount (£) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="electricBill"
-                  name="electricBill"
-                  required
-                  value={formData.electricBill}
-                  onChange={(e) => setFormData(prev => ({ ...prev, electricBill: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter amount"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'photos':
-        return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Electric Bill Photo <span className="text-red-500">*</span>
-            </h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Please take a photo of the electric bill showing PPKw and annual usage.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4 max-w-md">
-              {/* Energy Bill Photo */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <h3 className="font-semibold mb-2">Electric Bill Photo <span className="text-red-500">*</span></h3>
-                <p className="text-sm text-gray-600 mb-2">Show PPKw and annual usage</p>
-                {formData.photos.energyBill ? (
-                  <div className="relative">
-                    <img
-                      src={formData.photos.energyBill}
-                      alt="Energy bill"
-                      className="w-full h-64 object-contain rounded-lg mb-2"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removePhoto('energyBill')}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ) : (
-                  <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
-                    <span className="text-gray-400">No photo</span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => capturePhoto('energyBill')}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-                >
-                  📷 Take Electric Bill Photo
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'notes':
-        return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Canvasser Notes</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Add any additional observations, concerns, or special requirements (optional).
-            </p>
-              <div>
-              <textarea
-                id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                rows={8}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter any additional notes or observations..."
+        {/* Electric Bill Section */}
+        <div className="border-b border-gray-200 pb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">⚡ Electric Bill</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="electricBill" className="block text-sm font-medium text-gray-700 mb-1">
+                Electric Bill Amount (£) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                id="electricBill"
+                name="electricBill"
+                required
+                value={formData.electricBill}
+                onChange={(e) => setFormData(prev => ({ ...prev, electricBill: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter amount"
               />
             </div>
           </div>
-        );
+        </div>
 
-      case 'review':
-        return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Review & Submit</h2>
-            
-            {/* Canvasser Info */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h3 className="font-semibold mb-2 text-blue-900">Canvasser Information</h3>
-              <p><strong>Name:</strong> {formData.canvasserName}</p>
-              <p><strong>Date:</strong> {formData.date}</p>
-              <p><strong>Time:</strong> {formData.time}</p>
-            </div>
-
-            {/* Customer Information */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="font-semibold mb-2">Customer Information</h3>
-              <p><strong>Name:</strong> {formData.customerName}</p>
-              <p><strong>Phone:</strong> {formData.phone}</p>
-              <p><strong>Address:</strong> {formData.address}</p>
-              <p><strong>Postcode:</strong> {formData.postalCode}</p>
-              {formData.email && <p><strong>Email:</strong> {formData.email}</p>}
-              <p><strong>Preferred Contact Time:</strong> {formData.preferredContactTime}</p>
-            </div>
-            
-            {/* Property & Decision Making */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="font-semibold mb-2">Property & Decision Making</h3>
-              <p><strong>Owns Property:</strong> {formData.ownsProperty}</p>
-              <p><strong>Decision Maker:</strong> {formData.isDecisionMaker}</p>
-              <p><strong>Age Range:</strong> {formData.ageRange === '18-74' ? 'Yes (18-74 years old)' : formData.ageRange === 'outside_range' ? 'No (outside 18-74 range)' : 'Not specified'}</p>
-              <p><strong>Received Other Quotes:</strong> {formData.hasReceivedOtherQuotes}</p>
-            </div>
-
-            {/* Electric Bill */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="font-semibold mb-2">Electric Bill</h3>
-              <p><strong>Electric Bill Amount:</strong> £{formData.electricBill}</p>
-            </div>
-
-            {/* Photo */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="font-semibold mb-2">Electric Bill Photo</h3>
-              <p><strong>Status:</strong> {formData.photos.energyBill ? '✅ Captured' : '❌ Missing'}</p>
-              {formData.photos.energyBill && (
-                <div className="mt-2">
-                  <img
-                    src={formData.photos.energyBill}
-                    alt="Electric bill"
-                    className="max-w-full h-48 object-contain rounded-lg border border-gray-300"
-                  />
-            </div>
-              )}
-            </div>
-
-            {/* Canvasser Notes */}
-            {formData.notes && (
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                <h3 className="font-semibold mb-2 text-yellow-900">Canvasser Notes</h3>
-                <p className="whitespace-pre-wrap">{formData.notes}</p>
-            </div>
-            )}
-
-            {/* Submit Buttons */}
-            <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-              <h3 className="font-semibold mb-4 text-blue-900">
-                {editingSubmissionId ? 'Update Lead Sheet' : 'Submit Lead Sheet'}
-              </h3>
-              {editingSubmissionId && (
-                <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    ⚠️ You are editing an existing submission. Changes will update the original.
-                  </p>
-                </div>
-              )}
-              <div className="flex flex-col sm:flex-row gap-4">
-                {/* Always show Submit to Qualifier button when online */}
-                {formData.isOnline && (
-                  <button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <span className="animate-spin">⏳</span>
-                        <span>{editingSubmissionId ? 'Updating...' : 'Submitting...'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>{editingSubmissionId ? '🔄' : '📤'}</span>
-                        <span>{editingSubmissionId ? 'Update Submission' : 'Submit to Qualifier'}</span>
-                      </>
-                    )}
-                  </button>
-                )}
-                
-                {/* Always show Save Offline button */}
-                <button
-                  onClick={handleSaveOffline}
-                  disabled={isSubmitting}
-                  className="flex-1 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="animate-spin">⏳</span>
-                      <span>{editingSubmissionId ? 'Updating...' : 'Saving...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>{editingSubmissionId ? '🔄' : '💾'}</span>
-                      <span>{editingSubmissionId ? 'Update Offline' : 'Save Offline'}</span>
-                    </>
-                  )}
-                </button>
-                
-                <button
-                  onClick={() => setCurrentStep('notes')}
-                  className="flex-1 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2"
-                >
-                  <span>←</span>
-                  <span>Back</span>
-                </button>
-              </div>
-              
-              {!formData.isOnline && (
-                <p className="text-sm text-orange-700 mt-3 text-center">
-                  📱 You're offline. This will be saved locally and synced when you're back online.
-                </p>
-              )}
-            </div>
+        {/* Canvasser Notes Section */}
+        <div className="pb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">📝 Canvasser Notes</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Add any additional observations, concerns, or special requirements (optional).
+          </p>
+          <div>
+            <textarea
+              id="notes"
+              name="notes"
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              rows={8}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter any additional notes or observations..."
+            />
           </div>
-        );
+        </div>
 
-      default:
-        return null;
-    }
+        {/* Submit Buttons */}
+        <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+          <h3 className="font-semibold mb-4 text-blue-900">
+            {editingSubmissionId ? 'Update Lead Sheet' : 'Submit Lead Sheet'}
+          </h3>
+          {editingSubmissionId && (
+            <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                ⚠️ You are editing an existing submission. Changes will update the original.
+              </p>
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Always show Submit to Qualifier button when online */}
+            {formData.isOnline && (
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting || !validateForm()}
+                className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    <span>{editingSubmissionId ? 'Updating...' : 'Submitting...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{editingSubmissionId ? '🔄' : '📤'}</span>
+                    <span>{editingSubmissionId ? 'Update Submission' : 'Submit to Qualifier'}</span>
+                  </>
+                )}
+              </button>
+            )}
+            
+            {/* Always show Save Offline button */}
+            <button
+              onClick={handleSaveOffline}
+              disabled={isSubmitting || !validateForm()}
+              className="flex-1 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  <span>{editingSubmissionId ? 'Updating...' : 'Saving...'}</span>
+                </>
+              ) : (
+                <>
+                  <span>{editingSubmissionId ? '🔄' : '💾'}</span>
+                  <span>{editingSubmissionId ? 'Update Offline' : 'Save Offline'}</span>
+                </>
+              )}
+            </button>
+          </div>
+          
+          {!formData.isOnline && (
+            <p className="text-sm text-orange-700 mt-3 text-center">
+              📱 You're offline. This will be saved locally and synced when you're back online.
+            </p>
+          )}
+          {!validateForm() && (
+            <p className="text-sm text-red-600 mt-3 text-center">
+              ⚠️ Please fill in all required fields before submitting.
+            </p>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -2227,135 +1922,26 @@ const CanvasserForm: React.FC = () => {
           </div>
         )}
 
-        {/* Step Navigation */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Progress</h2>
-            <div className="text-sm text-gray-600">
-              Step {steps.findIndex(s => s.key === currentStep) + 1} of {steps.length}
-            </div>
-          </div>
-          
-          <div className="flex space-x-2 overflow-x-auto pb-2">
-            {steps.map((step, index) => {
-              const isCompleted = completedSteps.has(step.key);
-              const isCurrent = currentStep === step.key;
-              const canAccess = canProceedToStep(step.key);
-              
-              return (
-                <button
-                  key={step.key}
-                  onClick={() => canAccess && setCurrentStep(step.key)}
-                  disabled={!canAccess}
-                  className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isCurrent
-                      ? 'bg-blue-600 text-white'
-                      : isCompleted
-                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                      : canAccess
-                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <span className={`text-lg ${isCompleted ? '✅' : isCurrent ? '📍' : '⭕'}`}></span>
-                    <div className="text-left">
-                      <div className="font-medium">{step.title}</div>
-                      <div className="text-xs opacity-75">{step.description}</div>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Form Content */}
         <div>
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            {renderStepContent()}
+            {renderForm()}
           </div>
 
-          {/* Navigation Buttons - Hidden on review step */}
-          {currentStep !== 'review' && (
-            <div className="bg-white rounded-lg shadow-sm p-6 flex justify-between">
-            <button
-              type="button"
-              onClick={() => {
-                const stepOrder: FormStep[] = ['contact', 'interest', 'electricBill', 'photos', 'notes', 'review'];
-                const currentIndex = stepOrder.indexOf(currentStep);
-                if (currentIndex > 0) {
-                  setCurrentStep(stepOrder[currentIndex - 1]);
-                }
-              }}
-              disabled={currentStep === 'contact'}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ← Previous
-            </button>
-
-            <div className="flex space-x-4">
-              {pendingSubmissions.length > 0 && (
-                <button
-                  type="button"
-                  onClick={manualSync}
-                  className="px-6 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 flex items-center space-x-2"
-                >
-                  <span className="text-lg">🔄</span>
-                  <span>Sync {pendingSubmissions.length} Pending</span>
-                </button>
-              )}
-
+          {/* Sync Pending Button */}
+          {pendingSubmissions.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
               <button
                 type="button"
-                onClick={() => {
-                  markStepCompleted(currentStep);
-                    const stepOrder: FormStep[] = ['contact', 'interest', 'electricBill', 'photos', 'notes', 'review'];
-                  const currentIndex = stepOrder.indexOf(currentStep);
-                  if (currentIndex < stepOrder.length - 1) {
-                    setCurrentStep(stepOrder[currentIndex + 1]);
-                  }
-                }}
-                disabled={!validateStep(currentStep)}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={manualSync}
+                className="w-full px-6 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 flex items-center justify-center space-x-2"
               >
-                Next →
+                <span className="text-lg">🔄</span>
+                <span>Sync {pendingSubmissions.length} Pending Submission{pendingSubmissions.length !== 1 ? 's' : ''}</span>
               </button>
             </div>
-          </div>
           )}
         </div>
-
-        {/* Camera Modal */}
-        {isCapturingPhoto && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-4">Take Photo</h3>
-              <video
-                ref={videoRef}
-                className="w-full h-64 bg-gray-200 rounded-lg mb-4"
-                playsInline
-              />
-              <canvas ref={canvasRef} className="hidden" />
-              <div className="flex space-x-4">
-                <button
-                  type="button"
-                  onClick={takePhoto}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-                >
-                  Take Photo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCapturingPhoto(false)}
-                  className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && deleteTarget && (
