@@ -64,18 +64,35 @@ def export_leads_to_excel(queryset=None):
     return output.getvalue()
 
 def export_leads_to_csv(queryset=None):
-    """Export leads to CSV format"""
+    """Export leads to CSV format using Python's built-in csv module"""
+    import csv
+    
     if queryset is None:
         queryset = Lead.objects.all()
     
-    # Prepare data
-    data = []
+    # Create CSV in memory as text, then encode
+    from io import StringIO
+    output = StringIO()
+    
+    # Define field names
+    fieldnames = [
+        'ID', 'Full Name', 'Phone', 'Email', 'Address', 'City', 'State', 'Postal Code',
+        'Status', 'Assigned Agent', 'Created Date', 'Updated Date', 'Appointment Date',
+        'Notes', 'Property Ownership', 'Property Type', 'Number of Bedrooms',
+        'Roof Type', 'Roof Material', 'Energy Bill Amount', 'Current Energy Supplier',
+        'Timeframe', 'Is Deleted', 'Deleted Date', 'Deleted By', 'Deletion Reason'
+    ]
+    
+    writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
+    writer.writeheader()
+    
+    # Write data rows
     for lead in queryset:
-        data.append({
+        writer.writerow({
             'ID': lead.id,
             'Full Name': lead.full_name,
             'Phone': lead.phone,
-            'Email': lead.email,
+            'Email': lead.email or '',
             'Address': f"{lead.address1 or ''} {lead.address2 or ''} {lead.address3 or ''}".strip(),
             'City': lead.city or '',
             'State': lead.state or '',
@@ -85,7 +102,7 @@ def export_leads_to_csv(queryset=None):
             'Created Date': lead.created_at.astimezone(timezone.get_current_timezone()).strftime('%Y-%m-%d %H:%M:%S') if lead.created_at else '',
             'Updated Date': lead.updated_at.astimezone(timezone.get_current_timezone()).strftime('%Y-%m-%d %H:%M:%S') if lead.updated_at else '',
             'Appointment Date': lead.appointment_date.astimezone(timezone.get_current_timezone()).strftime('%Y-%m-%d %H:%M:%S') if lead.appointment_date else '',
-            'Notes': lead.notes,
+            'Notes': lead.notes or '',
             'Property Ownership': getattr(lead, 'property_ownership', '') or '',
             'Property Type': getattr(lead, 'property_type', '') or '',
             'Number of Bedrooms': getattr(lead, 'number_of_bedrooms', '') or '',
@@ -100,14 +117,10 @@ def export_leads_to_csv(queryset=None):
             'Deletion Reason': lead.deletion_reason or ''
         })
     
-    # Create DataFrame
-    df = pd.DataFrame(data)
-    
-    # Create CSV in memory
-    output = BytesIO()
-    df.to_csv(output, index=False, encoding='utf-8')
-    output.seek(0)
-    return output.getvalue()
+    # Get the string value and encode to bytes
+    csv_string = output.getvalue()
+    # Add BOM for Excel compatibility
+    return ('\ufeff' + csv_string).encode('utf-8')
 
 def create_excel_response(data, filename):
     """Create HTTP response for Excel download"""

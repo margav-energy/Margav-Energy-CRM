@@ -772,5 +772,4 @@ class CallbackCreateSerializer(serializers.ModelSerializer):
         validated_data['created_by'] = self.context['request'].user
         return Callback.objects.create(**validated_data)
 
-        return value
 

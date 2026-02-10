@@ -99,7 +99,7 @@ class LeadViewSet(viewsets.ModelViewSet):
         if user.is_staff4dshire:
             return Lead.objects.filter(assigned_agent=user)
         
-        # Qualifiers can see leads they've processed (sent_to_kelly and beyond)
+        # Qualifiers can see leads they've processed
         if user.is_qualifier:
             return Lead.objects.filter(
                 status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']
@@ -324,6 +324,7 @@ class LeadListCreateView(generics.ListCreateAPIView):
         if user.is_admin:
             return Lead.objects.all()
         
+        # Get Sam user to exclude his leads
         # Agents can only see their own leads
         if user.is_agent:
             return Lead.objects.filter(assigned_agent=user)
@@ -332,7 +333,7 @@ class LeadListCreateView(generics.ListCreateAPIView):
         if user.is_staff4dshire:
             return Lead.objects.filter(assigned_agent=user)
         
-        # Qualifiers can see leads they've processed (sent_to_kelly and beyond)
+        # Qualifiers can see leads they've processed
         if user.is_qualifier:
             return Lead.objects.filter(
                 status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']
@@ -367,7 +368,7 @@ class LeadDetailView(generics.RetrieveUpdateDestroyAPIView):
         if user.is_agent:
             return Lead.objects.filter(assigned_agent=user)
         
-        # Qualifiers can see leads they've processed (sent_to_kelly and beyond)
+        # Qualifiers can see leads they've processed
         if user.is_qualifier:
             return Lead.objects.filter(
                 status__in=['sent_to_kelly', 'qualified', 'appointment_set', 'not_interested', 'no_contact', 'blow_out', 'pass_back_to_agent', 'on_hold', 'qualifier_callback']

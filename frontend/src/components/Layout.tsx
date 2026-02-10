@@ -42,6 +42,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Dashboard
+                </button>
+              </div>
               <div className="hidden sm:block text-sm text-gray-700">
                 Welcome, <span className="font-semibold text-gray-900">{user?.first_name} {user?.last_name}</span>
                 <span className="ml-2 px-3 py-1 bg-gradient-to-r from-green-100 to-blue-100 text-green-800 rounded-full text-xs font-medium">

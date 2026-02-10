@@ -279,12 +279,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
         ];
       } else if (userRole === 'qualifier') {
         columnDefinitions = [
-          { id: 'sent_to_kelly', title: 'To Qualify', statuses: ['sent_to_kelly'], color: 'bg-blue-100' },
-          { id: 'qualified', title: 'Qualified', statuses: ['qualified'], color: 'bg-green-100' },
-          { id: 'appointments', title: 'Appointments Set', statuses: ['appointment_set'], color: 'bg-purple-100' },
-          { id: 'qualifier_callback', title: 'On Hold/Callback', statuses: ['on_hold', 'qualifier_callback'], color: 'bg-orange-100' },
+          { id: 'sent_to_kelly', title: 'Sent to Qualify', statuses: ['sent_to_kelly'], color: 'bg-blue-100' },
+          { id: 'appointments', title: 'Appointment set', statuses: ['appointment_set'], color: 'bg-purple-100' },
+          { id: 'callback', title: 'Call back', statuses: ['callback', 'qualifier_callback', 'on_hold'], color: 'bg-orange-100' },
           { id: 'no_contact', title: 'No Contact', statuses: ['no_contact'], color: 'bg-yellow-100' },
-          { id: 'not_qualified', title: 'Not Qualified', statuses: ['not_interested', 'blow_out', 'pass_back_to_agent'], color: 'bg-red-100' },
+          { id: 'blowout', title: 'Blowout', statuses: ['blow_out'], color: 'bg-red-100' },
         ];
       } else if (userRole === 'salesrep') {
         columnDefinitions = [
@@ -480,7 +479,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ userRole, onLeadUpdate }) => 
     const names: { [key: string]: string } = {
       cold_call: 'Cold Call',
       interested: 'Interested',
-      sent_to_kelly: 'Sent to Qualifier',
+      sent_to_kelly: 'Sent to Qualify',
       qualified: 'Qualified',
       appointment_set: 'Appointment Set',
       appointment_completed: 'Completed',

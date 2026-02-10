@@ -267,3 +267,6 @@ GOOGLE_REFRESH_TOKEN = config('GOOGLE_REFRESH_TOKEN', default='your_google_refre
 # Google Sheets Configuration
 GOOGLE_SHEETS_SPREADSHEET_ID = config('GOOGLE_SHEETS_SPREADSHEET_ID', default='')
 GOOGLE_SHEETS_WORKSHEET_NAME = config('GOOGLE_SHEETS_WORKSHEET_NAME', default='Leads')
+
+# --------------------
+BASE_URL = config('BASE_URL', default='http://localhost:8000')

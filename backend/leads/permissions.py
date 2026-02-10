@@ -29,6 +29,10 @@ class LeadPermission(permissions.BasePermission):
         if request.user.is_salesrep:
             return True
         
+        # AI Agents (Sam) can see their own leads
+        if request.user.is_ai_agent:
+            return True
+        
         return False
     
     def has_object_permission(self, request, view, obj):
@@ -54,5 +58,9 @@ class LeadPermission(permissions.BasePermission):
         # SalesReps can access leads with appointments
         if request.user.is_salesrep:
             return obj.status == 'appointment_set'
+        
+        # AI Agents (Sam) can access their own leads
+        if request.user.is_ai_agent:
+            return obj.assigned_agent == request.user
         
         return False

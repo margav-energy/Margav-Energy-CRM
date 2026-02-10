@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Margav Energy PWA Icon Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #3333cc;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+        }
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        .icon-card {
+            text-align: center;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            background: #fafafa;
+            transition: all 0.3s ease;
+        }
+        .icon-card:hover {
+            border-color: #3333cc;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(51, 51, 204, 0.2);
+        }
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 15px 0;
+            max-width: 120px;
+            max-height: 120px;
+        }
+        .size-label {
+            font-size: 14px;
+            color: #333;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        button {
+            background: #3333cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #2a2aa3;
+            transform: translateY(-1px);
+        }
+        .convert-all {
+            background: #66cc66;
+            font-size: 18px;
+            padding: 15px 40px;
+            margin: 30px auto;
+            display: block;
+            border-radius: 12px;
+        }
+        .convert-all:hover {
+            background: #5bb85b;
+        }
+        .instructions {
+            margin: 30px 0;
+            padding: 25px;
+            background: linear-gradient(135deg, #e8f4fd 0%, #d1e7f7 100%);
+            border-radius: 12px;
+            border-left: 5px solid #3333cc;
+        }
+        .instructions h3 {
+            color: #3333cc;
+            margin-top: 0;
+        }
+        .instructions ol {
+            line-height: 1.6;
+        }
+        .instructions code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #e8f5e8;
+            border-left: 4px solid #66cc66;
+            font-weight: bold;
+        }
+        .favicon-note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .favicon-note h4 {
+            color: #856404;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Margav Energy PWA Icon Generator</h1>
+        <p class="subtitle">Convert your SVG icons to PNG format for the Progressive Web App</p>
+        
+        <div class="status" id="status">
+            Ready to generate PWA icons...
+        </div>
+        
+        <div class="icon-grid" id="iconGrid">
+            <!-- Icons will be generated here -->
+        </div>
+        
+        <button class="convert-all" onclick="generateAllIcons()">🚀 Generate All PWA Icons</button>
+        
+        <div class="favicon-note">
+            <h4>💡 Pro Tip: Use Your Existing Favicon</h4>
+            <p>You already have a <code>favicon.ico</code> file! You can:</p>
+            <ul>
+                <li>Convert your favicon.ico to PNG using online tools</li>
+                <li>Resize it to all required sizes (72x72, 96x96, etc.)</li>
+                <li>Replace the generated icons with your branded favicon</li>
+            </ul>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 How to Use This Tool:</h3>
+            <ol>
+                <li><strong>Generate Icons:</strong> Click "Generate All PWA Icons" above</li>
+                <li><strong>Download:</strong> Right-click each icon and "Save image as..."</li>
+                <li><strong>Save Location:</strong> Save them in <code>frontend/public/icons/</code></li>
+                <li><strong>File Names:</strong> Use exact names: <code>icon-72x72.png</code>, <code>icon-96x96.png</code>, etc.</li>
+                <li><strong>Replace:</strong> Replace the .svg files with your new .png files</li>
+                <li><strong>Test:</strong> Your PWA will now have proper icons!</li>
+            </ol>
+            
+            <h3>🎯 Alternative Methods:</h3>
+            <ul>
+                <li><strong>Online Converters:</strong> <a href="https://convertio.co/svg-png/" target="_blank">Convertio</a>, <a href="https://cloudconvert.com/svg-to-png" target="_blank">CloudConvert</a></li>
+                <li><strong>Image Editors:</strong> GIMP, Photoshop, Canva, Figma</li>
+                <li><strong>Favicon Tools:</strong> <a href="https://realfavicongenerator.net/" target="_blank">RealFaviconGenerator</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Margav Energy color scheme
+        const PRIMARY_COLOR = '#3333cc';
+        const BLACK = '#000000';
+        const WHITE = '#ffffff';
+        const GREEN = '#66cc66';
+
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+
+        function createIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+            
+            // Draw background circle
+            const margin = size / 8;
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const radius = (size - margin * 2) / 2;
+            
+            // Circle background
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = PRIMARY_COLOR;
+            ctx.fill();
+            
+            // Circle border
+            ctx.strokeStyle = BLACK;
+            ctx.lineWidth = Math.max(1, size / 64);
+            ctx.stroke();
+            
+            // Add "ME" text
+            ctx.fillStyle = WHITE;
+            ctx.font = `bold ${size / 3}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('ME', centerX, centerY);
+            
+            return canvas;
+        }
+
+        function generateAllIcons() {
+            const status = document.getElementById('status');
+            const grid = document.getElementById('iconGrid');
+            
+            status.textContent = 'Generating PWA icons...';
+            grid.innerHTML = '';
+            
+            sizes.forEach((size, index) => {
+                setTimeout(() => {
+                    const iconCard = document.createElement('div');
+                    iconCard.className = 'icon-card';
+                    
+                    const canvas = createIcon(size);
+                    canvas.style.width = '120px';
+                    canvas.style.height = '120px';
+                    
+                    const sizeLabel = document.createElement('div');
+                    sizeLabel.className = 'size-label';
+                    sizeLabel.textContent = `${size} × ${size} pixels`;
+                    
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = '📥 Download PNG';
+                    downloadBtn.onclick = () => downloadIcon(canvas, size);
+                    
+                    iconCard.appendChild(canvas);
+                    iconCard.appendChild(sizeLabel);
+                    iconCard.appendChild(downloadBtn);
+                    
+                    grid.appendChild(iconCard);
+                    
+                    if (index === sizes.length - 1) {
+                        status.textContent = `✅ Generated ${sizes.length} PWA icons successfully!`;
+                    }
+                }, index * 100); // Stagger the generation for visual effect
+            });
+        }
+
+        function downloadIcon(canvas, size) {
+            const link = document.createElement('a');
+            link.download = `icon-${size}x${size}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Auto-generate icons when page loads
+        window.addEventListener('load', () => {
+            setTimeout(generateAllIcons, 500);
+        });
+    </script>
+</body>
+</html>
+

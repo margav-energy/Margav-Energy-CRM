@@ -1,0 +1,28 @@
+{
+  "user": "CalebG",
+  "full_name": "Jane Doe",
+  "phone": "+44123456789",
+  "email": "jane.doe@example.com",
+  "address1": "456 Oak Avenue",
+  "city": "Manchester",
+  "postal_code": "M1 1AA",
+  "preferred_contact_time": "evening",
+  "property_ownership": "owner",
+  "property_type": "semi_detached",
+  "number_of_bedrooms": "4",
+  "roof_type": "pitched",
+  "roof_material": "tiles",
+  "average_monthly_electricity_bill": "200_300",
+  "energy_bill_amount": 250.00,
+  "has_ev_charger": false,
+  "day_night_rate": "no",
+  "current_energy_supplier": "octopus_energy",
+  "electric_heating_appliances": "gas_heating",
+  "energy_details": "Standard gas central heating system",
+  "timeframe": "within_month",
+  "moving_properties_next_five_years": "no",
+  "timeframe_details": "Wants installation completed quickly",
+  "has_previous_quotes": false,
+  "notes": "Very interested customer, ready to proceed"
+}
+

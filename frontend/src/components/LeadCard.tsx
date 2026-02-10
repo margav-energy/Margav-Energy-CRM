@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Lead, Callback } from '../types';
 import { formatDateSafe, formatDateShortSafe } from '../utils/dateUtils';
 import CallbackBadge from './CallbackBadge';
@@ -13,7 +13,6 @@ interface LeadCardProps {
 }
 
 const LeadCard: React.FC<LeadCardProps> = ({ lead, onUpdate, onDelete, onScheduleAppointment, showActions = true, callbacks = [] }) => {
-  
 
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
@@ -189,31 +188,33 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onUpdate, onDelete, onSchedul
 
       {/* Actions */}
       {showActions && (onUpdate || onDelete || onScheduleAppointment) && (
-        <div className="px-4 py-3 bg-gray-50/50 border-t border-gray-100 flex space-x-2">
-          {onUpdate && (
-            <button
-              onClick={() => onUpdate(lead)}
-              className="flex-1 bg-white text-gray-700 text-xs px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors font-medium"
-            >
-              Edit
-            </button>
-          )}
-          {onScheduleAppointment && (
-            <button
-              onClick={() => onScheduleAppointment(lead)}
-              className="flex-1 bg-green-50 text-green-700 text-xs px-3 py-2 rounded-lg border border-green-200 hover:bg-green-100 hover:border-green-300 transition-colors font-medium"
-            >
-              Qualify Lead
-            </button>
-          )}
-          {onDelete && (
-            <button
-              onClick={() => onDelete(lead)}
-              className="flex-1 bg-red-50 text-red-700 text-xs px-3 py-2 rounded-lg border border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors font-medium"
-            >
-              Delete
-            </button>
-          )}
+        <div className="px-4 py-3 bg-gray-50/50 border-t border-gray-100 flex flex-col space-y-2">
+          <div className="flex space-x-2">
+            {onUpdate && (
+              <button
+                onClick={() => onUpdate(lead)}
+                className="flex-1 bg-white text-gray-700 text-xs px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors font-medium"
+              >
+                Edit
+              </button>
+            )}
+            {onScheduleAppointment && (
+              <button
+                onClick={() => onScheduleAppointment(lead)}
+                className="flex-1 bg-green-50 text-green-700 text-xs px-3 py-2 rounded-lg border border-green-200 hover:bg-green-100 hover:border-green-300 transition-colors font-medium"
+              >
+                Qualify Lead
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={() => onDelete(lead)}
+                className="flex-1 bg-red-50 text-red-700 text-xs px-3 py-2 rounded-lg border border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors font-medium"
+              >
+                Delete
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -281,24 +281,4 @@ export interface CallbackForm {
   notes?: string;
 }
 
-// Callback types
-export interface Callback {
-  id: number;
-  lead: number;
-  lead_name: string;
-  lead_phone: string;
-  scheduled_time: string;
-  status: 'scheduled' | 'completed' | 'cancelled' | 'no_answer' | 'sent_to_qualifier';
-  notes?: string;
-  created_by: number;
-  created_by_name: string;
-  completed_at?: string;
-  is_due: boolean;
-  is_overdue: boolean;
-}
-
-export interface CallbackForm {
-  lead?: number;
-  scheduled_time: string;
-  notes?: string;
-}
+// AI Call types
